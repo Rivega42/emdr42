@@ -1,0 +1,75 @@
+name: Release Management
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: |
+          cd apps/web
+          npm ci
+      
+      - name: Build project
+        run: |
+          cd apps/web
+          npm run build
+      
+      - name: Create Release Archive
+        run: |
+          cd apps/web/dist
+          zip -r ../../emdr42-release.zip .
+      
+      - name: Generate Changelog
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          output-file: 'CHANGELOG.md'
+          skip-version-file: true
+          skip-commit: true
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.version || github.ref_name }}
+          name: Release ${{ github.event.inputs.version || github.ref_name }}
+          body: |
+            ## What's Changed
+            ${{ steps.changelog.outputs.clean_changelog }}
+            
+            ## Installation
+            Download the release archive and extract it to your web server.
+            
+            ## Docker
+            ```bash
+            docker pull ghcr.io/rivega42/emdr42:${{ github.event.inputs.version || github.ref_name }}
+            ```
+          files: |
+            emdr42-release.zip
+            CHANGELOG.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
