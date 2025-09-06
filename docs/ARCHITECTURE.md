@@ -8,489 +8,430 @@
 4. [Технологический стек](#технологический-стек)
 5. [Диаграммы архитектуры](#диаграммы-архитектуры)
 6. [Безопасность](#безопасность)
-7. [Масштабирование](#масштабирование)
+7. [Масштабируемость](#масштабируемость)
 
 ## 🎯 Обзор системы
 
-EMDR-AI Therapy Assistant построена на микросервисной архитектуре с упором на:
-- **Privacy-first**: Локальная обработка чувствительных данных
-- **Масштабируемость**: Горизонтальное масштабирование
-- **Отказоустойчивость**: Redundancy на всех уровнях
-- **Модульность**: Независимые сервисы
+EMDR-AI Therapy Assistant - это многослойная система, построенная на принципах микросервисной архитектуры с акцентом на приватность, масштабируемость и клиническую эффективность.
+
+### Ключевые архитектурные решения
+
+- **Privacy-First**: Вся обработка эмоциональных данных происходит локально
+- **Микросервисная архитектура**: Независимые, масштабируемые компоненты
+- **Progressive Web App**: Кроссплатформенность без установки
+- **Edge Computing**: Минимизация латентности
 
 ## 🎨 Архитектурные принципы
 
-### 1. Privacy by Design
-- Обработка эмоций на стороне клиента
-- End-to-end шифрование
-- Минимальный сбор данных
-- GDPR/CCPA compliance
+### 1. Конфиденциальность данных
+```
+┌─────────────────────────────────────┐
+│         Локальная обработка         │
+├─────────────────────────────────────┤
+│  • MorphCast SDK в браузере         │
+│  • Локальное ML на устройстве       │
+│  • Шифрование данных перед передачей │
+│  • Zero-knowledge архитектура        │
+└─────────────────────────────────────┘
+```
 
-### 2. Microservices Architecture
-- Независимые сервисы
-- API Gateway
-- Service mesh
-- Event-driven communication
+### 2. Отказоустойчивость
+- Circuit Breaker паттерн для внешних сервисов
+- Graceful degradation при недоступности компонентов
+- Автоматическое восстановление сессий
+- Offline-first подход
 
-### 3. Cloud-Native
-- Kubernetes orchestration
-- Docker containers
-- CI/CD pipelines
-- Infrastructure as Code
-
-### 4. Progressive Web App
-- Offline-first
-- Service Workers
-- WebAssembly для производительности
-- Responsive design
+### 3. Адаптивность
+- Real-time персонализация на основе эмоций
+- A/B тестирование терапевтических протоколов
+- Машинное обучение для оптимизации
 
 ## 🔧 Компоненты системы
 
 ### Frontend Layer
-
+```typescript
+// Основные компоненты Frontend
+interface FrontendArchitecture {
+  core: {
+    framework: 'React 18',
+    stateManagement: 'Redux Toolkit',
+    routing: 'React Router 6',
+    ui: 'Material-UI + Custom Components'
+  },
+  
+  therapeuticModules: {
+    emdrRenderer: 'Canvas/WebGL визуализация',
+    emotionRecognition: 'MorphCast SDK интеграция',
+    audioEngine: 'Tone.js + Web Audio API',
+    avatarSystem: 'Three.js 3D аватары'
+  },
+  
+  dataLayer: {
+    localState: 'Redux + RTK Query',
+    persistence: 'IndexedDB + Encryption',
+    sync: 'Background Sync API'
+  }
+}
 ```
-┌─────────────────────────────────────────┐
-│           Web Application               │
-├─────────────────────────────────────────┤
-│  React 18  │  TypeScript  │  Redux     │
-│  Three.js  │  MorphCast   │  PWA       │
-└─────────────────────────────────────────┘
-```
-
-#### Ключевые модули:
-- **Emotion Recognition Module**: MorphCast SDK интеграция
-- **EMDR Engine**: Паттерны движения и визуализация
-- **Avatar System**: 3D аватары терапевтов
-- **Analytics Module**: Локальная аналитика
-- **Storage Module**: IndexedDB для offline
 
 ### Backend Services
 
-```
-┌──────────────┬──────────────┬──────────────┐
-│   Auth       │   Therapy    │   Analytics  │
-│   Service    │   Service    │   Service    │
-├──────────────┼──────────────┼──────────────┤
-│   User       │   Session    │   ML         │
-│   Service    │   Service    │   Service    │
-├──────────────┼──────────────┼──────────────┤
-│   Content    │   Payment    │   Notification│
-│   Service    │   Service    │   Service    │
-└──────────────┴──────────────┴──────────────┘
+#### 1. API Gateway
+```yaml
+apiGateway:
+  responsibilities:
+    - Аутентификация и авторизация
+    - Rate limiting
+    - Request routing
+    - Response caching
+  technology: Kong/Nginx + Lua
 ```
 
-#### Микросервисы:
-
-1. **Auth Service**
-   - JWT authentication
-   - OAuth2 integration
-   - 2FA support
-   - Session management
-
-2. **User Service**
-   - Profile management
-   - Preferences
-   - History tracking
-   - Data export
-
-3. **Therapy Service**
-   - EMDR protocols
-   - Session orchestration
-   - Pattern management
-   - Progress tracking
-
-4. **Session Service**
-   - Real-time communication
-   - WebRTC handling
-   - Session recording
-   - State synchronization
-
-5. **Analytics Service**
-   - Data aggregation
-   - ML model serving
-   - Predictive analytics
-   - Reporting
-
-6. **ML Service**
-   - Model training
-   - Inference API
-   - Personalization
-   - Anomaly detection
-
-7. **Content Service**
-   - Media storage
-   - CDN integration
-   - Transcoding
-   - Delivery optimization
-
-8. **Payment Service**
-   - Stripe integration
-   - Subscription management
-   - Billing
-   - Invoicing
-
-9. **Notification Service**
-   - Email (SendGrid)
-   - Push notifications
-   - SMS (Twilio)
-   - In-app messaging
+#### 2. Core Services
+```yaml
+coreServices:
+  therapyEngine:
+    description: "Ядро терапевтической логики"
+    responsibilities:
+      - Управление сессиями
+      - Протоколы EMDR
+      - Адаптивная персонализация
+    technology: Node.js + NestJS
+    
+  mlService:
+    description: "Машинное обучение и аналитика"
+    responsibilities:
+      - Обучение моделей персонализации
+      - Предиктивная аналитика
+      - Рекомендательная система
+    technology: Python + FastAPI + TensorFlow
+    
+  userService:
+    description: "Управление пользователями"
+    responsibilities:
+      - Профили пользователей
+      - Прогресс терапии
+      - Настройки приватности
+    technology: Node.js + Express
+```
 
 ### Data Layer
-
-```
-┌──────────────┬──────────────┬──────────────┐
-│  PostgreSQL  │    Redis     │   MongoDB    │
-│  (Primary)   │   (Cache)    │  (Analytics) │
-├──────────────┼──────────────┼──────────────┤
-│     S3       │ Elasticsearch│   InfluxDB   │
-│  (Storage)   │   (Search)   │  (Metrics)   │
-└──────────────┴──────────────┴──────────────┘
-```
-
-### Infrastructure Layer
-
-```
-┌─────────────────────────────────────────┐
-│            Kubernetes Cluster           │
-├─────────────────────────────────────────┤
-│   Ingress   │   Services   │   Pods    │
-├─────────────────────────────────────────┤
-│         Docker Containers               │
-├─────────────────────────────────────────┤
-│          AWS/GCP/Azure                  │
-└─────────────────────────────────────────┘
+```yaml
+dataStorage:
+  primary:
+    type: PostgreSQL 15
+    purpose: Пользовательские данные, метаданные сессий
+    encryption: AES-256 at rest
+    
+  cache:
+    type: Redis Cluster
+    purpose: Сессии, временные данные
+    
+  analytics:
+    type: ClickHouse
+    purpose: Аналитика использования (анонимизированная)
+    
+  media:
+    type: MinIO/S3
+    purpose: Медиафайлы, аватары, ресурсы
 ```
 
 ## 💻 Технологический стек
 
 ### Frontend
-- **Framework**: React 18 + TypeScript
-- **State Management**: Redux Toolkit + RTK Query
-- **UI Library**: Material-UI v5
-- **3D Graphics**: Three.js + React Three Fiber
-- **Animation**: Framer Motion + GSAP
-- **Emotion Recognition**: MorphCast SDK
-- **Audio**: Tone.js + Web Audio API
-- **PWA**: Workbox + Service Workers
-- **Testing**: Jest + React Testing Library + Cypress
+```json
+{
+  "framework": {
+    "main": "React 18",
+    "typescript": "5.0+",
+    "build": "Vite",
+    "pwa": "Workbox"
+  },
+  "ui": {
+    "components": "Material-UI v5",
+    "styling": "Emotion + CSS-in-JS",
+    "animations": "Framer Motion",
+    "3d": "Three.js"
+  },
+  "audio": {
+    "engine": "Tone.js",
+    "processing": "Web Audio API",
+    "spatial": "Web Audio Spatialization"
+  },
+  "ml": {
+    "emotions": "MorphCast SDK",
+    "local": "TensorFlow.js",
+    "computervision": "MediaPipe"
+  }
+}
+```
 
 ### Backend
-- **Runtime**: Node.js 20 LTS
-- **Framework**: NestJS
-- **API**: GraphQL + REST
-- **Real-time**: Socket.io + WebRTC
-- **Queue**: Bull + Redis
-- **ORM**: Prisma
-- **Validation**: Joi + class-validator
-- **Testing**: Jest + Supertest
+```json
+{
+  "runtime": "Node.js 20 LTS",
+  "framework": "NestJS",
+  "database": {
+    "primary": "PostgreSQL 15",
+    "cache": "Redis 7",
+    "search": "Elasticsearch"
+  },
+  "messaging": {
+    "queue": "Bull + Redis",
+    "realtime": "Socket.io",
+    "events": "EventEmitter3"
+  },
+  "ml": {
+    "runtime": "Python 3.11",
+    "framework": "FastAPI",
+    "ml": "TensorFlow/PyTorch",
+    "nlp": "spaCy + Transformers"
+  }
+}
+```
 
-### Databases
-- **Primary**: PostgreSQL 15
-- **Cache**: Redis 7
-- **Analytics**: MongoDB 6
-- **Search**: Elasticsearch 8
-- **Time-series**: InfluxDB 2
-- **Object Storage**: AWS S3 / MinIO
+### DevOps & Infrastructure
+```yaml
+containerization:
+  runtime: Docker
+  orchestration: Kubernetes
+  service_mesh: Istio
 
-### ML/AI
-- **Framework**: TensorFlow.js + PyTorch
-- **Serving**: TensorFlow Serving + TorchServe
-- **MLOps**: MLflow + Kubeflow
-- **NLP**: OpenAI API + Hugging Face
-- **Computer Vision**: OpenCV + MediaPipe
+monitoring:
+  metrics: Prometheus + Grafana
+  logging: ELK Stack
+  tracing: Jaeger
+  errors: Sentry
 
-### Infrastructure
-- **Container**: Docker + Docker Compose
-- **Orchestration**: Kubernetes + Helm
-- **CI/CD**: GitHub Actions + ArgoCD
-- **Monitoring**: Prometheus + Grafana
-- **Logging**: ELK Stack
-- **Tracing**: Jaeger
-- **Service Mesh**: Istio
-- **API Gateway**: Kong
-
-### Security
-- **WAF**: Cloudflare
-- **Secrets**: HashiCorp Vault
-- **Scanning**: Snyk + SonarQube
-- **SIEM**: Datadog
-- **Compliance**: HIPAA + GDPR tools
+deployment:
+  ci_cd: GitHub Actions
+  infrastructure: Terraform
+  cloud: AWS/GCP
+  cdn: CloudFlare
+```
 
 ## 📊 Диаграммы архитектуры
 
-### Общая архитектура
-
-```mermaid
-graph TB
-    subgraph "Client Layer"
-        Web[Web App]
-        Mobile[Mobile App]
-        Desktop[Desktop App]
-    end
-    
-    subgraph "Edge Layer"
-        CDN[CDN]
-        WAF[WAF]
-        LB[Load Balancer]
-    end
-    
-    subgraph "Application Layer"
-        Gateway[API Gateway]
-        Auth[Auth Service]
-        Therapy[Therapy Service]
-        ML[ML Service]
-        Analytics[Analytics Service]
-    end
-    
-    subgraph "Data Layer"
-        PG[(PostgreSQL)]
-        Redis[(Redis)]
-        Mongo[(MongoDB)]
-        S3[(S3 Storage)]
-    end
-    
-    Web --> CDN
-    Mobile --> CDN
-    Desktop --> CDN
-    CDN --> WAF
-    WAF --> LB
-    LB --> Gateway
-    Gateway --> Auth
-    Gateway --> Therapy
-    Gateway --> ML
-    Gateway --> Analytics
-    Auth --> PG
-    Auth --> Redis
-    Therapy --> PG
-    ML --> Mongo
-    Analytics --> Mongo
-    Therapy --> S3
+### Высокоуровневая архитектура
+```
+┌─────────────────────────────────────────────┐
+│           Пользовательский слой             │
+├─────────────────────────────────────────────┤
+│  PWA Client  │  Mobile App  │  Web Portal   │
+├─────────────────────────────────────────────┤
+│              API Gateway                    │
+├─────────────────────────────────────────────┤
+│  Therapy     │  ML Service  │  User Service │
+│  Engine      │             │               │
+├─────────────────────────────────────────────┤
+│  PostgreSQL  │  Redis      │  MinIO        │
+└─────────────────────────────────────────────┘
 ```
 
 ### Поток данных эмоций
+```
+Browser → MorphCast SDK → Local Processing → 
+Encrypted Aggregation → Backend Analytics → 
+ML Model Training → Personalization Update → 
+Real-time Adaptation
+```
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Camera
-    participant MorphCast
-    participant Frontend
-    participant Backend
-    participant ML
-    
-    User->>Camera: Разрешение камеры
-    Camera->>MorphCast: Видеопоток
-    MorphCast->>MorphCast: Локальный анализ
-    MorphCast->>Frontend: Эмоциональные данные
-    Frontend->>Frontend: Адаптация UI
-    Frontend->>Backend: Агрегированные метрики
-    Backend->>ML: Данные для обучения
-    ML->>Backend: Рекомендации
-    Backend->>Frontend: Персонализация
-    Frontend->>User: Адаптированный опыт
+### Архитектура безопасности
+```
+┌─────────────────────────────────────────┐
+│         Клиентская сторона              │
+│  ┌─────────────────────────────────┐    │
+│  │     Локальная обработка         │    │
+│  │  • MorphCast (эмоции)          │    │
+│  │  • TensorFlow.js (ML)          │    │
+│  │  • Web Crypto API (шифрование)  │    │
+│  └─────────────────────────────────┘    │
+└─────────────────────────────────────────┘
+              │ TLS 1.3
+              ▼
+┌─────────────────────────────────────────┐
+│           Серверная сторона             │
+│  ┌─────────────────────────────────┐    │
+│  │      Зашифрованное хранение      │    │
+│  │  • AES-256 шифрование           │    │
+│  │  • Ключи управляются HSM        │    │
+│  │  • Анонимизация данных          │    │
+│  └─────────────────────────────────┘    │
+└─────────────────────────────────────────┘
 ```
 
 ## 🔒 Безопасность
 
-### Уровни защиты
+### Принципы безопасности
+1. **Zero Trust Architecture**
+2. **Defense in Depth**
+3. **Privacy by Design**
+4. **Minimal Data Collection**
 
-1. **Network Security**
-   - TLS 1.3 everywhere
-   - VPN для админ доступа
-   - Network segmentation
-   - DDoS protection
-
-2. **Application Security**
-   - OWASP Top 10 compliance
-   - Input validation
-   - SQL injection prevention
-   - XSS protection
-   - CSRF tokens
-
-3. **Data Security**
-   - Encryption at rest (AES-256)
-   - Encryption in transit (TLS)
-   - Key rotation
-   - Data anonymization
-   - PII tokenization
-
-4. **Access Control**
-   - RBAC (Role-Based Access Control)
-   - MFA (Multi-Factor Authentication)
-   - API rate limiting
-   - Session management
-   - Audit logging
-
-5. **Compliance**
-   - GDPR compliance
-   - CCPA compliance
-   - HIPAA ready
-   - SOC 2 Type II
-   - ISO 27001
-
-### Privacy Architecture
-
-```
-┌─────────────────────────────────────────┐
-│         User Device (Browser)           │
-│  ┌───────────────────────────────────┐  │
-│  │   MorphCast SDK (Local Only)      │  │
-│  │   - Face Detection                │  │
-│  │   - Emotion Analysis              │  │
-│  │   - No Server Upload              │  │
-│  └───────────────────────────────────┘  │
-│  ┌───────────────────────────────────┐  │
-│  │   Local Storage (Encrypted)       │  │
-│  │   - Session Data                  │  │
-│  │   - User Preferences              │  │
-│  │   - Offline Cache                 │  │
-│  └───────────────────────────────────┘  │
-└─────────────────────────────────────────┘
-         │
-         │ Only Aggregated Metrics
-         ▼
-┌─────────────────────────────────────────┐
-│            Backend Services             │
-│   - No Raw Video/Images                 │
-│   - No Identifiable Data                │
-│   - Only Statistical Information        │
-└─────────────────────────────────────────┘
+### Реализация
+```typescript
+interface SecurityMeasures {
+  authentication: {
+    method: 'OAuth 2.0 + PKCE',
+    mfa: 'TOTP/SMS/Биометрия',
+    sessions: 'JWT с коротким TTL'
+  },
+  
+  encryption: {
+    transit: 'TLS 1.3',
+    rest: 'AES-256-GCM',
+    keys: 'HSM + Key Rotation'
+  },
+  
+  privacy: {
+    processing: 'Локальная обработка эмоций',
+    storage: 'Минимальные персональные данные',
+    sharing: 'Explicit consent only'
+  },
+  
+  monitoring: {
+    intrusion: 'Real-time detection',
+    anomaly: 'ML-based behavior analysis',
+    audit: 'Comprehensive logging'
+  }
+}
 ```
 
-## 📈 Масштабирование
+## ⚡ Масштабируемость
 
 ### Горизонтальное масштабирование
-
 ```yaml
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: therapy-service-hpa
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: therapy-service
-  minReplicas: 3
-  maxReplicas: 100
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
+scalability:
+  frontend:
+    distribution: Global CDN
+    caching: Edge caching + Service Worker
+    optimization: Code splitting + Lazy loading
+    
+  backend:
+    load_balancing: Layer 7 load balancer
+    auto_scaling: Kubernetes HPA
+    database: Read replicas + Sharding
+    
+  performance:
+    targets:
+      response_time: "< 100ms для критических API"
+      availability: "99.9% uptime"
+      concurrent_users: "100,000+ одновременно"
 ```
 
-### Стратегии кэширования
-
-1. **CDN Level**
-   - Static assets
-   - API responses (где применимо)
-   - Geo-distributed
-
-2. **Application Level**
-   - Redis для сессий
-   - In-memory caching
-   - Query result caching
-
-3. **Database Level**
-   - Connection pooling
-   - Query optimization
-   - Read replicas
-   - Sharding
-
-### Performance Targets
-
-- **Latency**: < 100ms (p99)
-- **Throughput**: 10,000 RPS
-- **Availability**: 99.99%
-- **Error Rate**: < 0.01%
-- **Time to First Byte**: < 200ms
-
-## 🔄 Deployment Pipeline
-
-```mermaid
-graph LR
-    Code[Code Push] --> Build[Build]
-    Build --> Test[Test]
-    Test --> Security[Security Scan]
-    Security --> Stage[Deploy to Staging]
-    Stage --> E2E[E2E Tests]
-    E2E --> Prod[Deploy to Production]
-    Prod --> Monitor[Monitor]
-    Monitor --> Rollback[Rollback if needed]
+### Оптимизация производительности
+```typescript
+const PerformanceOptimizations = {
+  frontend: {
+    bundleSize: 'Tree shaking + Code splitting',
+    rendering: 'React.memo + useMemo',
+    assets: 'WebP + Progressive images',
+    animations: 'GPU acceleration'
+  },
+  
+  backend: {
+    caching: 'Multi-layer caching strategy',
+    database: 'Connection pooling + Query optimization',
+    apis: 'Response compression + Pagination',
+    cdn: 'Static asset optimization'
+  },
+  
+  ml: {
+    inference: 'Model quantization',
+    loading: 'Lazy model loading',
+    optimization: 'WebAssembly для критических путей'
+  }
+};
 ```
 
-## 📱 Mobile Architecture
+## 🔄 API Design
 
-### React Native Architecture
-
-```
-┌─────────────────────────────────────────┐
-│          React Native App               │
-├─────────────────────────────────────────┤
-│   JavaScript Thread  │  Native Modules  │
-├─────────────────────────────────────────┤
-│      Bridge Layer                       │
-├─────────────────────────────────────────┤
-│   iOS Native        │  Android Native   │
-└─────────────────────────────────────────┘
-```
-
-### Offline Capabilities
-
-- **SQLite**: Local database
-- **AsyncStorage**: Key-value storage
-- **Background Sync**: When online
-- **Push Notifications**: FCM/APNS
-
-## 🌐 Multi-Region Architecture
-
-```
-┌─────────────────────────────────────────┐
-│           Global Load Balancer          │
-└─────────────────────────────────────────┘
-                    │
-    ┌───────────────┼───────────────┐
-    ▼               ▼               ▼
-┌─────────┐   ┌─────────┐   ┌─────────┐
-│   US    │   │   EU    │   │  APAC   │
-│ Region  │   │ Region  │   │ Region  │
-└─────────┘   └─────────┘   └─────────┘
-    │               │               │
-    ▼               ▼               ▼
-┌─────────┐   ┌─────────┐   ┌─────────┐
-│   DB    │◄──│   DB    │◄──│   DB    │
-│ Primary │   │ Replica │   │ Replica │
-└─────────┘   └─────────┘   └─────────┘
+### RESTful API структура
+```typescript
+interface APIEndpoints {
+  // Аутентификация
+  'POST /auth/login': AuthRequest,
+  'POST /auth/logout': void,
+  'POST /auth/refresh': RefreshRequest,
+  
+  // Терапевтические сессии
+  'POST /therapy/sessions': CreateSessionRequest,
+  'GET /therapy/sessions/:id': SessionResponse,
+  'PUT /therapy/sessions/:id': UpdateSessionRequest,
+  
+  // Пользовательские данные
+  'GET /users/profile': UserProfile,
+  'PUT /users/preferences': UserPreferences,
+  'GET /users/progress': ProgressData,
+  
+  // Аналитика (анонимизированная)
+  'POST /analytics/events': AnalyticsEvent[],
+  'GET /analytics/insights': UserInsights
+}
 ```
 
-## 🚀 Future Considerations
+### WebSocket Events
+```typescript
+interface WebSocketEvents {
+  // Real-time терапия
+  'session:start': SessionConfig,
+  'session:update': EmotionalState,
+  'session:adapt': AdaptationInstructions,
+  'session:end': SessionSummary,
+  
+  // Система уведомлений
+  'notification:reminder': TherapyReminder,
+  'notification:milestone': Achievement,
+  'notification:emergency': CrisisAlert
+}
+```
 
-### Blockchain Integration
-- Децентрализованная идентификация
-- Смарт-контракты для страхования
-- Токенизация прогресса
+## 📈 Мониторинг и наблюдаемость
 
-### Edge Computing
-- WebAssembly для ML моделей
-- Local-first architecture
-- P2P синхронизация
+### Ключевые метрики
+```yaml
+business_metrics:
+  - session_completion_rate
+  - user_engagement_score
+  - therapy_effectiveness_index
+  - user_retention_rate
 
-### Quantum-Ready
-- Post-quantum криптография
-- Quantum-resistant алгоритмы
-- Готовность к миграции
+technical_metrics:
+  - api_response_time
+  - error_rate
+  - system_availability
+  - resource_utilization
+
+clinical_metrics:
+  - emotion_recognition_accuracy
+  - adaptation_response_time
+  - safety_protocol_triggers
+  - therapeutic_outcome_correlation
+```
+
+## 🚀 Развертывание
+
+### Окружения
+```yaml
+environments:
+  development:
+    purpose: Локальная разработка
+    infrastructure: Docker Compose
+    
+  staging:
+    purpose: Тестирование и QA
+    infrastructure: Kubernetes (minikube)
+    
+  production:
+    purpose: Продуктовая среда
+    infrastructure: Managed Kubernetes (EKS/GKE)
+    redundancy: Multi-region deployment
+```
 
 ---
 
-**Документ обновлен:** 06.09.2025
-**Версия:** 1.0.0
-**Автор:** EMDR-AI Architecture Team
+**Дата создания**: Сентябрь 2025  
+**Версия**: 1.0  
+**Статус**: В разработке
+
+*Этот документ описывает текущую архитектуру системы и будет обновляться по мере развития проекта.*
