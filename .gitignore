@@ -89,3 +89,4 @@ coverage/
 
 # Claude Code
 .claude/
+tsconfig.tsbuildinfo
