@@ -1,17 +1,8 @@
+'use client';
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { api } from '../lib/api';
-
-type UserRole = 'PATIENT' | 'THERAPIST' | 'ADMIN';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import { api } from '@/lib/api';
+import type { User, UserRole } from '@/lib/types';
 
 interface AuthContextType {
   user: User | null;
@@ -49,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profile = await api.getProfile();
         setUser(profile);
       } catch {
+        // Token invalid or expired — clear it
         localStorage.removeItem('token');
         api.setToken(null);
       } finally {
