@@ -5,7 +5,7 @@ const nextConfig = {
   images: {
     domains: ['morphcast.com', 'localhost'],
   },
-  transpilePackages: ['@emdr42/core'],
+  transpilePackages: ['@emdr42/core', '@emdr42/emdr-engine', '@emdr42/ai-providers'],
   async headers() {
     return [
       {
@@ -34,7 +34,8 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_MORPHCAST_KEY: process.env.MORPHCAST_LICENSE_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://emdr42.vercel.app',
-    NEXT_PUBLIC_WEBSOCKET_URL: process.env.WEBSOCKET_URL || 'wss://emdr42.vercel.app'
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+    NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8002'
   }
 }
 

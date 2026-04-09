@@ -1,125 +1,103 @@
 version: '3.8'
 
 services:
-  # Frontend Development Server
+  # Frontend (Next.js)
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     environment:
-      - NODE_ENV=development
       - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NEXT_PUBLIC_WS_URL=ws://localhost:8001
+      - NEXT_PUBLIC_WS_URL=http://localhost:8002
     depends_on:
-      - backend
-      - ml-service
+      - api
+      - orchestrator
 
-  # Backend API Server
-  backend:
+  # Backend API (NestJS)
+  api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
+      context: ./services/api
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
     environment:
-      - NODE_ENV=development
-      - DATABASE_URL=postgresql://emdr_user:emdr_pass@postgres:5432/emdr_db
+      - DATABASE_URL=postgresql://emdr42:emdr42_secret@postgres:5432/emdr42
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=dev_jwt_secret_change_in_production
+      - JWT_SECRET=your-jwt-secret-change-in-production
+      - PORT=8000
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  # ML Service
-  ml-service:
+  # Session Orchestrator (WebSocket)
+  orchestrator:
     build:
-      context: ./ml-service
-      dockerfile: Dockerfile.dev
+      context: ./services/orchestrator
+      dockerfile: Dockerfile
     ports:
-      - "8001:8001"
-    volumes:
-      - ./ml-service:/app
+      - "8002:8002"
     environment:
-      - PYTHONPATH=/app
+      - API_URL=http://api:8000
       - REDIS_URL=redis://redis:6379
-      - MODEL_PATH=/app/models
+      - JWT_SECRET=your-jwt-secret-change-in-production
+      - PORT=8002
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
     depends_on:
+      - api
       - redis
 
-  # PostgreSQL Database
+  # PostgreSQL
   postgres:
     image: postgres:15-alpine
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_DB=emdr_db
-      - POSTGRES_USER=emdr_user
-      - POSTGRES_PASSWORD=emdr_pass
+      - POSTGRES_USER=emdr42
+      - POSTGRES_PASSWORD=emdr42_secret
+      - POSTGRES_DB=emdr42
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U emdr42"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  # Redis Cache
+  # Redis
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - redis_data:/var/lib/redis/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes
 
-  # MinIO Object Storage
+  # MinIO (Object Storage for recordings)
   minio:
-    image: minio/minio:latest
+    image: minio/minio
     ports:
       - "9000:9000"
       - "9001:9001"
     environment:
-      - MINIO_ROOT_USER=emdr_minio
-      - MINIO_ROOT_PASSWORD=emdr_minio_pass
+      - MINIO_ROOT_USER=emdr42
+      - MINIO_ROOT_PASSWORD=emdr42_secret
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
-
-  # Monitoring - Prometheus
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-
-  # Monitoring - Grafana
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3001:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana:/etc/grafana/provisioning
 
 volumes:
   postgres_data:
   redis_data:
   minio_data:
-  prometheus_data:
-  grafana_data:
-
-networks:
-  default:
-    name: emdr-network
