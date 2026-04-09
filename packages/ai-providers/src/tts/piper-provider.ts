@@ -98,7 +98,7 @@ export class PiperProvider implements TtsProvider {
       const response = await fetch(`${this.baseUrl}/api/voices`);
       if (!response.ok) return [];
 
-      const data = await response.json();
+      const data: any = await response.json();
       return (data.voices ?? []).map(
         (v: { id: string; name: string; language?: string; gender?: string }) => ({
           id: v.id,

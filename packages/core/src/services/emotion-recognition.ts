@@ -3,6 +3,12 @@
  * Integration with MorphCast SDK for privacy-first emotion detection
  */
 
+declare global {
+  interface Window {
+    CY?: any;
+  }
+}
+
 import { EventEmitter } from 'events';
 
 export interface EmotionData {
@@ -74,15 +80,13 @@ export class EmotionRecognitionService extends EventEmitter {
 
     try {
       // Load MorphCast SDK
-      // @ts-ignore - SDK will be loaded dynamically
-      await window.CY.loader()
+      await window.CY!.loader()
         .licenseKey(this.config.licenseKey)
-        .addModule(window.CY.modules().FACE_EMOTION.name)
-        .addModule(window.CY.modules().FACE_ATTENTION.name)
-        .addModule(window.CY.modules().FACE_FEATURES.name)
+        .addModule(window.CY!.modules().FACE_EMOTION.name)
+        .addModule(window.CY!.modules().FACE_ATTENTION.name)
+        .addModule(window.CY!.modules().FACE_FEATURES.name)
         .load();
 
-      // @ts-ignore
       this.morphcastSDK = window.CY;
       this.isInitialized = true;
       

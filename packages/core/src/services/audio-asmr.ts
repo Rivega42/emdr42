@@ -135,13 +135,15 @@ export class AudioASMRService {
    * Initialize binaural beat oscillators
    */
   private initializeBinaural(): void {
+    if (!this.masterGain) return;
+
     const freq = this.frequencies[this.config.binauralFrequency];
-    
+
     // Left ear - base frequency
     const leftOsc = new Tone.Oscillator(freq.base, 'sine');
     const leftPanner = new Tone.Panner(-1).connect(this.masterGain);
     leftOsc.connect(leftPanner);
-    
+
     // Right ear - base + beat frequency
     const rightOsc = new Tone.Oscillator(freq.base + freq.beat, 'sine');
     const rightPanner = new Tone.Panner(1).connect(this.masterGain);

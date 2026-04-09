@@ -10,5 +10,5 @@ export class UpdateUserDto {
   @ApiPropertyOptional({ example: { theme: 'dark' } })
   @IsOptional()
   @IsObject()
-  settings?: Record<string, unknown>;
+  settings?: Record<string, any>;
 }

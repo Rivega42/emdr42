@@ -15,5 +15,5 @@ export class CreateTimelineEventDto {
 
   @ApiProperty({ description: 'Event-specific data' })
   @IsObject()
-  data!: Record<string, unknown>;
+  data!: Record<string, any>;
 }

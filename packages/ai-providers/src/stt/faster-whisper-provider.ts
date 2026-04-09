@@ -49,7 +49,7 @@ export class FasterWhisperProvider implements SttProvider {
       );
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
 
     return {
       text: data.text ?? '',
