@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PATIENT
+  THERAPIST
+  ADMIN
+}
+
+enum SessionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  ABORTED
+}
+
+enum EmdrPhase {
+  HISTORY
+  PREPARATION
+  ASSESSMENT
+  DESENSITIZATION
+  INSTALLATION
+  BODY_SCAN
+  CLOSURE
+  REEVALUATION
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         Role      @default(PATIENT)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
+  settings     Json?
+
+  @@index([email])
+  @@index([role])
+}
+
+model Session {
+  id            String        @id @default(uuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  sessionNumber Int
+  status        SessionStatus @default(SCHEDULED)
+  phase         EmdrPhase     @default(HISTORY)
+
+  // Target memory
+  targetMemory      String?
+  targetImage       String?
+  negativeCognition String?
+  ncDomain          String?
+  positiveCognition String?
+  pcDomain          String?
+  initialEmotions   String[]
+  bodyLocation      String?
+
+  // Scales
+  sudsBaseline Int?
+  sudsFinal    Int?
+  vocBaseline  Int?
+  vocFinal     Int?
+
+  // Timing
+  startedAt       DateTime?
+  endedAt         DateTime?
+  durationSeconds Int?
+
+  // Config
+  blsPattern String @default("horizontal")
+  blsSpeed   Float  @default(1.0)
+
+  // Outcome
+  sessionComplete     Boolean @default(false)
+  closureTechnique    String?
+  clientStateAtEnd    String?
+  betweenSessionNotes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timelineEvents TimelineEvent[]
+  emotionRecords EmotionRecord[]
+  sudsRecords    SudsRecord[]
+  vocRecords     VocRecord[]
+  safetyEvents   SafetyEvent[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([userId, createdAt])
+}
+
+model TimelineEvent {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id])
+  timestamp Float
+  type      String
+  data      Json
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([sessionId, timestamp])
+}
+
+model EmotionRecord {
+  id         String   @id @default(uuid())
+  sessionId  String
+  session    Session  @relation(fields: [sessionId], references: [id])
+  timestamp  Float
+  stress     Float
+  engagement Float
+  positivity Float
+  arousal    Float
+  valence    Float
+  joy        Float    @default(0)
+  sadness    Float    @default(0)
+  anger      Float    @default(0)
+  fear       Float    @default(0)
+  surprise   Float    @default(0)
+  disgust    Float    @default(0)
+  confidence Float    @default(1)
+  createdAt  DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([sessionId, timestamp])
+}
+
+model SudsRecord {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id])
+  timestamp Float
+  value     Int
+  context   String
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+model VocRecord {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id])
+  timestamp Float
+  value     Int
+  context   String
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+model SafetyEvent {
+  id          String   @id @default(uuid())
+  sessionId   String
+  session     Session  @relation(fields: [sessionId], references: [id])
+  timestamp   Float
+  type        String
+  severity    String
+  actionTaken String
+  resolved    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([severity])
+}
+
+model PlatformSettings {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  category  String
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+}
