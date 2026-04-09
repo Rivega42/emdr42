@@ -4,5 +4,5 @@ import { ApiProperty } from '@nestjs/swagger';
 export class UpdateSettingDto {
   @ApiProperty({ description: 'Setting value (any JSON)' })
   @IsNotEmpty()
-  value!: unknown;
+  value!: any;
 }

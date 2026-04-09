@@ -57,7 +57,7 @@ export class DeepgramProvider implements SttProvider {
       );
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
     const result = data.results?.channels?.[0]?.alternatives?.[0];
 
     return {

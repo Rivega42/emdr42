@@ -130,7 +130,7 @@ export class ElevenLabsProvider implements TtsProvider {
       );
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
     return (data.voices ?? []).map(
       (v: {
         voice_id: string;
