@@ -1,16 +1,21 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS base
 WORKDIR /app
-COPY package*.json ./
+
+FROM base AS deps
+COPY package.json package-lock.json* ./
 COPY packages/emdr-engine/package.json ./packages/emdr-engine/
 COPY packages/ai-providers/package.json ./packages/ai-providers/
-RUN npm install
+RUN npm ci
+
+FROM base AS build
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN cd services/orchestrator && npm run build
 
-FROM node:20-alpine
-WORKDIR /app
-COPY --from=builder /app/services/orchestrator/dist ./dist
-COPY --from=builder /app/services/orchestrator/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
+FROM base AS production
+ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/services/orchestrator/dist ./dist
+COPY --from=build /app/services/orchestrator/package.json ./
 EXPOSE 8002
 CMD ["node", "dist/server.js"]
