@@ -1,12 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { api } from '@/lib/api';
+import type { User, UserRole } from '@/lib/types';
 
 interface AuthContextType {
   user: User | null;
@@ -15,6 +11,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   register: (name: string, email: string, password: string) => Promise<void>;
+  hasRole: (role: UserRole) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,39 +29,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    const restoreSession = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      api.setToken(token);
+      try {
+        const profile = await api.getProfile();
+        setUser(profile);
+      } catch {
+        localStorage.removeItem('token');
+        api.setToken(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    restoreSession();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    // TODO: Replace with real API call
-    const mockUser = {
-      id: '1',
-      name: email.split('@')[0],
-      email
-    };
-    setUser(mockUser);
-    localStorage.setItem('user', JSON.stringify(mockUser));
-  };
+  const login = useCallback(async (email: string, password: string) => {
+    const res = await api.login(email, password);
+    localStorage.setItem('token', res.access_token);
+    api.setToken(res.access_token);
+    setUser(res.user);
+  }, []);
 
-  const logout = () => {
+  const register = useCallback(async (name: string, email: string, password: string) => {
+    const res = await api.register({ name, email, password });
+    localStorage.setItem('token', res.access_token);
+    api.setToken(res.access_token);
+    setUser(res.user);
+  }, []);
+
+  const logout = useCallback(() => {
     setUser(null);
-    localStorage.removeItem('user');
-  };
+    localStorage.removeItem('token');
+    api.setToken(null);
+  }, []);
 
-  const register = async (name: string, email: string, password: string) => {
-    // TODO: Replace with real API call
-    const mockUser = {
-      id: '1',
-      name,
-      email
-    };
-    setUser(mockUser);
-    localStorage.setItem('user', JSON.stringify(mockUser));
-  };
+  const hasRole = useCallback(
+    (role: UserRole) => user?.role === role,
+    [user],
+  );
 
   return (
     <AuthContext.Provider
@@ -74,7 +82,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         login,
         logout,
-        register
+        register,
+        hasRole,
       }}
     >
       {children}

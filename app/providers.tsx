@@ -5,7 +5,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { EmotionProvider } from '@/contexts/EmotionContext';
 import { TherapyProvider } from '@/contexts/TherapyContext';
 
-export const Providers: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <EmotionProvider>
@@ -15,4 +15,4 @@ export const Providers: React.FC<{ children: React.ReactNode }> = ({ children })
       </EmotionProvider>
     </AuthProvider>
   );
-};
+}
