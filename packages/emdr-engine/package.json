@@ -7,14 +7,17 @@
   "types": "src/index.ts",
   "scripts": {
     "type-check": "tsc --noEmit",
-    "test": "jest",
+    "test": "jest --verbose",
     "test:watch": "jest --watch"
   },
   "dependencies": {
     "events": "^3.3.0"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.4.0",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.9",
     "typescript": "^5.1.0"
   },
   "keywords": [
