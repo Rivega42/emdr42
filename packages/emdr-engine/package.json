@@ -1,0 +1,27 @@
+{
+  "name": "@emdr42/emdr-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EMDR 8-phase session engine with safety protocols and adaptive BLS",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "events": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.4.0",
+    "typescript": "^5.1.0"
+  },
+  "keywords": [
+    "emdr",
+    "therapy",
+    "session-engine",
+    "safety-protocols"
+  ],
+  "license": "MIT"
+}
