@@ -85,4 +85,4 @@ coverage/
 # Cache
 .cache/
 .eslintcache
-.stylelintcache
+.stylelintcache.claude/
