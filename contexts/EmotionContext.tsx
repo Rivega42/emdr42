@@ -1,3 +1,5 @@
+'use client';
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 interface EmotionData {
@@ -38,7 +40,6 @@ export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [trackingInterval, setTrackingInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Load calibration status
     const calibrationStatus = localStorage.getItem('emotion_calibrated');
     if (calibrationStatus === 'true') {
       setIsCalibrated(true);
@@ -52,7 +53,7 @@ export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const generateMockEmotionData = (): EmotionData => {
-    // In production, this would use MorphCast SDK
+    // TODO: Replace with MorphCast SDK / WebRTC emotion pipeline
     return {
       timestamp: Date.now(),
       stress: Math.random() * 0.5 + 0.3,
@@ -65,18 +66,17 @@ export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const startTracking = useCallback(() => {
     if (isTracking) return;
-    
+
     setIsTracking(true);
     const interval = setInterval(() => {
       const emotionData = generateMockEmotionData();
       setCurrentEmotions(emotionData);
       setEmotionHistory(prev => {
         const updated = [...prev, emotionData];
-        // Keep only last 100 data points
         return updated.slice(-100);
       });
     }, 1000);
-    
+
     setTrackingInterval(interval);
   }, [isTracking]);
 
@@ -89,7 +89,6 @@ export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [trackingInterval]);
 
   const calibrate = async (): Promise<void> => {
-    // Simulate calibration process
     return new Promise((resolve) => {
       setTimeout(() => {
         setIsCalibrated(true);
@@ -101,13 +100,13 @@ export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const getEmotionTrend = (): 'improving' | 'stable' | 'declining' => {
     if (emotionHistory.length < 10) return 'stable';
-    
+
     const recent = emotionHistory.slice(-10);
     const older = emotionHistory.slice(-20, -10);
-    
+
     const recentAvgStress = recent.reduce((sum, e) => sum + e.stress, 0) / recent.length;
     const olderAvgStress = older.reduce((sum, e) => sum + e.stress, 0) / older.length;
-    
+
     if (recentAvgStress < olderAvgStress - 0.1) return 'improving';
     if (recentAvgStress > olderAvgStress + 0.1) return 'declining';
     return 'stable';
@@ -129,4 +128,4 @@ export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       {children}
     </EmotionContext.Provider>
   );
-};}
+};

@@ -75,17 +75,15 @@
 
 | Слой | Стек |
 |------|------|
-| Framework | Next.js 13 + React 18 |
+| Framework | Next.js 13 App Router + React 18 |
 | Language | TypeScript 5.1, ESM |
-| UI | MUI 5, Tailwind CSS, Framer Motion |
-| 3D | Three.js + @react-three/fiber |
-| State | Redux Toolkit |
-| AI/ML | TensorFlow.js |
+| UI | Tailwind CSS, Framer Motion |
+| 3D | Three.js + @react-three/fiber + @react-three/drei |
 | Audio | Tone.js |
-| Realtime | Socket.io |
+| Realtime | WebRTC (LiveKit), Socket.io |
 | Testing | Jest + @testing-library/react |
 | Linting | ESLint + Prettier |
-| Infra | Docker Compose, Nginx, Vercel |
+| Infra | Docker Compose, Vercel |
 | DB | PostgreSQL 15+ |
 | Cache | Redis 7+ |
 
@@ -95,21 +93,59 @@
 
 ```
 emdr42/
-├── app/                 # Next.js app directory (layout, pages)
-├── apps/
-│   └── web/             # Frontend web app (Vite + React)
-├── components/          # Переиспользуемые React-компоненты
+├── app/                     # Next.js App Router
+│   ├── layout.tsx           # Root layout + metadata
+│   ├── providers.tsx        # Client-side context providers
+│   ├── globals.css          # Global styles (Tailwind)
+│   ├── page.tsx             # Home page
+│   ├── about/page.tsx       # About EMDR
+│   ├── login/page.tsx       # Login
+│   ├── register/page.tsx    # Registration
+│   ├── session/             # EMDR session (Three.js canvas)
+│   │   ├── page.tsx
+│   │   └── SessionCanvas.tsx
+│   └── (protected)/         # Auth-required pages
+│       ├── layout.tsx       # Sidebar + auth check
+│       ├── dashboard/page.tsx
+│       ├── progress/page.tsx
+│       └── settings/page.tsx
+├── contexts/                # React Context providers
+│   ├── AuthContext.tsx
+│   ├── EmotionContext.tsx
+│   └── TherapyContext.tsx
 ├── packages/
-│   └── core/            # Shared бизнес-логика
+│   └── core/                # Shared бизнес-логика (@emdr42/core)
+│       └── src/
+│           ├── patterns/movements.ts      # 10 EMDR-паттернов
+│           ├── services/audio-asmr.ts     # Binaural beats, ASMR
+│           └── services/emotion-recognition.ts  # MorphCast integration
 ├── src/
-│   └── ml-service/      # ML сервис
-├── docs/                # Документация (ROADMAP, WHITEPAPER, ARCHITECTURE)
-├── .github/
-│   └── workflows/       # CI/CD (ci, codeql, docker, release)
-├── docker-compose.yml   # Dev-окружение: frontend, backend, ML, PG, Redis, MinIO, Prometheus, Grafana
-├── next.config.js       # Security headers, env vars
-└── vercel.json          # Деплой на Vercel
+│   └── ml-service/          # ML сервис (спецификация)
+├── docs/                    # ROADMAP, WHITEPAPER, ARCHITECTURE
+├── .github/workflows/       # CI/CD (ci, codeql, docker, release)
+├── docker-compose.yml       # Dev-окружение
+├── next.config.js           # Security headers, env vars, standalone output
+└── vercel.json              # Деплой на Vercel
 ```
+
+---
+
+## WebRTC-архитектура (целевая)
+
+```
+[Next.js клиент]
+  │ WebRTC (audio+video) via LiveKit
+  ▼
+[LiveKit медиасервер]
+  │ ● аудио клиента → STT (faster-whisper)
+  │ ● видео клиента → facial metrics (Affect Pipeline)
+  │ ● аудио от TTS → клиенту
+  │ ● видео BLS → клиенту
+  ▲
+[Backend AI-сервисы] — Session Orchestrator, TTS, BLS Engine, Dialogue Agent
+```
+
+Текущий фронтенд работает standalone с mock-данными. WebRTC-слой будет добавлен по мере реализации бэкенда.
 
 ---
 
@@ -186,7 +222,7 @@ export const Button: FC<ButtonProps> = ({
 
 - BEM-подобная нотация для кастомных стилей.
 - CSS-переменные для цветов и spacing.
-- Tailwind — для быстрой разметки в `apps/web`.
+- Tailwind — основной инструмент стилизации.
 
 ---
 
@@ -248,5 +284,5 @@ npm run type-check    # TypeScript проверка типов
 - **Чистая архитектура** — код строится как новая система, а не обрастает костылями поверх старого.
 - **Миграционный mindset** — при переносе функционала критически оцениваем, нужен ли он в новом виде.
 - **MVP-фильтрация** — в кодовую базу попадает только то, что нужно для текущего этапа.
-- **Модульность** — `apps/`, `packages/`, `src/` чётко разделяют frontend, shared-логику и сервисы.
+- **Модульность** — `app/`, `packages/`, `contexts/`, `src/` чётко разделяют frontend, shared-логику и сервисы.
 - **Канонические модули** — если в коде или документации встречаются устаревшие названия (`api-v3`, `legacy services`) — они не описывают текущую структуру.

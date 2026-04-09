@@ -1,3 +1,5 @@
+'use client';
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface SessionData {
@@ -38,7 +40,6 @@ export const TherapyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
 
   useEffect(() => {
-    // Load sessions from localStorage
     const storedSessions = localStorage.getItem('therapy_sessions');
     if (storedSessions) {
       setSessions(JSON.parse(storedSessions));
@@ -64,11 +65,11 @@ export const TherapyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ...currentSession,
         duration
       };
-      
+
       const updatedSessions = [...sessions, completedSession];
       setSessions(updatedSessions);
       localStorage.setItem('therapy_sessions', JSON.stringify(updatedSessions));
-      
+
       setCurrentSession(null);
       setIsSessionActive(false);
       setSessionStartTime(null);

@@ -1,10 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
+  output: 'standalone',
   images: {
     domains: ['morphcast.com', 'localhost'],
   },
+  transpilePackages: ['@emdr42/core'],
   async headers() {
     return [
       {

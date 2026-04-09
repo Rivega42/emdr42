@@ -1,108 +1,106 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import dynamic from 'next/dynamic'
+import React from 'react';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
 
-// Динамическая загрузка компонентов для избежания SSR проблем
-const EMDRCanvas = dynamic(() => import('@/components/EMDRCanvas'), { ssr: false })
-
-export default function Home() {
-  const [isStarted, setIsStarted] = useState(false)
-  const [pattern, setPattern] = useState('horizontal')
-  const [speed, setSpeed] = useState(1.0)
-
+const FeatureCard: React.FC<{ icon: string; title: string; description: string }> = ({ icon, title, description }) => {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-purple-700 via-purple-600 to-pink-600">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center text-white mb-10">
-          <h1 className="text-5xl font-bold mb-4">🧠 EMDR-AI Therapy Assistant</h1>
-          <p className="text-xl opacity-90">Адаптивная система виртуальной терапии</p>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="bg-white/10 backdrop-blur-md rounded-2xl p-6 hover:bg-white/20 transition-all duration-200"
+    >
+      <div className="text-4xl mb-4">{icon}</div>
+      <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
+      <p className="text-white/70">{description}</p>
+    </motion.div>
+  );
+};
+
+export default function HomePage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-black/20" />
+          <div className="absolute top-20 left-20 w-72 h-72 bg-purple-500 rounded-full filter blur-3xl opacity-20 animate-pulse" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-blue-500 rounded-full filter blur-3xl opacity-20 animate-pulse" />
         </div>
 
-        {/* Canvas Area */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-6 mb-8 min-h-[400px] flex items-center justify-center">
-          {isStarted ? (
-            <EMDRCanvas pattern={pattern} speed={speed} />
-          ) : (
-            <div className="text-white text-center">
-              <p className="text-2xl mb-4">Добро пожаловать в EMDR-AI</p>
-              <p className="opacity-80">Нажмите "Начать сессию" для запуска</p>
-            </div>
-          )}
-        </div>
+        <div className="relative max-w-7xl mx-auto px-4 py-24 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-center"
+          >
+            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6">
+              EMDR-AI <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600">Therapy</span>
+            </h1>
+            <p className="text-xl md:text-2xl text-white/80 mb-8 max-w-3xl mx-auto">
+              Revolutionary virtual therapy platform combining EMDR techniques with AI-powered emotion recognition
+            </p>
 
-        {/* Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Pattern Selection */}
-          <div className="bg-white rounded-2xl p-5 shadow-xl">
-            <h3 className="font-semibold text-gray-800 mb-3">Паттерн движения</h3>
-            <select 
-              className="w-full p-2 border rounded-lg"
-              value={pattern}
-              onChange={(e) => setPattern(e.target.value)}
-            >
-              <option value="horizontal">Горизонтальный</option>
-              <option value="infinity">Бесконечность</option>
-              <option value="butterfly">Бабочка</option>
-              <option value="spiral">Спираль</option>
-            </select>
-          </div>
-
-          {/* Speed Control */}
-          <div className="bg-white rounded-2xl p-5 shadow-xl">
-            <h3 className="font-semibold text-gray-800 mb-3">Скорость</h3>
-            <input 
-              type="range" 
-              min="0.3" 
-              max="2" 
-              step="0.1" 
-              value={speed}
-              onChange={(e) => setSpeed(parseFloat(e.target.value))}
-              className="w-full"
-            />
-            <span className="text-sm text-gray-600">{speed.toFixed(1)} Hz</span>
-          </div>
-
-          {/* Avatar Selection */}
-          <div className="bg-white rounded-2xl p-5 shadow-xl">
-            <h3 className="font-semibold text-gray-800 mb-3">Аватар терапевта</h3>
-            <select className="w-full p-2 border rounded-lg">
-              <option value="professional">Профессиональный</option>
-              <option value="friendly">Дружелюбный</option>
-              <option value="mentor">Наставник</option>
-              <option value="abstract">Абстрактный</option>
-            </select>
-          </div>
-
-          {/* Control Buttons */}
-          <div className="bg-white rounded-2xl p-5 shadow-xl">
-            <h3 className="font-semibold text-gray-800 mb-3">Управление</h3>
-            <div className="space-y-2">
-              <button 
-                onClick={() => setIsStarted(!isStarted)}
-                className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
-                  isStarted 
-                    ? 'bg-red-500 hover:bg-red-600 text-white' 
-                    : 'bg-green-500 hover:bg-green-600 text-white'
-                }`}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/session"
+                className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-full hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
               >
-                {isStarted ? 'Остановить' : 'Начать сессию'}
-              </button>
+                Start Free Session
+              </Link>
+              <Link
+                href="/about"
+                className="px-8 py-4 bg-white/10 backdrop-blur-md text-white font-semibold rounded-full hover:bg-white/20 transition-all duration-200"
+              >
+                Learn More
+              </Link>
             </div>
-          </div>
+          </motion.div>
         </div>
+      </section>
 
-        {/* Emotion Indicator */}
-        <div className="fixed top-4 right-4 bg-black/70 text-white p-4 rounded-xl min-w-[200px]">
-          <h4 className="font-semibold mb-2">Эмоциональное состояние</h4>
-          <div className="space-y-1 text-sm">
-            <div>Стресс: <span className="text-yellow-400">--</span></div>
-            <div>Вовлеченность: <span className="text-green-400">--</span></div>
-            <div>Позитивность: <span className="text-blue-400">--</span></div>
+      {/* Features Section */}
+      <section className="py-20 px-4">
+        <div className="max-w-7xl mx-auto">
+          <motion.h2
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            className="text-4xl font-bold text-white text-center mb-12"
+          >
+            Why Choose EMDR-AI?
+          </motion.h2>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            <FeatureCard icon="🧠" title="Privacy-First" description="All emotion processing happens locally on your device. Your data never leaves your computer." />
+            <FeatureCard icon="🎯" title="Adaptive Therapy" description="AI adjusts patterns and intensity based on your real-time emotional responses." />
+            <FeatureCard icon="🎵" title="Multi-Sensory" description="Combines visual EMDR with binaural beats and ASMR for enhanced therapeutic effect." />
+            <FeatureCard icon="📊" title="Track Progress" description="Monitor your emotional journey with detailed analytics and session history." />
+            <FeatureCard icon="🏆" title="Gamified Healing" description="Achievement system and interactive scenarios make therapy engaging." />
+            <FeatureCard icon="🔒" title="Clinically Informed" description="Based on proven EMDR protocols with safety mechanisms built-in." />
           </div>
         </div>
-      </div>
-    </main>
-  )
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-4xl font-bold text-white mb-6">
+            Ready to Begin Your Healing Journey?
+          </h2>
+          <p className="text-xl text-white/80 mb-8">
+            Join thousands who have found relief through our innovative therapy platform
+          </p>
+          <Link
+            href="/register"
+            className="inline-block px-12 py-5 bg-gradient-to-r from-green-500 to-blue-500 text-white font-bold text-lg rounded-full hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
+          >
+            Get Started Free
+          </Link>
+        </div>
+      </section>
+    </div>
+  );
 }
