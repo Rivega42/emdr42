@@ -80,12 +80,16 @@
 | UI | Tailwind CSS, Framer Motion |
 | 3D | Three.js + @react-three/fiber + @react-three/drei |
 | Audio | Tone.js |
-| Realtime | WebRTC (LiveKit), Socket.io |
+| Emotion | TensorFlow.js (custom models) |
+| WebRTC | LiveKit (client + server) |
+| Realtime | WebSocket (Socket.io) |
+| Backend | NestJS, Prisma |
 | Testing | Jest + @testing-library/react |
 | Linting | ESLint + Prettier |
 | Infra | Docker Compose, Vercel |
 | DB | PostgreSQL 15+ |
 | Cache | Redis 7+ |
+| Monitoring | Prometheus + Grafana |
 
 ---
 
@@ -93,7 +97,7 @@
 
 ```
 emdr42/
-├── app/                     # Next.js App Router
+├── app/                     # Next.js App Router (17 pages)
 │   ├── layout.tsx           # Root layout + metadata
 │   ├── providers.tsx        # Client-side context providers
 │   ├── globals.css          # Global styles (Tailwind)
@@ -106,7 +110,9 @@ emdr42/
 │   │   └── SessionCanvas.tsx
 │   └── (protected)/         # Auth-required pages
 │       ├── layout.tsx       # Sidebar + auth check
+│       ├── admin/page.tsx
 │       ├── dashboard/page.tsx
+│       ├── patients/page.tsx
 │       ├── progress/page.tsx
 │       └── settings/page.tsx
 ├── contexts/                # React Context providers
@@ -114,16 +120,17 @@ emdr42/
 │   ├── EmotionContext.tsx
 │   └── TherapyContext.tsx
 ├── packages/
-│   └── core/                # Shared бизнес-логика (@emdr42/core)
-│       └── src/
-│           ├── patterns/movements.ts      # 10 EMDR-паттернов
-│           ├── services/audio-asmr.ts     # Binaural beats, ASMR
-│           └── services/emotion-recognition.ts  # MorphCast integration
-├── src/
-│   └── ml-service/          # ML сервис (спецификация)
+│   ├── core/                # @emdr42/core — shared бизнес-логика
+│   ├── emdr-engine/         # @emdr42/emdr-engine — EMDR protocol engine
+│   ├── ai-providers/        # @emdr42/ai-providers — LLM/TTS/STT integrations
+│   └── livekit-integration/ # @emdr42/livekit — LiveKit client/server utils
+├── services/
+│   ├── api/                 # NestJS backend API (port 8000)
+│   └── orchestrator/        # Session Orchestrator (port 8002)
+├── monitoring/              # Prometheus config
 ├── docs/                    # ROADMAP, WHITEPAPER, ARCHITECTURE
 ├── .github/workflows/       # CI/CD (ci, codeql, docker, release)
-├── docker-compose.yml       # Dev-окружение
+├── docker-compose.yml       # Dev-окружение (all services)
 ├── next.config.js           # Security headers, env vars, standalone output
 └── vercel.json              # Деплой на Vercel
 ```
@@ -260,7 +267,9 @@ npm run type-check    # TypeScript проверка типов
 - `DATABASE_URL` — PostgreSQL
 - `REDIS_URL` — Redis
 - `JWT_SECRET` — авторизация
-- `MORPHCAST_LICENSE_KEY` — распознавание эмоций
+- `LIVEKIT_URL` — LiveKit WebRTC сервер
+- `LIVEKIT_API_KEY` — LiveKit API ключ
+- `LIVEKIT_API_SECRET` — LiveKit API секрет
 - `NEXT_PUBLIC_APP_URL` — URL приложения
 - `WEBSOCKET_URL` — WebSocket
 
