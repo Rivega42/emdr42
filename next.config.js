@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   images: {
-    domains: ['morphcast.com', 'localhost'],
+    domains: ['localhost'],
   },
   async headers() {
     return [
@@ -31,7 +31,6 @@ const nextConfig = {
     ]
   },
   env: {
-    NEXT_PUBLIC_MORPHCAST_KEY: process.env.MORPHCAST_LICENSE_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://emdr42.vercel.app',
     NEXT_PUBLIC_WEBSOCKET_URL: process.env.WEBSOCKET_URL || 'wss://emdr42.vercel.app'
   }
