@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { getSocket, disconnectSocket } from '@/lib/socket';
+import { AudioBlsController } from '@/lib/audio-bls';
 import type { Socket } from 'socket.io-client';
 
 const SessionCanvas = dynamic(() => import('./SessionCanvas'), { ssr: false });
@@ -85,9 +86,14 @@ const BLS_PHASES: EmdrPhase[] = ['desensitization', 'installation', 'body_scan']
 const PATTERNS = [
   { value: 'horizontal', label: 'Horizontal' },
   { value: 'infinity',   label: 'Infinity' },
-  { value: 'butterfly',  label: 'Butterfly' },
+  { value: 'diagonal',   label: 'Diagonal' },
   { value: 'circular',   label: 'Circular' },
+  { value: 'butterfly',  label: 'Butterfly' },
   { value: 'spiral',     label: 'Spiral' },
+  { value: 'wave',       label: 'Wave' },
+  { value: 'lissajous',  label: 'Lissajous' },
+  { value: 'pendulum',   label: 'Pendulum' },
+  { value: 'random_smooth', label: 'Random Smooth' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -134,6 +140,11 @@ export default function SessionPage() {
 
   // Session ended summary
   const [sessionSummary, setSessionSummary] = useState<SessionEndedData | null>(null);
+
+  // Audio BLS
+  const audioRef = useRef<AudioBlsController | null>(null);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [blsColor, setBlsColor] = useState('#4CAF50');
 
   // Socket ref for stable access inside callbacks
   const socketRef = useRef<Socket | null>(null);
@@ -221,11 +232,17 @@ export default function SessionPage() {
     const socket = getSocket();
     socketRef.current = socket;
 
-    socket.on('connect', () => {
+    socket.on('connect', async () => {
       setConnected(true);
       const id = crypto.randomUUID();
       setSessionId(id);
       socket.emit('session:start', { sessionId: id });
+
+      // Initialize audio on first user interaction
+      if (!audioRef.current) {
+        audioRef.current = new AudioBlsController();
+        await audioRef.current.initialize();
+      }
     });
 
     socket.on('connect_error', () => {
@@ -259,12 +276,25 @@ export default function SessionPage() {
       setPhase(data.phase);
       if (BLS_PHASES.includes(data.phase)) {
         setBlsConfig(prev => ({ ...prev, paused: false }));
+        if (audioEnabled && audioRef.current) {
+          audioRef.current.startBilateral(blsConfig.speed);
+        }
+      } else {
+        audioRef.current?.stopBilateral();
       }
     });
 
     // BLS config update
     socket.on('session:bls_config', (data: BlsConfig) => {
       setBlsConfig(data);
+      if (audioRef.current) {
+        if (data.paused) {
+          audioRef.current.stopBilateral();
+        } else if (audioEnabled) {
+          audioRef.current.updateSpeed(data.speed);
+          audioRef.current.startBilateral(data.speed);
+        }
+      }
     });
 
     // Safety alert
@@ -301,6 +331,13 @@ export default function SessionPage() {
     };
   }, [sessionId]);
 
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      audioRef.current?.dispose();
+    };
+  }, []);
+
   // -------------------------------------------------------------------------
   // Send handlers
   // -------------------------------------------------------------------------
@@ -330,20 +367,24 @@ export default function SessionPage() {
     if (isPaused) {
       socketRef.current.emit('session:resume', { sessionId });
       setIsPaused(false);
+      if (audioEnabled && isBlsPhase) audioRef.current?.startBilateral(blsConfig.speed);
     } else {
       socketRef.current.emit('session:pause', { sessionId });
       setIsPaused(true);
+      audioRef.current?.stopBilateral();
     }
   };
 
   const handleStop = () => {
     if (!sessionId || !socketRef.current) return;
     socketRef.current.emit('session:stop_signal', { sessionId });
+    audioRef.current?.stopBilateral();
   };
 
   const handleEnd = () => {
     if (!sessionId || !socketRef.current) return;
     socketRef.current.emit('session:end', { sessionId });
+    audioRef.current?.stopBilateral();
   };
 
   // -------------------------------------------------------------------------
@@ -414,7 +455,15 @@ export default function SessionPage() {
 
         {/* Canvas */}
         <div className="flex-1 relative">
-          <SessionCanvas pattern={blsConfig.pattern} speed={blsConfig.speed} isActive={!blsConfig.paused} />
+          <SessionCanvas
+            pattern={blsConfig.pattern}
+            speed={blsConfig.speed}
+            isActive={!blsConfig.paused}
+            color={blsColor}
+            trailEnabled={true}
+            particlesEnabled={true}
+            emotionArousal={stress}
+          />
         </div>
 
         {/* Controls */}
@@ -444,6 +493,30 @@ export default function SessionPage() {
           >
             {blsConfig.paused ? 'Start' : 'Pause'}
           </button>
+          <label className="flex items-center gap-3 text-white/70 text-sm">
+            <input
+              type="checkbox"
+              checked={audioEnabled}
+              onChange={async (e) => {
+                setAudioEnabled(e.target.checked);
+                if (e.target.checked) {
+                  if (!audioRef.current) {
+                    audioRef.current = new AudioBlsController();
+                    await audioRef.current.initialize();
+                  }
+                  if (!blsConfig.paused) audioRef.current.startBilateral(blsConfig.speed);
+                } else {
+                  audioRef.current?.stopBilateral();
+                }
+              }}
+              className="w-4 h-4"
+            />
+            Bilateral Audio
+          </label>
+          <div>
+            <label className="text-white/70 text-sm block mb-1">Color</label>
+            <input type="color" value={blsColor} onChange={(e) => setBlsColor(e.target.value)} className="w-10 h-8 rounded-lg cursor-pointer" />
+          </div>
         </div>
       </div>
     );
@@ -555,7 +628,15 @@ export default function SessionPage() {
           {/* Canvas area */}
           <div className="flex-1 relative">
             {isBlsPhase ? (
-              <SessionCanvas pattern={blsConfig.pattern} speed={blsConfig.speed} isActive={blsActive} />
+              <SessionCanvas
+                pattern={blsConfig.pattern}
+                speed={blsConfig.speed}
+                isActive={blsActive}
+                color={blsColor}
+                trailEnabled={true}
+                particlesEnabled={true}
+                emotionArousal={stress}
+              />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
                 <p className="text-white/20 text-lg">BLS visualization activates during desensitization phases</p>
@@ -601,7 +682,7 @@ export default function SessionPage() {
 
             {/* BLS controls row (only during BLS phases) */}
             {isBlsPhase && (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
                   <label className="text-white/50 text-xs">Pattern</label>
                   <select
@@ -623,6 +704,23 @@ export default function SessionPage() {
                     aria-label="BLS speed"
                   />
                   <span className="text-white/60 text-xs w-8">{blsConfig.speed.toFixed(1)}x</span>
+                </div>
+                <label className="flex items-center gap-2 text-white/70 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={audioEnabled}
+                    onChange={(e) => {
+                      setAudioEnabled(e.target.checked);
+                      if (e.target.checked) audioRef.current?.startBilateral(blsConfig.speed);
+                      else audioRef.current?.stopBilateral();
+                    }}
+                    className="w-3.5 h-3.5"
+                  />
+                  Bilateral Audio
+                </label>
+                <div className="flex items-center gap-2">
+                  <label className="text-white/50 text-xs">Color</label>
+                  <input type="color" value={blsColor} onChange={(e) => setBlsColor(e.target.value)} className="w-8 h-6 rounded cursor-pointer" />
                 </div>
               </div>
             )}
