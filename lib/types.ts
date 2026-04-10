@@ -92,3 +92,44 @@ export interface PlatformSetting {
   description: string;
   updatedAt: string;
 }
+
+// Therapist types
+
+export type TimelineEventType =
+  | 'ai_message'
+  | 'patient_message'
+  | 'bls_started'
+  | 'bls_stopped'
+  | 'phase_changed'
+  | 'safety_alert'
+  | 'suds_recorded'
+  | 'voc_recorded';
+
+export interface TimelineEvent {
+  id: string;
+  type: TimelineEventType;
+  timestamp: string;
+  content: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface EmotionRecord {
+  timestamp: string;
+  stress: number;
+  engagement: number;
+  valence: number;
+}
+
+export interface SessionDetail extends Session {
+  user?: { id: string; name: string; email: string };
+  timeline: TimelineEvent[];
+  emotions: EmotionRecord[];
+  phases: { phase: string; startedAt: string; endedAt: string | null }[];
+  therapistNotes: string | null;
+}
+
+export interface PatientSummary extends User {
+  sessionsCount: number;
+  lastSessionAt: string | null;
+  avgSudsReduction: number | null;
+}

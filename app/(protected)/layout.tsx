@@ -13,6 +13,10 @@ const userMenuItems = [
   { path: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
+const therapistMenuItems = [
+  { path: '/patients', label: 'My Patients', icon: '👤' },
+];
+
 const adminMenuItems = [
   { path: '/admin', label: 'Admin Dashboard', icon: '🛡️' },
   { path: '/admin/users', label: 'Users', icon: '👥' },
@@ -50,6 +54,7 @@ export default function ProtectedLayout({
   }
 
   const isAdmin = hasRole('ADMIN');
+  const isTherapist = hasRole('THERAPIST') || isAdmin;
 
   const handleLogout = () => {
     logout();
@@ -128,6 +133,33 @@ export default function ProtectedLayout({
                 <span>{item.label}</span>
               </Link>
             ))}
+
+            {/* Therapist section */}
+            {isTherapist && (
+              <>
+                <div className="pt-4 pb-2 px-4">
+                  <div className="text-xs font-semibold text-teal-400/70 uppercase tracking-wider">
+                    Therapist
+                  </div>
+                  <div className="mt-2 border-t border-teal-500/20" />
+                </div>
+                {therapistMenuItems.map((item) => (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    onClick={() => setIsSidebarOpen(false)}
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${
+                      pathname === item.path || pathname?.startsWith(item.path + '/')
+                        ? 'bg-teal-500/20 text-teal-200'
+                        : 'text-white/70 hover:bg-teal-500/10 hover:text-teal-200'
+                    }`}
+                  >
+                    <span className="text-xl">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
+              </>
+            )}
 
             {/* Admin section */}
             {isAdmin && (

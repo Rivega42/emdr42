@@ -7,6 +7,8 @@ import type {
   PlatformMetrics,
   PlatformSetting,
   AdminUser,
+  PatientSummary,
+  SessionDetail,
 } from './types';
 
 class ApiError extends Error {
@@ -122,6 +124,29 @@ class ApiClient {
 
   async getAdminUsers(): Promise<AdminUser[]> {
     return this.request('/admin/users');
+  }
+
+  // Therapist
+  async getMyPatients(): Promise<PatientSummary[]> {
+    return this.request('/users?role=PATIENT');
+  }
+
+  async getPatientSessions(patientId: string): Promise<Session[]> {
+    return this.request(`/users/${patientId}/sessions`);
+  }
+
+  async getSessionDetail(sessionId: string): Promise<SessionDetail> {
+    return this.request(`/sessions/${sessionId}`);
+  }
+
+  async updateSessionNotes(
+    sessionId: string,
+    notes: string,
+  ): Promise<void> {
+    return this.request(`/sessions/${sessionId}/notes`, {
+      method: 'PATCH',
+      body: JSON.stringify({ notes }),
+    });
   }
 }
 
