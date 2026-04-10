@@ -1,6 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import {
+  EmotionRecognitionService,
+  EmotionData as CoreEmotionData,
+} from '@emdr42/core';
 
 interface EmotionData {
   timestamp: number;
@@ -20,6 +24,7 @@ interface EmotionContextType {
   stopTracking: () => void;
   calibrate: () => Promise<void>;
   getEmotionTrend: () => 'improving' | 'stable' | 'declining';
+  setVideoElement: (el: HTMLVideoElement | null) => void;
 }
 
 const EmotionContext = createContext<EmotionContextType | undefined>(undefined);
@@ -32,12 +37,23 @@ export const useEmotion = () => {
   return context;
 };
 
+const mapCoreToContext = (core: CoreEmotionData): EmotionData => ({
+  timestamp: core.timestamp,
+  stress: core.behavioral.stress,
+  engagement: core.behavioral.engagement,
+  positivity: core.behavioral.positivity,
+  arousal: core.dimensions.arousal,
+  valence: core.dimensions.valence,
+});
+
 export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentEmotions, setCurrentEmotions] = useState<EmotionData | null>(null);
   const [emotionHistory, setEmotionHistory] = useState<EmotionData[]>([]);
   const [isCalibrated, setIsCalibrated] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
-  const [trackingInterval, setTrackingInterval] = useState<NodeJS.Timeout | null>(null);
+
+  const serviceRef = useRef<EmotionRecognitionService | null>(null);
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     const calibrationStatus = localStorage.getItem('emotion_calibrated');
@@ -46,56 +62,62 @@ export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     return () => {
-      if (trackingInterval) {
-        clearInterval(trackingInterval);
-      }
+      serviceRef.current?.destroy();
+      serviceRef.current = null;
     };
   }, []);
 
-  const generateMockEmotionData = (): EmotionData => {
-    // TODO: Replace with MorphCast SDK / WebRTC emotion pipeline
-    return {
-      timestamp: Date.now(),
-      stress: Math.random() * 0.5 + 0.3,
-      engagement: Math.random() * 0.3 + 0.5,
-      positivity: Math.random() * 0.3 + 0.4,
-      arousal: Math.random() * 0.4 + 0.3,
-      valence: Math.random() * 2 - 1
-    };
-  };
+  const handleEmotionUpdate = useCallback((data: CoreEmotionData) => {
+    const mapped = mapCoreToContext(data);
+    setCurrentEmotions(mapped);
+    setEmotionHistory(prev => {
+      const updated = [...prev, mapped];
+      return updated.slice(-100);
+    });
+  }, []);
 
-  const startTracking = useCallback(() => {
+  const setVideoElement = useCallback((el: HTMLVideoElement | null) => {
+    videoElementRef.current = el;
+  }, []);
+
+  const startTracking = useCallback(async () => {
     if (isTracking) return;
 
-    setIsTracking(true);
-    const interval = setInterval(() => {
-      const emotionData = generateMockEmotionData();
-      setCurrentEmotions(emotionData);
-      setEmotionHistory(prev => {
-        const updated = [...prev, emotionData];
-        return updated.slice(-100);
-      });
-    }, 1000);
+    const videoEl = videoElementRef.current;
+    if (!videoEl) {
+      console.warn('EmotionProvider: no video element set, call setVideoElement first');
+      return;
+    }
 
-    setTrackingInterval(interval);
-  }, [isTracking]);
+    if (!serviceRef.current) {
+      const service = new EmotionRecognitionService({ updateFrequency: 200 });
+      service.on('emotionUpdate', handleEmotionUpdate);
+      serviceRef.current = service;
+    }
+
+    try {
+      await serviceRef.current.initialize(videoEl);
+      serviceRef.current.startTracking();
+      setIsTracking(true);
+    } catch (err) {
+      console.error('EmotionProvider: failed to start tracking', err);
+    }
+  }, [isTracking, handleEmotionUpdate]);
 
   const stopTracking = useCallback(() => {
-    if (trackingInterval) {
-      clearInterval(trackingInterval);
-      setTrackingInterval(null);
-    }
+    serviceRef.current?.stopTracking();
     setIsTracking(false);
-  }, [trackingInterval]);
+  }, []);
 
   const calibrate = async (): Promise<void> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        setIsCalibrated(true);
-        localStorage.setItem('emotion_calibrated', 'true');
-        resolve();
-      }, 3000);
-    });
+    if (!serviceRef.current) {
+      console.warn('EmotionProvider: service not initialized, cannot calibrate');
+      return;
+    }
+
+    await serviceRef.current.calibrate();
+    setIsCalibrated(true);
+    localStorage.setItem('emotion_calibrated', 'true');
   };
 
   const getEmotionTrend = (): 'improving' | 'stable' | 'declining' => {
@@ -103,6 +125,8 @@ export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const recent = emotionHistory.slice(-10);
     const older = emotionHistory.slice(-20, -10);
+
+    if (older.length === 0) return 'stable';
 
     const recentAvgStress = recent.reduce((sum, e) => sum + e.stress, 0) / recent.length;
     const olderAvgStress = older.reduce((sum, e) => sum + e.stress, 0) / older.length;
@@ -122,7 +146,8 @@ export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         startTracking,
         stopTracking,
         calibrate,
-        getEmotionTrend
+        getEmotionTrend,
+        setVideoElement,
       }}
     >
       {children}
