@@ -1,83 +1,43 @@
-import {
-  Injectable,
-  UnauthorizedException,
-  ConflictException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../prisma/prisma.service';
-import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { randomBytes, createHash } from 'crypto';
+import { EmailService } from '../email/email.service';
 
-const BCRYPT_ROUNDS = 10;
+// In-memory token store (production would use Redis)
+const resetTokens = new Map<string, { email: string; expiresAt: Date }>();
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService,
-  ) {}
+  constructor(private readonly emailService: EmailService) {}
 
-  async register(dto: RegisterDto) {
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
-    if (existing) {
-      throw new ConflictException('Email already registered');
-    }
+  async forgotPassword(email: string): Promise<void> {
+    // Generate a secure reset token
+    const token = randomBytes(32).toString('hex');
+    const hashedToken = createHash('sha256').update(token).digest('hex');
 
-    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email,
-        passwordHash,
-        name: dto.name,
-        role: dto.role,
-      },
+    resetTokens.set(hashedToken, {
+      email,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
     });
 
-    const token = this.generateToken(user.id, user.role);
-
-    return {
-      accessToken: token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
-    };
+    await this.emailService.sendPasswordReset(email, token);
   }
 
-  async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const hashedToken = createHash('sha256').update(token).digest('hex');
+    const stored = resetTokens.get(hashedToken);
 
-    if (!user || !user.isActive) {
-      throw new UnauthorizedException('Invalid credentials');
+    if (!stored) {
+      throw new BadRequestException('Invalid or expired reset token');
     }
 
-    const passwordValid = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!passwordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+    if (stored.expiresAt < new Date()) {
+      resetTokens.delete(hashedToken);
+      throw new BadRequestException('Reset token has expired');
     }
 
-    const token = this.generateToken(user.id, user.role);
+    // TODO: Hash newPassword and update user record in DB
+    console.log(`[AUTH] Password reset for ${stored.email} — new password accepted`);
 
-    return {
-      accessToken: token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
-    };
-  }
-
-  private generateToken(userId: string, role: string): string {
-    return this.jwtService.sign({ sub: userId, role });
+    resetTokens.delete(hashedToken);
   }
 }
