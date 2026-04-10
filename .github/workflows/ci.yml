@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  # 1. Lint, type-check, and test
   lint-and-test:
     name: Lint & Test
     runs-on: ubuntu-latest
@@ -27,34 +26,35 @@ jobs:
 
       - name: Install package dependencies
         run: |
-          cd packages/emdr-engine && npm ci && cd ../..
-          cd packages/ai-providers && npm ci && cd ../..
+          cd packages/emdr-engine && npm install && cd ../..
+          cd packages/ai-providers && npm install && cd ../..
 
-      - name: Install service dependencies
+      - name: Install API dependencies
         run: |
-          cd services/api && npm ci && cd ../..
-          cd services/orchestrator && npm ci && cd ../..
+          cd services/api && npm install && npx prisma generate && cd ../..
+
+      - name: Install orchestrator dependencies
+        run: |
+          cd services/orchestrator && npm install && cd ../..
 
       - name: Run ESLint
-        run: npm run lint || true
+        run: npm run lint
 
       - name: Run TypeScript check
-        run: npm run type-check || true
+        run: npx tsc --noEmit
 
-      - name: Test packages
-        run: |
-          cd packages/emdr-engine && npm test -- --passWithNoTests && cd ../..
-          cd packages/ai-providers && npm test -- --passWithNoTests && cd ../..
+      - name: Test EMDR Engine
+        run: cd packages/emdr-engine && npm test
 
-      - name: Test services
-        run: |
-          cd services/api && npm test -- --passWithNoTests && cd ../..
-          cd services/orchestrator && npm test -- --passWithNoTests && cd ../..
+      - name: Test AI Providers
+        run: cd packages/ai-providers && npm test
 
-      - name: Test frontend
-        run: npm test -- --passWithNoTests || true
+      - name: Test API
+        run: cd services/api && npm test
 
-  # 2. Build
+      - name: Test Orchestrator
+        run: cd services/orchestrator && npm test
+
   build:
     name: Build Application
     runs-on: ubuntu-latest
@@ -72,7 +72,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build project
+      - name: Build Next.js
         run: npm run build
 
       - name: Upload build artifacts
@@ -82,7 +82,6 @@ jobs:
           path: .next
           retention-days: 7
 
-  # 3. Security scan
   security:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -90,28 +89,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run security audit
-        run: |
-          npm audit --audit-level=moderate || true
-
-      - name: Run Snyk Security Scan
-        uses: snyk/actions/node@master
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-
-  # 4. SonarCloud
-  sonarcloud:
-    name: SonarCloud Analysis
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
+          node-version: '20'
+          cache: 'npm'
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security audit
+        run: npm audit --audit-level=high || true

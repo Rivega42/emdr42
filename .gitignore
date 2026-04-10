@@ -91,3 +91,4 @@ coverage/
 # Claude Code
 .claude/
 tsconfig.tsbuildinfo
+.claude/worktrees/
