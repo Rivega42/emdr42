@@ -5,6 +5,7 @@ import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { TherapyProvider } from './contexts/TherapyContext';
 import { EmotionProvider } from './contexts/EmotionContext';
+import { I18nProvider } from '../../../lib/i18n';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -12,12 +13,14 @@ const root = ReactDOM.createRoot(
 
 root.render(
   <React.StrictMode>
-    <AuthProvider>
-      <EmotionProvider>
-        <TherapyProvider>
-          <App />
-        </TherapyProvider>
-      </EmotionProvider>
-    </AuthProvider>
+    <I18nProvider>
+      <AuthProvider>
+        <EmotionProvider>
+          <TherapyProvider>
+            <App />
+          </TherapyProvider>
+        </EmotionProvider>
+      </AuthProvider>
+    </I18nProvider>
   </React.StrictMode>
 );

@@ -57,7 +57,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+lib/*
+!lib/i18n/
 lib64/
 parts/
 sdist/

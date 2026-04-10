@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useI18n } from '../../../../lib/i18n';
 
 export const SettingsPage: React.FC = () => {
+  const { locale, setLocale, t } = useI18n();
+
   const [settings, setSettings] = useState({
     notifications: true,
     emailReminders: true,
@@ -23,7 +26,20 @@ export const SettingsPage: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-4xl font-bold text-white mb-8">Settings</h1>
+          <h1 className="text-4xl font-bold text-white mb-8">{t('common.settings')}</h1>
+
+          {/* Language */}
+          <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 mb-6">
+            <h2 className="text-2xl font-bold text-white mb-6">Language / Язык</h2>
+            <select
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as 'en' | 'ru')}
+              className="px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white"
+            >
+              <option value="en" className="text-black">English</option>
+              <option value="ru" className="text-black">Русский</option>
+            </select>
+          </div>
 
           {/* Profile Settings */}
           <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 mb-6">
@@ -102,16 +118,49 @@ export const SettingsPage: React.FC = () => {
                 enabled={settings.dataCollection}
                 onToggle={() => handleToggle('dataCollection')}
               />
-              <button className="px-6 py-3 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 transition-colors">
-                Delete All Data
-              </button>
+              <div className="flex gap-4 pt-2">
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/users/me/export');
+                      const data = await res.json();
+                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'my-data-export.json';
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch {
+                      alert('Failed to export data');
+                    }
+                  }}
+                  className="px-6 py-3 bg-blue-500/20 text-blue-400 rounded-xl hover:bg-blue-500/30 transition-colors"
+                >
+                  Export My Data
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!confirm('Are you sure? This will permanently delete all your session data.')) return;
+                    try {
+                      await fetch('/api/users/me/data', { method: 'DELETE' });
+                      alert('All session data has been deleted.');
+                    } catch {
+                      alert('Failed to delete data');
+                    }
+                  }}
+                  className="px-6 py-3 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 transition-colors"
+                >
+                  {t('common.delete')} All Data
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Save Button */}
           <div className="flex justify-end">
             <button className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-xl hover:shadow-xl transform hover:scale-105 transition-all">
-              Save Changes
+              {t('common.save')}
             </button>
           </div>
         </motion.div>
