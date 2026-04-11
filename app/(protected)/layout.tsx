@@ -135,13 +135,10 @@ export default function ProtectedLayout({
               </Link>
             ))}
 
-            {/* Therapist section */}
             {isTherapist && (
               <>
                 <div className="pt-4 pb-2 px-4">
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Therapist
-                  </div>
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Therapist</div>
                   <div className="mt-2 border-t border-gray-200" />
                 </div>
                 {therapistMenuItems.map((item) => (
@@ -162,13 +159,10 @@ export default function ProtectedLayout({
               </>
             )}
 
-            {/* Admin section */}
             {isAdmin && (
               <>
                 <div className="pt-4 pb-2 px-4">
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Administration
-                  </div>
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Administration</div>
                   <div className="mt-2 border-t border-gray-200" />
                 </div>
                 {adminMenuItems.map((item) => (
@@ -207,7 +201,6 @@ export default function ProtectedLayout({
         </main>
       </div>
 
-      {/* Mobile sidebar overlay */}
       {isSidebarOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/20 z-40"

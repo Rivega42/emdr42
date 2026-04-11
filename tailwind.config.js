@@ -7,22 +7,34 @@ module.exports = {
   ],
   theme: {
     extend: {
-      animation: {
-        'pulse-slow': 'pulse-slow 4s ease-in-out infinite',
-        'float': 'float 6s ease-in-out infinite',
-      },
-      keyframes: {
-        'pulse-slow': {
-          '0%, 100%': { opacity: '1' },
-          '50%': { opacity: '0.5' },
+      colors: {
+        cal: {
+          bg: 'var(--cal-bg)',
+          'bg-subtle': 'var(--cal-bg-subtle)',
+          'bg-muted': 'var(--cal-bg-muted)',
+          'bg-emphasis': 'var(--cal-bg-emphasis)',
+          'bg-inverted': 'var(--cal-bg-inverted)',
+          'bg-info': 'var(--cal-bg-info)',
+          'bg-success': 'var(--cal-bg-success)',
+          'bg-attention': 'var(--cal-bg-attention)',
+          'bg-error': 'var(--cal-bg-error)',
+          text: 'var(--cal-text)',
+          'text-muted': 'var(--cal-text-muted)',
+          'text-subtle': 'var(--cal-text-subtle)',
+          'text-inverted': 'var(--cal-text-inverted)',
+          border: 'var(--cal-border)',
+          'border-emphasis': 'var(--cal-border-emphasis)',
+          success: 'var(--cal-success)',
+          warning: 'var(--cal-warning)',
+          error: 'var(--cal-error)',
+          info: 'var(--cal-info)',
         },
-        float: {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-20px)' },
-        },
       },
-      backdropBlur: {
-        xs: '2px',
+      borderRadius: {
+        DEFAULT: '8px',
+      },
+      fontFamily: {
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
     },
   },

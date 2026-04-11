@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { getSocket, disconnectSocket } from '@/lib/socket';
 import { AudioBlsController } from '@/lib/audio-bls';
@@ -411,25 +411,25 @@ export default function SessionPage() {
 
   if (!sessionId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-indigo-950 to-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-lg w-full p-8 space-y-6 text-center">
-          <h1 className="text-4xl font-bold text-white">EMDR Session</h1>
-          <p className="text-white/60">Start an AI-guided EMDR therapy session or use standalone BLS mode.</p>
+          <h1 className="text-4xl font-bold text-gray-900">EMDR Session</h1>
+          <p className="text-gray-500">Start an AI-guided EMDR therapy session or use standalone BLS mode.</p>
           <div className="space-y-3">
             <button
               onClick={connectAndStart}
-              className="w-full py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors"
+              className="w-full py-4 rounded-md bg-gray-900 hover:bg-gray-800 text-white font-semibold transition-colors"
             >
               Start AI-Guided Session
             </button>
             <button
               onClick={startOffline}
-              className="w-full py-4 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 font-semibold transition-colors"
+              className="w-full py-4 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition-colors"
             >
               BLS Only (Offline)
             </button>
           </div>
-          <button onClick={() => router.push('/')} className="text-white/40 hover:text-white/70 text-sm transition-colors">
+          <button onClick={() => router.push('/')} className="text-gray-400 hover:text-gray-700 text-sm transition-colors">
             &larr; Back to Home
           </button>
         </div>
@@ -443,18 +443,18 @@ export default function SessionPage() {
 
   if (offlineMode) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-indigo-950 to-gray-950 flex flex-col">
-        {/* Top bar */}
-        <header className="flex items-center justify-between px-6 py-3 bg-black/30">
-          <button onClick={() => { setSessionId(null); setOfflineMode(false); }} className="text-white/60 hover:text-white text-sm transition-colors">
+      <div className="min-h-screen bg-gray-950 flex flex-col">
+        {/* Top bar -- light Cal.com style */}
+        <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200">
+          <button onClick={() => { setSessionId(null); setOfflineMode(false); }} className="text-gray-500 hover:text-gray-900 text-sm transition-colors">
             &larr; Exit
           </button>
-          <span className="text-white/50 text-sm">BLS Only Mode (Offline)</span>
-          <span className="text-white/50 text-sm">{formatTime(elapsed)}</span>
+          <span className="text-gray-500 text-sm">BLS Only Mode (Offline)</span>
+          <span className="text-gray-500 text-sm">{formatTime(elapsed)}</span>
         </header>
 
-        {/* Canvas */}
-        <div className="flex-1 relative">
+        {/* Canvas -- stays dark for therapy */}
+        <div className="flex-1 relative bg-gray-950">
           <SessionCanvas
             pattern={blsConfig.pattern}
             speed={blsConfig.speed}
@@ -466,18 +466,18 @@ export default function SessionPage() {
           />
         </div>
 
-        {/* Controls */}
-        <div className="bg-black/40 p-4 flex flex-wrap items-center gap-4 justify-center">
+        {/* Controls -- light Cal.com style */}
+        <div className="bg-white border-t border-gray-200 p-4 flex flex-wrap items-center gap-4 justify-center">
           <select
             value={blsConfig.pattern}
             onChange={e => setBlsConfig(c => ({ ...c, pattern: e.target.value }))}
-            className="bg-white/10 text-white rounded-lg px-3 py-2 text-sm"
+            className="bg-white border border-gray-300 text-gray-900 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-gray-900"
             aria-label="BLS pattern"
           >
             {PATTERNS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
           <div className="flex items-center gap-2">
-            <span className="text-white/60 text-sm">Speed</span>
+            <span className="text-gray-500 text-sm">Speed</span>
             <input
               type="range" min="0.3" max="2.0" step="0.1"
               value={blsConfig.speed}
@@ -485,15 +485,15 @@ export default function SessionPage() {
               className="w-24"
               aria-label="BLS speed"
             />
-            <span className="text-white/60 text-sm w-10">{blsConfig.speed.toFixed(1)}x</span>
+            <span className="text-gray-500 text-sm w-10">{blsConfig.speed.toFixed(1)}x</span>
           </div>
           <button
             onClick={() => setBlsConfig(c => ({ ...c, paused: !c.paused }))}
-            className={`px-6 py-2 rounded-lg font-semibold text-sm transition-colors ${blsConfig.paused ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-yellow-600 hover:bg-yellow-500 text-white'}`}
+            className={`px-6 py-2 rounded-md font-semibold text-sm transition-colors ${blsConfig.paused ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-amber-500 hover:bg-amber-400 text-white'}`}
           >
             {blsConfig.paused ? 'Start' : 'Pause'}
           </button>
-          <label className="flex items-center gap-3 text-white/70 text-sm">
+          <label className="flex items-center gap-3 text-gray-500 text-sm">
             <input
               type="checkbox"
               checked={audioEnabled}
@@ -514,8 +514,8 @@ export default function SessionPage() {
             Bilateral Audio
           </label>
           <div>
-            <label className="text-white/70 text-sm block mb-1">Color</label>
-            <input type="color" value={blsColor} onChange={(e) => setBlsColor(e.target.value)} className="w-10 h-8 rounded-lg cursor-pointer" />
+            <label className="text-gray-500 text-sm block mb-1">Color</label>
+            <input type="color" value={blsColor} onChange={(e) => setBlsColor(e.target.value)} className="w-10 h-8 rounded-md cursor-pointer" />
           </div>
         </div>
       </div>
@@ -527,39 +527,39 @@ export default function SessionPage() {
   // -------------------------------------------------------------------------
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-indigo-950 to-gray-950 flex flex-col">
-      {/* ---- Emotion bar ---- */}
-      <header className="flex items-center gap-6 px-6 py-2 bg-black/40 border-b border-white/10 text-sm">
-        <button onClick={() => router.push('/')} className="text-white/50 hover:text-white transition-colors">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* ---- Emotion bar -- light Cal.com style ---- */}
+      <header className="flex items-center gap-6 px-6 py-2 bg-white border-b border-gray-200 text-sm">
+        <button onClick={() => router.push('/')} className="text-gray-400 hover:text-gray-900 transition-colors">
           &larr;
         </button>
         <div className="flex items-center gap-2 flex-1">
-          <span className="text-white/50">Stress</span>
-          <div className="w-24 h-2 bg-white/10 rounded-full overflow-hidden">
+          <span className="text-gray-400">Stress</span>
+          <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
             <div className="h-full bg-red-500 transition-all" style={{ width: `${stress * 100}%` }} />
           </div>
         </div>
         <div className="flex items-center gap-2 flex-1">
-          <span className="text-white/50">Engagement</span>
-          <div className="w-24 h-2 bg-white/10 rounded-full overflow-hidden">
+          <span className="text-gray-400">Engagement</span>
+          <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
             <div className="h-full bg-green-500 transition-all" style={{ width: `${engagement * 100}%` }} />
           </div>
         </div>
-        <span className="text-white/60">{emotionLabel}</span>
-        <span className="text-white/40 ml-auto">{formatTime(elapsed)}</span>
+        <span className="text-gray-500">{emotionLabel}</span>
+        <span className="text-gray-400 ml-auto">{formatTime(elapsed)}</span>
       </header>
 
-      {/* ---- Phase stepper ---- */}
-      <div className="flex items-center px-6 py-2 bg-black/20 gap-1 overflow-x-auto">
+      {/* ---- Phase stepper -- light Cal.com style ---- */}
+      <div className="flex items-center px-6 py-2 bg-white border-b border-gray-200 gap-1 overflow-x-auto">
         {PHASE_ORDER.map((p, i) => {
           const isCurrent = p === phase;
           const isPast = i < phaseIndex;
           return (
             <React.Fragment key={p}>
-              {i > 0 && <div className={`h-px flex-1 min-w-2 ${isPast ? 'bg-indigo-400' : 'bg-white/10'}`} />}
+              {i > 0 && <div className={`h-px flex-1 min-w-2 ${isPast ? 'bg-gray-900' : 'bg-gray-200'}`} />}
               <div
                 className={`px-2 py-1 rounded text-xs whitespace-nowrap font-medium transition-colors ${
-                  isCurrent ? 'bg-indigo-600 text-white' : isPast ? 'text-indigo-300' : 'text-white/30'
+                  isCurrent ? 'bg-gray-900 text-white' : isPast ? 'text-gray-900' : 'text-gray-400'
                 }`}
               >
                 {PHASE_META[p].label}
@@ -571,27 +571,27 @@ export default function SessionPage() {
 
       {/* ---- Main content ---- */}
       <div className="flex flex-1 overflow-hidden">
-        {/* -- Left: Chat -- */}
-        <div className="flex flex-col w-full md:w-1/2 lg:w-2/5 border-r border-white/10">
+        {/* -- Left: Chat -- light Cal.com style */}
+        <div className="flex flex-col w-full md:w-1/2 lg:w-2/5 border-r border-gray-200 bg-white">
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             {messages.length === 0 && (
-              <p className="text-white/30 text-center mt-10">
+              <p className="text-gray-400 text-center mt-10">
                 {connected ? 'Connecting to AI therapist...' : 'Waiting for connection...'}
               </p>
             )}
             {messages.map(msg => (
               <div key={msg.id} className={`flex ${msg.role === 'patient' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                  className={`max-w-[85%] rounded-lg px-4 py-3 text-sm leading-relaxed ${
                     msg.role === 'ai'
-                      ? 'bg-indigo-900/60 text-indigo-100 rounded-tl-sm'
-                      : 'bg-purple-800/60 text-purple-100 rounded-tr-sm'
+                      ? 'bg-gray-100 text-gray-900 rounded-tl-sm'
+                      : 'bg-gray-900 text-white rounded-tr-sm'
                   }`}
                 >
                   {msg.text}
                   {msg.streaming && (
-                    <span className="inline-block w-1.5 h-4 ml-1 bg-indigo-300 animate-pulse rounded-sm align-middle" />
+                    <span className="inline-block w-1.5 h-4 ml-1 bg-gray-400 animate-pulse rounded-sm align-middle" />
                   )}
                 </div>
               </div>
@@ -600,7 +600,7 @@ export default function SessionPage() {
           </div>
 
           {/* Input */}
-          <div className="px-4 py-3 bg-black/30 border-t border-white/10">
+          <div className="px-4 py-3 bg-white border-t border-gray-200">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -608,13 +608,13 @@ export default function SessionPage() {
                 onChange={e => setInputText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && sendMessage()}
                 placeholder="Type your message..."
-                className="flex-1 bg-white/10 text-white placeholder-white/30 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 rounded-md px-4 py-2.5 text-sm outline-none focus:border-gray-900 transition-colors"
                 aria-label="Message input"
               />
               <button
                 onClick={sendMessage}
                 disabled={!inputText.trim()}
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-xl text-sm font-semibold transition-colors"
+                className="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-40 text-white rounded-md text-sm font-semibold transition-colors"
                 aria-label="Send message"
               >
                 Send
@@ -625,8 +625,8 @@ export default function SessionPage() {
 
         {/* -- Right: Canvas + Controls -- */}
         <div className="hidden md:flex flex-1 flex-col">
-          {/* Canvas area */}
-          <div className="flex-1 relative">
+          {/* Canvas area -- stays dark for therapy */}
+          <div className="flex-1 relative bg-gray-950">
             {isBlsPhase ? (
               <SessionCanvas
                 pattern={blsConfig.pattern}
@@ -644,12 +644,12 @@ export default function SessionPage() {
             )}
           </div>
 
-          {/* Controls panel */}
-          <div className="bg-black/40 border-t border-white/10 p-4 space-y-4">
+          {/* Controls panel -- light Cal.com style */}
+          <div className="bg-white border-t border-gray-200 p-4 space-y-4">
             {/* SUDS / VOC row */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-white/50 text-xs block mb-1">Rate your distress (SUDS 0-10)</label>
+                <label className="text-gray-400 text-xs block mb-1">Rate your distress (SUDS 0-10)</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="range" min="0" max="10" step="1" value={suds}
@@ -657,14 +657,14 @@ export default function SessionPage() {
                     className="flex-1"
                     aria-label="SUDS rating"
                   />
-                  <span className="text-white font-mono w-6 text-center">{suds}</span>
-                  <button onClick={sendSuds} className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-xs rounded-lg transition-colors">
+                  <span className="text-gray-900 font-mono w-6 text-center">{suds}</span>
+                  <button onClick={sendSuds} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded-md transition-colors">
                     Submit
                   </button>
                 </div>
               </div>
               <div>
-                <label className="text-white/50 text-xs block mb-1">How true does this feel? (VOC 1-7)</label>
+                <label className="text-gray-400 text-xs block mb-1">How true does this feel? (VOC 1-7)</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="range" min="1" max="7" step="1" value={voc}
@@ -672,8 +672,8 @@ export default function SessionPage() {
                     className="flex-1"
                     aria-label="VOC rating"
                   />
-                  <span className="text-white font-mono w-6 text-center">{voc}</span>
-                  <button onClick={sendVoc} className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-xs rounded-lg transition-colors">
+                  <span className="text-gray-900 font-mono w-6 text-center">{voc}</span>
+                  <button onClick={sendVoc} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded-md transition-colors">
                     Submit
                   </button>
                 </div>
@@ -684,18 +684,18 @@ export default function SessionPage() {
             {isBlsPhase && (
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <label className="text-white/50 text-xs">Pattern</label>
+                  <label className="text-gray-400 text-xs">Pattern</label>
                   <select
                     value={blsConfig.pattern}
                     onChange={e => setBlsConfig(c => ({ ...c, pattern: e.target.value }))}
-                    className="bg-white/10 text-white rounded-lg px-2 py-1 text-xs"
+                    className="bg-white border border-gray-300 text-gray-900 rounded-md px-2 py-1 text-xs focus:outline-none focus:border-gray-900"
                     aria-label="BLS pattern"
                   >
                     {PATTERNS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                   </select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="text-white/50 text-xs">Speed</label>
+                  <label className="text-gray-400 text-xs">Speed</label>
                   <input
                     type="range" min="0.3" max="2.0" step="0.1"
                     value={blsConfig.speed}
@@ -703,9 +703,9 @@ export default function SessionPage() {
                     className="w-20"
                     aria-label="BLS speed"
                   />
-                  <span className="text-white/60 text-xs w-8">{blsConfig.speed.toFixed(1)}x</span>
+                  <span className="text-gray-500 text-xs w-8">{blsConfig.speed.toFixed(1)}x</span>
                 </div>
-                <label className="flex items-center gap-2 text-white/70 text-xs">
+                <label className="flex items-center gap-2 text-gray-500 text-xs">
                   <input
                     type="checkbox"
                     checked={audioEnabled}
@@ -719,7 +719,7 @@ export default function SessionPage() {
                   Bilateral Audio
                 </label>
                 <div className="flex items-center gap-2">
-                  <label className="text-white/50 text-xs">Color</label>
+                  <label className="text-gray-400 text-xs">Color</label>
                   <input type="color" value={blsColor} onChange={(e) => setBlsColor(e.target.value)} className="w-8 h-6 rounded cursor-pointer" />
                 </div>
               </div>
@@ -729,23 +729,23 @@ export default function SessionPage() {
             <div className="flex gap-3">
               <button
                 onClick={handlePauseResume}
-                className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                className={`px-5 py-2 rounded-md text-sm font-semibold transition-colors ${
                   isPaused
                     ? 'bg-green-600 hover:bg-green-500 text-white'
-                    : 'bg-yellow-600 hover:bg-yellow-500 text-white'
+                    : 'bg-amber-500 hover:bg-amber-400 text-white'
                 }`}
               >
                 {isPaused ? 'Resume' : 'Pause'}
               </button>
               <button
                 onClick={handleStop}
-                className="px-5 py-2 rounded-lg text-sm font-semibold bg-red-700 hover:bg-red-600 text-white transition-colors"
+                className="px-5 py-2 rounded-md text-sm font-semibold bg-red-600 hover:bg-red-500 text-white transition-colors"
               >
                 Stop
               </button>
               <button
                 onClick={handleEnd}
-                className="px-5 py-2 rounded-lg text-sm font-semibold bg-white/10 hover:bg-white/20 text-white transition-colors ml-auto"
+                className="px-5 py-2 rounded-md text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors ml-auto"
               >
                 End Session
               </button>
@@ -761,17 +761,17 @@ export default function SessionPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
           >
-            <div className="bg-red-950 border border-red-500/50 rounded-2xl p-8 max-w-md mx-4">
-              <h2 className="text-xl font-bold text-red-300 mb-3">Safety Alert</h2>
-              <p className="text-red-200/80 text-sm mb-2">Risk level: {safetyAlert.riskLevel}</p>
+            <div className="bg-white border border-red-200 rounded-lg p-8 max-w-md mx-4 shadow-lg">
+              <h2 className="text-xl font-bold text-red-600 mb-3">Safety Alert</h2>
+              <p className="text-red-500 text-sm mb-2">Risk level: {safetyAlert.riskLevel}</p>
               {safetyAlert.events.map((evt, i) => (
-                <p key={i} className="text-red-200/60 text-sm">{evt.type}: {evt.actionTaken}</p>
+                <p key={i} className="text-gray-600 text-sm">{evt.type}: {evt.actionTaken}</p>
               ))}
               <button
                 onClick={() => setSafetyAlert(null)}
-                className="mt-6 w-full py-3 bg-red-700 hover:bg-red-600 text-white rounded-xl font-semibold transition-colors"
+                className="mt-6 w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-md font-semibold transition-colors"
               >
                 Acknowledge
               </button>
@@ -787,14 +787,14 @@ export default function SessionPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
           >
-            <div className="bg-amber-950 border border-amber-500/50 rounded-2xl p-8 max-w-md mx-4">
-              <h2 className="text-xl font-bold text-amber-300 mb-3">Intervention</h2>
-              <p className="text-amber-200/80 text-sm mb-4 whitespace-pre-line">{intervention.instructions}</p>
+            <div className="bg-white border border-amber-200 rounded-lg p-8 max-w-md mx-4 shadow-lg">
+              <h2 className="text-xl font-bold text-amber-700 mb-3">Intervention</h2>
+              <p className="text-gray-700 text-sm mb-4 whitespace-pre-line">{intervention.instructions}</p>
               <button
                 onClick={() => setIntervention(null)}
-                className="w-full py-3 bg-amber-700 hover:bg-amber-600 text-white rounded-xl font-semibold transition-colors"
+                className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-md font-semibold transition-colors"
               >
                 I understand
               </button>
@@ -810,30 +810,30 @@ export default function SessionPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
           >
-            <div className="bg-gray-900 border border-indigo-500/30 rounded-2xl p-8 max-w-md mx-4">
-              <h2 className="text-2xl font-bold text-white mb-4">Session Complete</h2>
-              <div className="space-y-2 text-sm text-white/70 mb-6">
+            <div className="bg-white border border-gray-200 rounded-lg p-8 max-w-md mx-4 shadow-lg">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Session Complete</h2>
+              <div className="space-y-2 text-sm text-gray-500 mb-6">
                 <p>Duration: {formatTime(sessionSummary.elapsedSeconds)}</p>
                 <p>BLS sets completed: {sessionSummary.blsSetsCompleted}</p>
                 <p>Phases completed: {sessionSummary.phasesCompleted}</p>
                 {sessionSummary.finalSuds !== null && <p>Final SUDS: {sessionSummary.finalSuds}/10</p>}
                 {sessionSummary.finalVoc !== null && <p>Final VOC: {sessionSummary.finalVoc}/7</p>}
                 {sessionSummary.safetyEventsCount > 0 && (
-                  <p className="text-amber-400">Safety events: {sessionSummary.safetyEventsCount}</p>
+                  <p className="text-amber-600">Safety events: {sessionSummary.safetyEventsCount}</p>
                 )}
               </div>
               <div className="flex gap-3">
                 <button
                   onClick={() => router.push('/progress')}
-                  className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-semibold transition-colors"
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md font-semibold transition-colors"
                 >
                   View Progress
                 </button>
                 <button
                   onClick={() => router.push('/')}
-                  className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition-colors"
+                  className="flex-1 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-md font-semibold transition-colors"
                 >
                   Done
                 </button>
