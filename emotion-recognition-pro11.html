@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion AI Analytics - 98 Affects Recognition</title>
+    <script src="https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Cal.com Design System - Light Mode */
+            --cal-bg-emphasis: #e5e7eb;
+            --cal-bg: white;
+            --cal-bg-subtle: #f3f4f6;
+            --cal-bg-muted: #f9fafb;
+            --cal-bg-inverted: #111827;
+            --cal-bg-info: #dee9fc;
+            --cal-bg-success: #e2fbe8;
+            --cal-bg-attention: #fceed8;
+            --cal-bg-error: #f9e3e2;
+            
+            /* Text colors */
+            --cal-text: #111827;
+            --cal-text-muted: #6b7280;
+            --cal-text-subtle: #9ca3af;
+            --cal-text-inverted: white;
+            
+            /* Border colors */
+            --cal-border: #e5e7eb;
+            --cal-border-emphasis: #d1d5db;
+            
+            /* Status colors (used sparingly) */
+            --cal-success: #10b981;
+            --cal-warning: #f59e0b;
+            --cal-error: #ef4444;
+            --cal-info: #3b82f6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--cal-bg);
+            color: var(--cal-text);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Layout */
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            height: 64px;
+            border-bottom: 1px solid var(--cal-border);
+            background: var(--cal-bg);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1536px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon {
+            width: 24px;
+            height: 24px;
+            background: var(--cal-bg-inverted);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--cal-text-inverted);
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            background: var(--cal-bg-subtle);
+            color: var(--cal-text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-badge.active {
+            background: var(--cal-bg-success);
+            color: var(--cal-success);
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            padding: 32px 24px;
+            max-width: 1536px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* Control Bar */
+        .control-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 150ms ease-in-out;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            outline: none;
+        }
+
+        .btn:focus-visible {
+            box-shadow: 0 0 0 2px var(--cal-bg), 0 0 0 4px var(--cal-bg-inverted);
+        }
+
+        .btn-primary {
+            background: var(--cal-bg-inverted);
+            color: var(--cal-text-inverted);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #1f2937;
+        }
+
+        .btn-secondary {
+            background: var(--cal-bg-subtle);
+            color: var(--cal-text);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--cal-bg-emphasis);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--cal-bg);
+            border: 1px solid var(--cal-border);
+            border-radius: 8px;
+            padding: 24px;
+        }
+
+        .card-header {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--cal-text);
+        }
+
+        .card-subtitle {
+            font-size: 14px;
+            color: var(--cal-text-muted);
+            margin-top: 4px;
+        }
+
+        /* Video Section */
+        .video-section {
+            position: relative;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 16/9;
+        }
+
+        #video, #canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Circumplex Model */
+        .circumplex-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .circumplex-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Emotion Grid */
+        .emotion-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 8px;
+        }
+
+        .emotion-item {
+            padding: 8px;
+            background: var(--cal-bg-subtle);
+            border-radius: 6px;
+            text-align: center;
+            transition: all 150ms ease-in-out;
+            border: 1px solid transparent;
+        }
+
+        .emotion-item.active {
+            background: var(--cal-bg-inverted);
+            color: var(--cal-text-inverted);
+            border-color: var(--cal-bg-inverted);
+        }
+
+        .emotion-name {
+            font-size: 11px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .emotion-value {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: var(--cal-bg-subtle);
+            padding: 16px;
+            border-radius: 6px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: var(--cal-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--cal-text);
+        }
+
+        .metric-change {
+            font-size: 12px;
+            color: var(--cal-text-subtle);
+            margin-top: 4px;
+        }
+
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            border-bottom: 1px solid var(--cal-border);
+            margin-bottom: 24px;
+        }
+
+        .tab {
+            padding: 12px 16px;
+            background: none;
+            border: none;
+            color: var(--cal-text-muted);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            position: relative;
+            transition: color 150ms ease-in-out;
+        }
+
+        .tab:hover {
+            color: var(--cal-text);
+        }
+
+        .tab.active {
+            color: var(--cal-text);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--cal-bg-inverted);
+        }
+
+        /* Loading State */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+            color: var(--cal-text-muted);
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 2px solid var(--cal-border);
+            border-top-color: var(--cal-bg-inverted);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Export Options */
+        .export-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .export-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+            background: var(--cal-bg-muted);
+            color: var(--cal-text-muted);
+            border: 1px solid var(--cal-border);
+            cursor: pointer;
+            transition: all 150ms ease-in-out;
+        }
+
+        .export-btn:hover {
+            background: var(--cal-bg-subtle);
+            color: var(--cal-text);
+        }
+
+        /* Top Affects List */
+        .top-affects-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .affect-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .affect-label {
+            flex: 0 0 120px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .affect-progress {
+            flex: 1;
+            height: 20px;
+            background: var(--cal-bg-subtle);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .affect-fill {
+            height: 100%;
+            background: var(--cal-bg-inverted);
+            transition: width 300ms ease-in-out;
+        }
+
+        .affect-percentage {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--cal-text-muted);
+            min-width: 40px;
+            text-align: right;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            background: var(--cal-bg-info);
+            border: 1px solid #93c5fd;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: #1e40af;
+        }
+
+        /* Success/Error Messages */
+        .message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .message-success {
+            background: var(--cal-bg-success);
+            color: var(--cal-success);
+        }
+
+        .message-error {
+            background: var(--cal-bg-error);
+            color: var(--cal-error);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">AI</div>
+                    <span>Emotion Analytics</span>
+                </div>
+                <div id="status" class="status-badge">
+                    <span class="status-indicator"></span>
+                    <span>Initializing...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Control Bar -->
+            <div class="control-bar">
+                <button id="startBtn" class="btn btn-primary" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    Start Analysis
+                </button>
+                <button id="stopBtn" class="btn btn-secondary" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="6" y="4" width="4" height="16"></rect>
+                        <rect x="14" y="4" width="4" height="16"></rect>
+                    </svg>
+                    Pause
+                </button>
+                <button id="resetBtn" class="btn btn-secondary" onclick="resetAnalysis()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                    Reset
+                </button>
+            </div>
+
+            <!-- Key Metrics -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Arousal</div>
+                    <div class="metric-value" id="arousalValue">0.00</div>
+                    <div class="metric-change">Energy Level</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Valence</div>
+                    <div class="metric-value" id="valenceValue">0.00</div>
+                    <div class="metric-change">Pleasantness</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Attention</div>
+                    <div class="metric-value" id="attentionValue">0%</div>
+                    <div class="metric-change">Focus Level</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Positivity Index</div>
+                    <div class="metric-value" id="positivityValue">0%</div>
+                    <div class="metric-change">Overall Mood</div>
+                </div>
+            </div>
+
+            <!-- Dashboard Grid -->
+            <div class="dashboard-grid">
+                <!-- Left Column -->
+                <div>
+                    <!-- Video Feed -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h2 class="card-title">Live Feed Analysis</h2>
+                                <p class="card-subtitle">Real-time emotion detection</p>
+                            </div>
+                        </div>
+                        <div class="video-section">
+                            <video id="video" autoplay muted></video>
+                            <canvas id="canvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Emotion Timeline Chart -->
+                    <div class="card" style="margin-top: 24px;">
+                        <div class="card-header">
+                            <div>
+                                <h2 class="card-title">Emotion Timeline</h2>
+                                <p class="card-subtitle">Historical emotion data</p>
+                            </div>
+                            <div class="export-options">
+                                <button class="export-btn" onclick="exportCSV()">CSV</button>
+                                <button class="export-btn" onclick="exportJSON()">JSON</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="timelineChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div>
+                    <!-- Circumplex Model -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h2 class="card-title">Circumplex Model</h2>
+                                <p class="card-subtitle">Russell's 2D affect space</p>
+                            </div>
+                        </div>
+                        <div class="circumplex-container">
+                            <canvas id="circumplexCanvas" class="circumplex-canvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Top 5 Affects -->
+                    <div class="card" style="margin-top: 24px;">
+                        <div class="card-header">
+                            <div>
+                                <h2 class="card-title">Top Emotional States</h2>
+                                <p class="card-subtitle">Most prominent affects</p>
+                            </div>
+                        </div>
+                        <div id="topAffects" class="top-affects-list">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs Section -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('affects')">98 Affects</button>
+                <button class="tab" onclick="switchTab('basic')">Basic Emotions</button>
+                <button class="tab" onclick="switchTab('analytics')">Analytics</button>
+            </div>
+
+            <!-- Tab Content -->
+            <div id="tabContent">
+                <!-- 98 Affects Grid -->
+                <div id="affectsTab" class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">All 98 Emotional States</h2>
+                            <p class="card-subtitle">Complete affect analysis based on MorphCast methodology</p>
+                        </div>
+                    </div>
+                    <div id="affectsGrid" class="emotion-grid">
+                        <!-- Will be populated with 98 affects -->
+                    </div>
+                </div>
+
+                <!-- Basic Emotions -->
+                <div id="basicTab" class="card" style="display: none;">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">Ekman's Basic Emotions</h2>
+                            <p class="card-subtitle">7 fundamental emotional expressions</p>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="basicChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Analytics -->
+                <div id="analyticsTab" class="card" style="display: none;">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">Session Analytics</h2>
+                            <p class="card-subtitle">Detailed emotional patterns analysis</p>
+                        </div>
+                    </div>
+                    <div id="analyticsContent">
+                        <!-- Will be populated with analytics -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Global variables
+        let video, canvas, ctx;
+        let isDetecting = false;
+        let stream = null;
+        
+        // MorphCast 98 affects mapping
+        const affects98 = {
+            "Adventurous": { arousal: 0.4, valence: 0.6 },
+            "Afraid": { arousal: 0.7, valence: -0.6 },
+            "Alarmed": { arousal: 0.8, valence: -0.5 },
+            "Ambitious": { arousal: 0.5, valence: 0.4 },
+            "Amorous": { arousal: 0.3, valence: 0.7 },
+            "Amused": { arousal: 0.3, valence: 0.6 },
+            "Angry": { arousal: 0.7, valence: -0.7 },
+            "Annoyed": { arousal: 0.4, valence: -0.4 },
+            "Anxious": { arousal: 0.6, valence: -0.3 },
+            "Apathetic": { arousal: -0.6, valence: -0.2 },
+            "Aroused": { arousal: 0.8, valence: 0.3 },
+            "Ashamed": { arousal: -0.2, valence: -0.6 },
+            "Astonished": { arousal: 0.7, valence: 0.2 },
+            "At Ease": { arousal: -0.3, valence: 0.4 },
+            "Attentive": { arousal: 0.2, valence: 0.3 },
+            "Bellicose": { arousal: 0.6, valence: -0.5 },
+            "Bitter": { arousal: 0.1, valence: -0.7 },
+            "Bored": { arousal: -0.5, valence: -0.3 },
+            "Calm": { arousal: -0.4, valence: 0.3 },
+            "Compassionate": { arousal: 0.1, valence: 0.6 },
+            "Conceited": { arousal: 0.2, valence: 0.1 },
+            "Confident": { arousal: 0.3, valence: 0.5 },
+            "Conscientious": { arousal: 0.2, valence: 0.4 },
+            "Contemplative": { arousal: -0.1, valence: 0.2 },
+            "Contemptuous": { arousal: 0.2, valence: -0.6 },
+            "Content": { arousal: -0.2, valence: 0.6 },
+            "Convinced": { arousal: 0.1, valence: 0.4 },
+            "Courageous": { arousal: 0.5, valence: 0.5 },
+            "Defiant": { arousal: 0.5, valence: -0.3 },
+            "Dejected": { arousal: -0.4, valence: -0.5 },
+            "Delighted": { arousal: 0.5, valence: 0.8 },
+            "Depressed": { arousal: -0.6, valence: -0.7 },
+            "Desperate": { arousal: 0.5, valence: -0.8 },
+            "Despondent": { arousal: -0.5, valence: -0.6 },
+            "Determined": { arousal: 0.4, valence: 0.3 },
+            "Disappointed": { arousal: -0.2, valence: -0.5 },
+            "Discontented": { arousal: -0.1, valence: -0.4 },
+            "Disgusted": { arousal: 0.3, valence: -0.7 },
+            "Dissatisfied": { arousal: 0.0, valence: -0.4 },
+            "Distressed": { arousal: 0.6, valence: -0.6 },
+            "Distrustful": { arousal: 0.2, valence: -0.3 },
+            "Doubtful": { arousal: 0.1, valence: -0.2 },
+            "Droopy": { arousal: -0.7, valence: -0.3 },
+            "Embarrassed": { arousal: 0.3, valence: -0.4 },
+            "Enraged": { arousal: 0.9, valence: -0.8 },
+            "Enthusiastic": { arousal: 0.7, valence: 0.7 },
+            "Envious": { arousal: 0.3, valence: -0.5 },
+            "Excited": { arousal: 0.8, valence: 0.6 },
+            "Expectant": { arousal: 0.3, valence: 0.2 },
+            "Feel Guilt": { arousal: -0.1, valence: -0.5 },
+            "Feel Well": { arousal: 0.1, valence: 0.7 },
+            "Feeling Superior": { arousal: 0.3, valence: 0.2 },
+            "Friendly": { arousal: 0.2, valence: 0.7 },
+            "Frustrated": { arousal: 0.5, valence: -0.6 },
+            "Glad": { arousal: 0.4, valence: 0.7 },
+            "Gloomy": { arousal: -0.3, valence: -0.6 },
+            "Happy": { arousal: 0.4, valence: 0.8 },
+            "Hateful": { arousal: 0.6, valence: -0.8 },
+            "Hesitant": { arousal: 0.0, valence: -0.1 },
+            "Hopeful": { arousal: 0.2, valence: 0.5 },
+            "Hostile": { arousal: 0.7, valence: -0.7 },
+            "Impatient": { arousal: 0.5, valence: -0.2 },
+            "Impressed": { arousal: 0.4, valence: 0.5 },
+            "Indignant": { arousal: 0.4, valence: -0.5 },
+            "Insulted": { arousal: 0.5, valence: -0.6 },
+            "Interested": { arousal: 0.3, valence: 0.4 },
+            "Jealous": { arousal: 0.4, valence: -0.6 },
+            "Joyous": { arousal: 0.6, valence: 0.9 },
+            "Languid": { arousal: -0.6, valence: 0.1 },
+            "Lonely": { arousal: -0.3, valence: -0.5 },
+            "Lovestruck": { arousal: 0.4, valence: 0.8 },
+            "Lusting": { arousal: 0.7, valence: 0.5 },
+            "Melancholic": { arousal: -0.4, valence: -0.4 },
+            "Miserable": { arousal: -0.2, valence: -0.8 },
+            "Passive": { arousal: -0.5, valence: 0.0 },
+            "Peaceful": { arousal: -0.5, valence: 0.5 },
+            "Pensive": { arousal: -0.2, valence: 0.1 },
+            "Placid": { arousal: -0.6, valence: 0.3 },
+            "Pleased": { arousal: 0.2, valence: 0.6 },
+            "Polite": { arousal: 0.0, valence: 0.4 },
+            "Quiet": { arousal: -0.4, valence: 0.1 },
+            "Relaxed": { arousal: -0.5, valence: 0.6 },
+            "Reverent": { arousal: -0.1, valence: 0.3 },
+            "Sad": { arousal: -0.3, valence: -0.6 },
+            "Satisfied": { arousal: -0.1, valence: 0.7 },
+            "Scared": { arousal: 0.8, valence: -0.7 },
+            "Serene": { arousal: -0.4, valence: 0.6 },
+            "Sleepy": { arousal: -0.8, valence: 0.0 },
+            "Solemn": { arousal: -0.2, valence: 0.0 },
+            "Still": { arousal: -0.7, valence: 0.2 },
+            "Surprised": { arousal: 0.8, valence: 0.1 },
+            "Suspicious": { arousal: 0.3, valence: -0.3 },
+            "Tense": { arousal: 0.7, valence: -0.4 },
+            "Terrified": { arousal: 0.9, valence: -0.9 },
+            "Tired": { arousal: -0.7, valence: -0.2 },
+            "Tranquil": { arousal: -0.6, valence: 0.4 },
+            "Troubled": { arousal: 0.4, valence: -0.4 },
+            "Vigorous": { arousal: 0.8, valence: 0.4 }
+        };
+
+        // Emotion to arousal/valence mapping
+        const emotionToAV = {
+            neutral: { arousal: 0, valence: 0 },
+            happy: { arousal: 0.4, valence: 0.8 },
+            sad: { arousal: -0.3, valence: -0.6 },
+            angry: { arousal: 0.7, valence: -0.7 },
+            fearful: { arousal: 0.8, valence: -0.5 },
+            disgusted: { arousal: 0.3, valence: -0.7 },
+            surprised: { arousal: 0.8, valence: 0.1 }
+        };
+
+        // Data storage
+        let currentArousal = 0;
+        let currentValence = 0;
+        let affectProbabilities = {};
+        let emotionHistory = [];
+        let timelineChart = null;
+        let basicChart = null;
+        let circumplexCtx = null;
+
+        // Initialize on load
+        window.addEventListener('load', async () => {
+            await loadModels();
+            initializeCharts();
+            initializeCircumplex();
+            initializeAffectsGrid();
+        });
+
+        // Load face-api models
+        async function loadModels() {
+            const statusEl = document.getElementById('status');
+            statusEl.innerHTML = '<span class="status-indicator"></span><span>Loading models...</span>';
+            
+            const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+            
+            try {
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
+                ]);
+                
+                statusEl.innerHTML = '<span class="status-indicator"></span><span>Ready</span>';
+                document.getElementById('startBtn').disabled = false;
+                
+                // Setup event listeners
+                document.getElementById('startBtn').addEventListener('click', startDetection);
+                document.getElementById('stopBtn').addEventListener('click', stopDetection);
+                
+            } catch (error) {
+                console.error('Failed to load models:', error);
+                statusEl.innerHTML = '<span class="status-indicator"></span><span>Error loading models</span>';
+            }
+        }
+
+        // Setup camera
+        async function setupCamera() {
+            video = document.getElementById('video');
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 480 } 
+                });
+                video.srcObject = stream;
+                
+                return new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        resolve();
+                    };
+                });
+            } catch (error) {
+                console.error('Camera access denied:', error);
+                throw error;
+            }
+        }
+
+        // Start detection
+        async function startDetection() {
+            try {
+                await setupCamera();
+                isDetecting = true;
+                
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('status').classList.add('active');
+                document.getElementById('status').innerHTML = '<span class="status-indicator"></span><span>Analyzing...</span>';
+                
+                detectEmotions();
+            } catch (error) {
+                console.error('Failed to start:', error);
+            }
+        }
+
+        // Stop detection
+        function stopDetection() {
+            isDetecting = false;
+            
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('status').classList.remove('active');
+            document.getElementById('status').innerHTML = '<span class="status-indicator"></span><span>Paused</span>';
+        }
+
+        // Main detection loop
+        async function detectEmotions() {
+            if (!isDetecting) return;
+            
+            const detections = await faceapi.detectAllFaces(
+                video,
+                new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.3 })
+            )
+            .withFaceLandmarks()
+            .withFaceExpressions();
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (detections.length > 0) {
+                // Draw face detection
+                const resizedDetections = faceapi.resizeResults(detections, {
+                    width: canvas.width,
+                    height: canvas.height
+                });
+                
+                faceapi.draw.drawDetections(canvas, resizedDetections);
+                faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+                
+                // Process emotions
+                const expressions = detections[0].expressions;
+                processEmotions(expressions);
+            }
+            
+            if (isDetecting) {
+                requestAnimationFrame(detectEmotions);
+            }
+        }
+
+        // Process emotions and calculate 98 affects
+        function processEmotions(expressions) {
+            // Calculate arousal and valence from basic emotions
+            let weightedArousal = 0;
+            let weightedValence = 0;
+            let totalWeight = 0;
+            
+            for (const [emotion, confidence] of Object.entries(expressions)) {
+                if (emotionToAV[emotion]) {
+                    weightedArousal += emotionToAV[emotion].arousal * confidence;
+                    weightedValence += emotionToAV[emotion].valence * confidence;
+                    totalWeight += confidence;
+                }
+            }
+            
+            if (totalWeight > 0) {
+                currentArousal = weightedArousal / totalWeight;
+                currentValence = weightedValence / totalWeight;
+            }
+            
+            // Update metrics
+            updateMetrics();
+            
+            // Calculate 98 affects probabilities
+            calculateAffectProbabilities();
+            
+            // Update visualizations
+            updateCircumplex();
+            updateAffectsGrid();
+            updateTopAffects();
+            updateCharts(expressions);
+            
+            // Store history
+            emotionHistory.push({
+                timestamp: Date.now(),
+                arousal: currentArousal,
+                valence: currentValence,
+                affects: { ...affectProbabilities },
+                basic: { ...expressions }
+            });
+            
+            // Keep only last 100 entries
+            if (emotionHistory.length > 100) {
+                emotionHistory.shift();
+            }
+        }
+
+        // Calculate 98 affect probabilities using Gaussian
+        function calculateAffectProbabilities() {
+            const sigma = 0.3;
+            
+            for (const [affect, position] of Object.entries(affects98)) {
+                const distance = Math.sqrt(
+                    Math.pow(currentArousal - position.arousal, 2) +
+                    Math.pow(currentValence - position.valence, 2)
+                );
+                
+                // Gaussian probability
+                const probability = Math.exp(-(distance * distance) / (2 * sigma * sigma));
+                affectProbabilities[affect] = probability;
+            }
+            
+            // Normalize probabilities
+            const sum = Object.values(affectProbabilities).reduce((a, b) => a + b, 0);
+            if (sum > 0) {
+                for (const affect in affectProbabilities) {
+                    affectProbabilities[affect] /= sum;
+                }
+            }
+        }
+
+        // Update metrics display
+        function updateMetrics() {
+            document.getElementById('arousalValue').textContent = currentArousal.toFixed(2);
+            document.getElementById('valenceValue').textContent = currentValence.toFixed(2);
+            
+            // Calculate attention (mock - would need eye tracking in real implementation)
+            const attention = Math.max(0, Math.min(100, 50 + currentArousal * 25 + currentValence * 25));
+            document.getElementById('attentionValue').textContent = Math.round(attention) + '%';
+            
+            // Calculate positivity index (MorphCast formula)
+            const angle = 17 * Math.PI / 180;
+            const positivity = (currentValence * Math.cos(angle) - currentArousal * Math.sin(angle) + 1) / 2;
+            document.getElementById('positivityValue').textContent = Math.round(positivity * 100) + '%';
+        }
+
+        // Initialize Circumplex visualization
+        function initializeCircumplex() {
+            const canvas = document.getElementById('circumplexCanvas');
+            circumplexCtx = canvas.getContext('2d');
+            
+            // Set canvas size
+            const container = canvas.parentElement;
+            canvas.width = container.offsetWidth;
+            canvas.height = container.offsetWidth;
+            
+            drawCircumplexBase();
+        }
+
+        // Draw circumplex base
+        function drawCircumplexBase() {
+            if (!circumplexCtx) return;
+            
+            const canvas = circumplexCtx.canvas;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY) - 20;
+            
+            circumplexCtx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            circumplexCtx.strokeStyle = '#e5e7eb';
+            circumplexCtx.lineWidth = 1;
+            
+            // Circles
+            for (let r = radius / 4; r <= radius; r += radius / 4) {
+                circumplexCtx.beginPath();
+                circumplexCtx.arc(centerX, centerY, r, 0, 2 * Math.PI);
+                circumplexCtx.stroke();
+            }
+            
+            // Axes
+            circumplexCtx.beginPath();
+            circumplexCtx.moveTo(centerX - radius, centerY);
+            circumplexCtx.lineTo(centerX + radius, centerY);
+            circumplexCtx.moveTo(centerX, centerY - radius);
+            circumplexCtx.lineTo(centerX, centerY + radius);
+            circumplexCtx.stroke();
+            
+            // Labels
+            circumplexCtx.fillStyle = '#6b7280';
+            circumplexCtx.font = '12px Inter';
+            circumplexCtx.textAlign = 'center';
+            circumplexCtx.fillText('High Arousal', centerX, 15);
+            circumplexCtx.fillText('Low Arousal', centerX, canvas.height - 5);
+            
+            circumplexCtx.save();
+            circumplexCtx.translate(10, centerY);
+            circumplexCtx.rotate(-Math.PI / 2);
+            circumplexCtx.fillText('Negative', 0, 0);
+            circumplexCtx.restore();
+            
+            circumplexCtx.save();
+            circumplexCtx.translate(canvas.width - 10, centerY);
+            circumplexCtx.rotate(Math.PI / 2);
+            circumplexCtx.fillText('Positive', 0, 0);
+            circumplexCtx.restore();
+        }
+
+        // Update circumplex visualization
+        function updateCircumplex() {
+            if (!circumplexCtx) return;
+            
+            drawCircumplexBase();
+            
+            const canvas = circumplexCtx.canvas;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY) - 20;
+            
+            // Map arousal/valence to canvas coordinates
+            const x = centerX + (currentValence * radius);
+            const y = centerY - (currentArousal * radius);
+            
+            // Draw current position
+            circumplexCtx.fillStyle = '#111827';
+            circumplexCtx.beginPath();
+            circumplexCtx.arc(x, y, 8, 0, 2 * Math.PI);
+            circumplexCtx.fill();
+            
+            // Draw trail
+            if (emotionHistory.length > 1) {
+                circumplexCtx.strokeStyle = 'rgba(17, 24, 39, 0.2)';
+                circumplexCtx.lineWidth = 2;
+                circumplexCtx.beginPath();
+                
+                for (let i = Math.max(0, emotionHistory.length - 20); i < emotionHistory.length; i++) {
+                    const point = emotionHistory[i];
+                    const px = centerX + (point.valence * radius);
+                    const py = centerY - (point.arousal * radius);
+                    
+                    if (i === Math.max(0, emotionHistory.length - 20)) {
+                        circumplexCtx.moveTo(px, py);
+                    } else {
+                        circumplexCtx.lineTo(px, py);
+                    }
+                }
+                
+                circumplexCtx.stroke();
+            }
+        }
+
+        // Initialize affects grid
+        function initializeAffectsGrid() {
+            const grid = document.getElementById('affectsGrid');
+            
+            for (const affect of Object.keys(affects98)) {
+                const item = document.createElement('div');
+                item.className = 'emotion-item';
+                item.id = `affect-${affect.replace(/\s+/g, '-')}`;
+                item.innerHTML = `
+                    <div class="emotion-name">${affect}</div>
+                    <div class="emotion-value">0%</div>
+                `;
+                grid.appendChild(item);
+            }
+        }
+
+        // Update affects grid
+        function updateAffectsGrid() {
+            for (const [affect, probability] of Object.entries(affectProbabilities)) {
+                const element = document.getElementById(`affect-${affect.replace(/\s+/g, '-')}`);
+                if (element) {
+                    const percentage = Math.round(probability * 100);
+                    element.querySelector('.emotion-value').textContent = percentage + '%';
+                    
+                    if (percentage > 10) {
+                        element.classList.add('active');
+                    } else {
+                        element.classList.remove('active');
+                    }
+                }
+            }
+        }
+
+        // Update top affects
+        function updateTopAffects() {
+            const sorted = Object.entries(affectProbabilities)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            
+            const container = document.getElementById('topAffects');
+            container.innerHTML = sorted.map(([affect, probability]) => {
+                const percentage = Math.round(probability * 100);
+                return `
+                    <div class="affect-bar">
+                        <div class="affect-label">${affect}</div>
+                        <div class="affect-progress">
+                            <div class="affect-fill" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="affect-percentage">${percentage}%</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Initialize charts
+        function initializeCharts() {
+            // Timeline chart
+            const timelineCtx = document.getElementById('timelineChart').getContext('2d');
+            timelineChart = new Chart(timelineCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Arousal',
+                        data: [],
+                        borderColor: '#111827',
+                        backgroundColor: 'rgba(17, 24, 39, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Valence',
+                        data: [],
+                        borderColor: '#6b7280',
+                        backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: -1,
+                            max: 1
+                        }
+                    }
+                }
+            });
+            
+            // Basic emotions chart
+            const basicCtx = document.getElementById('basicChart').getContext('2d');
+            basicChart = new Chart(basicCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Neutral', 'Happy', 'Sad', 'Angry', 'Fearful', 'Disgusted', 'Surprised'],
+                    datasets: [{
+                        label: 'Confidence',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        backgroundColor: '#111827'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update charts
+        function updateCharts(expressions) {
+            // Update timeline
+            const time = new Date().toLocaleTimeString();
+            timelineChart.data.labels.push(time);
+            timelineChart.data.datasets[0].data.push(currentArousal);
+            timelineChart.data.datasets[1].data.push(currentValence);
+            
+            // Keep only last 30 points
+            if (timelineChart.data.labels.length > 30) {
+                timelineChart.data.labels.shift();
+                timelineChart.data.datasets[0].data.shift();
+                timelineChart.data.datasets[1].data.shift();
+            }
+            
+            timelineChart.update('none');
+            
+            // Update basic emotions
+            basicChart.data.datasets[0].data = [
+                expressions.neutral || 0,
+                expressions.happy || 0,
+                expressions.sad || 0,
+                expressions.angry || 0,
+                expressions.fearful || 0,
+                expressions.disgusted || 0,
+                expressions.surprised || 0
+            ];
+            basicChart.update('none');
+        }
+
+        // Switch tabs
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Hide all tabs
+            document.getElementById('affectsTab').style.display = 'none';
+            document.getElementById('basicTab').style.display = 'none';
+            document.getElementById('analyticsTab').style.display = 'none';
+            
+            // Show selected tab
+            document.getElementById(tabName + 'Tab').style.display = 'block';
+            
+            // Generate analytics if needed
+            if (tabName === 'analytics') {
+                generateAnalytics();
+            }
+        }
+
+        // Generate analytics
+        function generateAnalytics() {
+            if (emotionHistory.length === 0) {
+                document.getElementById('analyticsContent').innerHTML = 
+                    '<p style="text-align: center; color: var(--cal-text-muted);">No data available. Start analysis to see analytics.</p>';
+                return;
+            }
+            
+            // Calculate statistics
+            const avgArousal = emotionHistory.reduce((sum, h) => sum + h.arousal, 0) / emotionHistory.length;
+            const avgValence = emotionHistory.reduce((sum, h) => sum + h.valence, 0) / emotionHistory.length;
+            
+            // Find dominant affects
+            const affectSums = {};
+            emotionHistory.forEach(h => {
+                for (const [affect, prob] of Object.entries(h.affects)) {
+                    affectSums[affect] = (affectSums[affect] || 0) + prob;
+                }
+            });
+            
+            const dominantAffects = Object.entries(affectSums)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3)
+                .map(([affect]) => affect);
+            
+            document.getElementById('analyticsContent').innerHTML = `
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Average Arousal</div>
+                        <div class="metric-value">${avgArousal.toFixed(2)}</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Average Valence</div>
+                        <div class="metric-value">${avgValence.toFixed(2)}</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Data Points</div>
+                        <div class="metric-value">${emotionHistory.length}</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Dominant Affects</div>
+                        <div class="metric-value" style="font-size: 14px;">${dominantAffects.join(', ')}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Export functions
+        function exportCSV() {
+            if (emotionHistory.length === 0) {
+                alert('No data to export');
+                return;
+            }
+            
+            let csv = 'Timestamp,Arousal,Valence,Top3Affects\n';
+            
+            emotionHistory.forEach(h => {
+                const top3 = Object.entries(h.affects)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 3)
+                    .map(([affect]) => affect)
+                    .join('-');
+                
+                csv += `${new Date(h.timestamp).toISOString()},${h.arousal},${h.valence},"${top3}"\n`;
+            });
+            
+            downloadFile(csv, 'emotion-data.csv', 'text/csv');
+        }
+
+        function exportJSON() {
+            if (emotionHistory.length === 0) {
+                alert('No data to export');
+                return;
+            }
+            
+            const data = {
+                metadata: {
+                    exportDate: new Date().toISOString(),
+                    dataPoints: emotionHistory.length,
+                    affects: Object.keys(affects98)
+                },
+                history: emotionHistory
+            };
+            
+            downloadFile(JSON.stringify(data, null, 2), 'emotion-data.json', 'application/json');
+        }
+
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Reset analysis
+        function resetAnalysis() {
+            emotionHistory = [];
+            currentArousal = 0;
+            currentValence = 0;
+            affectProbabilities = {};
+            
+            // Reset displays
+            updateMetrics();
+            updateCircumplex();
+            updateAffectsGrid();
+            updateTopAffects();
+            
+            // Reset charts
+            timelineChart.data.labels = [];
+            timelineChart.data.datasets[0].data = [];
+            timelineChart.data.datasets[1].data = [];
+            timelineChart.update();
+            
+            basicChart.data.datasets[0].data = [0, 0, 0, 0, 0, 0, 0];
+            basicChart.update();
+        }
+
+        // Cleanup on unload
+        window.addEventListener('beforeunload', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        });
+    </script>
+</body>
+</html>
