@@ -18,7 +18,7 @@ export default function RootLayout({
       <body className="font-sans bg-white text-gray-900">
         <Script
           src="https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/dist/face-api.min.js"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
         <Providers>{children}</Providers>
       </body>

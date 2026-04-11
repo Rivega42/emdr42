@@ -202,7 +202,7 @@ export default function EmotionTestPage() {
               />
               {status === 'idle' && (
                 <div className="absolute inset-0 flex items-center justify-center text-white/40 text-sm">
-                  Click "Start" to begin analysis
+                  Click &quot;Start&quot; to begin analysis
                 </div>
               )}
             </div>
