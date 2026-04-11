@@ -13,6 +13,8 @@ interface EmotionData {
   positivity: number;
   arousal: number;
   valence: number;
+  affects98?: Record<string, number>;
+  basicExpressions?: Record<string, number>;
 }
 
 interface EmotionContextType {
@@ -44,6 +46,8 @@ const mapCoreToContext = (core: CoreEmotionData): EmotionData => ({
   positivity: core.behavioral.positivity,
   arousal: core.dimensions.arousal,
   valence: core.dimensions.valence,
+  affects98: core.affects98,
+  basicExpressions: core.basicExpressions,
 });
 
 export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
