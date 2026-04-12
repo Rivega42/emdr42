@@ -1,6 +1,18 @@
 version: '3.8'
 
 services:
+  # API Gateway (nginx reverse proxy)
+  gateway:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - api
+      - orchestrator
+
   # Frontend (Next.js)
   frontend:
     build:
@@ -26,6 +38,7 @@ services:
       - DATABASE_URL=postgresql://emdr42:emdr42_secret@postgres:5432/emdr42
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=your-jwt-secret-change-in-production
+      - PHI_ENCRYPTION_KEY=${PHI_ENCRYPTION_KEY:-dev-only-change-in-production}
       - PORT=8000
     depends_on:
       postgres:
