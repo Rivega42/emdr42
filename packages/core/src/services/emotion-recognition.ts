@@ -60,6 +60,10 @@ export interface EmotionConfig {
   updateFrequency?: number;       // ms between frame analyses (default: 100)
   calibrationDuration?: number;   // ms for calibration period (default: 30000)
   enableLocalStorage?: boolean;   // persist profile (default: true)
+  emaAlpha?: number;              // EMA smoothing factor 0-1 (default: 0.3)
+  minConfidence?: number;         // min face detection score (default: 0.6)
+  gaussianSigma?: number;         // circumplex affect spread (default: 0.45)
+  frameBufferSize?: number;       // multi-frame consensus buffer (default: 5)
 }
 
 // ---------------------------------------------------------------------------
@@ -203,12 +207,22 @@ export class EmotionRecognitionService extends EventEmitter {
   private modelsLoaded = false;
   private config: Required<EmotionConfig>;
 
+  // --- Улучшения точности (#52) ---
+  private smoothedArousal = 0;
+  private smoothedValence = 0;
+  private frameBuffer: EmotionData[] = [];
+  private lastValidEmotionData: EmotionData | null = null;
+
   constructor(config: EmotionConfig = {}) {
     super();
     this.config = {
       updateFrequency: config.updateFrequency ?? 100,
       calibrationDuration: config.calibrationDuration ?? 30000,
       enableLocalStorage: config.enableLocalStorage ?? true,
+      emaAlpha: config.emaAlpha ?? 0.3,
+      minConfidence: config.minConfidence ?? 0.6,
+      gaussianSigma: config.gaussianSigma ?? 0.45,
+      frameBufferSize: config.frameBufferSize ?? 5,
     };
   }
 
@@ -315,11 +329,29 @@ export class EmotionRecognitionService extends EventEmitter {
 
       if (detections.length > 0) {
         const detection = detections[0];
-        const expressions: Record<string, number> = detection.expressions;
         const faceScore: number = detection.detection.score;
-        emotionData = this.processExpressions(expressions, faceScore);
+
+        // Фильтрация по confidence (#52): отсекаем низкокачественные детекции
+        if (faceScore < this.config.minConfidence) {
+          emotionData = this.lastValidEmotionData
+            ?? this.createNeutralEmotionData(Date.now(), faceScore);
+        } else {
+          const expressions: Record<string, number> = detection.expressions;
+          emotionData = this.processExpressions(expressions, faceScore);
+          this.lastValidEmotionData = emotionData;
+        }
       } else {
-        emotionData = this.createNeutralEmotionData(Date.now(), 0);
+        emotionData = this.lastValidEmotionData
+          ?? this.createNeutralEmotionData(Date.now(), 0);
+      }
+
+      // Multi-frame consensus (#52): буфер для медианного сглаживания
+      this.frameBuffer.push(emotionData);
+      if (this.frameBuffer.length > this.config.frameBufferSize) {
+        this.frameBuffer.shift();
+      }
+      if (this.frameBuffer.length >= 3) {
+        emotionData = this.getMedianFrame(this.frameBuffer);
       }
 
       // Update profile
@@ -383,8 +415,15 @@ export class EmotionRecognitionService extends EventEmitter {
       }
     }
 
-    const arousal = totalWeight > 0 ? weightedArousal / totalWeight : 0;
-    const valence = totalWeight > 0 ? weightedValence / totalWeight : 0;
+    const rawArousal = totalWeight > 0 ? weightedArousal / totalWeight : 0;
+    const rawValence = totalWeight > 0 ? weightedValence / totalWeight : 0;
+
+    // --- EMA сглаживание (#52): устраняет дрожание кадр-к-кадру ---
+    const alpha = this.config.emaAlpha;
+    this.smoothedArousal = alpha * rawArousal + (1 - alpha) * this.smoothedArousal;
+    this.smoothedValence = alpha * rawValence + (1 - alpha) * this.smoothedValence;
+    const arousal = this.smoothedArousal;
+    const valence = this.smoothedValence;
 
     // --- 98 affects ---
     const affects = this.calculateAffectProbabilities(arousal, valence);
@@ -437,6 +476,36 @@ export class EmotionRecognitionService extends EventEmitter {
   }
 
   // -------------------------------------------------------------------------
+  // Multi-frame consensus (#52): медиана по буферу кадров
+  // -------------------------------------------------------------------------
+
+  private getMedianFrame(frames: EmotionData[]): EmotionData {
+    const sorted = (arr: number[]) => [...arr].sort((a, b) => a - b);
+    const median = (arr: number[]) => {
+      const s = sorted(arr);
+      const mid = Math.floor(s.length / 2);
+      return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+    };
+
+    const last = frames[frames.length - 1];
+    return {
+      ...last,
+      dimensions: {
+        arousal: median(frames.map(f => f.dimensions.arousal)),
+        valence: median(frames.map(f => f.dimensions.valence)),
+        dominance: median(frames.map(f => f.dimensions.dominance)),
+      },
+      behavioral: {
+        attention: median(frames.map(f => f.behavioral.attention)),
+        engagement: median(frames.map(f => f.behavioral.engagement)),
+        positivity: median(frames.map(f => f.behavioral.positivity)),
+        stress: median(frames.map(f => f.behavioral.stress)),
+      },
+      confidence: median(frames.map(f => f.confidence)),
+    };
+  }
+
+  // -------------------------------------------------------------------------
   // 98 Affects — Gaussian probability on circumplex
   // -------------------------------------------------------------------------
 
@@ -444,7 +513,7 @@ export class EmotionRecognitionService extends EventEmitter {
     arousal: number,
     valence: number
   ): Record<string, number> {
-    const sigma = 0.3;
+    const sigma = this.config.gaussianSigma;
     const result: Record<string, number> = {};
 
     for (const [affect, position] of Object.entries(affects98)) {
