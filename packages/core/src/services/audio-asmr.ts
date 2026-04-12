@@ -1,9 +1,20 @@
 /**
  * Audio & ASMR Service
  * Binaural beats, spatial audio, and ASMR effects
+ *
+ * Tone.js загружается динамически, т.к. это ESM-only модуль
+ * и статический импорт вызывает warnings в Next.js webpack.
  */
 
-import * as Tone from 'tone';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Tone: any = null;
+
+async function getTone() {
+  if (!Tone) {
+    Tone = await import('tone');
+  }
+  return Tone;
+}
 
 export interface AudioConfig {
   binauralEnabled: boolean;
@@ -34,13 +45,13 @@ export interface BinauralFrequencies {
 
 export class AudioASMRService {
   private isInitialized = false;
-  private binauralSynths: { left: Tone.Oscillator; right: Tone.Oscillator } | null = null;
-  private spatialPanner: Tone.Panner | null = null;
-  private asmrPlayer: Tone.Player | null = null;
-  private noiseGenerator: Tone.Noise | null = null;
-  private masterGain: Tone.Gain | null = null;
-  private reverb: Tone.Reverb | null = null;
-  private filter: Tone.Filter | null = null;
+  private binauralSynths: { left: any; right: any } | null = null;
+  private spatialPanner: any = null;
+  private asmrPlayer: any = null;
+  private noiseGenerator: any = null;
+  private masterGain: any = null;
+  private reverb: any = null;
+  private filter: any = null;
   
   private config: AudioConfig = {
     binauralEnabled: false,
@@ -97,31 +108,26 @@ export class AudioASMRService {
     if (this.isInitialized) return;
 
     try {
-      // Start Tone.js audio context
-      await Tone.start();
-      
-      // Create master gain
-      this.masterGain = new Tone.Gain(this.config.volume).toDestination();
-      
-      // Create effects
-      this.reverb = new Tone.Reverb({
-        decay: 2,
-        wet: 0.3
-      }).connect(this.masterGain);
-      
-      this.filter = new Tone.Filter({
-        frequency: 2000,
-        type: 'lowpass'
-      }).connect(this.reverb);
-      
-      // Create spatial panner
-      this.spatialPanner = new Tone.Panner(0).connect(this.filter);
-      
-      // Initialize binaural oscillators
-      this.initializeBinaural();
-      
-      // Initialize noise generator for white noise
-      this.noiseGenerator = new Tone.Noise('white').connect(this.filter);
+      const T = await getTone();
+
+      // Запуск аудио-контекста Tone.js
+      await T.start();
+
+      // Мастер-гейн
+      this.masterGain = new T.Gain(this.config.volume).toDestination();
+
+      // Эффекты
+      this.reverb = new T.Reverb({ decay: 2, wet: 0.3 }).connect(this.masterGain);
+      this.filter = new T.Filter({ frequency: 2000, type: 'lowpass' }).connect(this.reverb);
+
+      // Пространственный паннер
+      this.spatialPanner = new T.Panner(0).connect(this.filter);
+
+      // Бинауральные осцилляторы
+      await this.initializeBinaural();
+
+      // Генератор белого шума
+      this.noiseGenerator = new T.Noise('white').connect(this.filter);
       
       this.isInitialized = true;
       console.log('Audio service initialized');
@@ -134,19 +140,18 @@ export class AudioASMRService {
   /**
    * Initialize binaural beat oscillators
    */
-  private initializeBinaural(): void {
+  private async initializeBinaural(): Promise<void> {
     if (!this.masterGain) return;
+    const T = await getTone();
 
     const freq = this.frequencies[this.config.binauralFrequency];
 
-    // Left ear - base frequency
-    const leftOsc = new Tone.Oscillator(freq.base, 'sine');
-    const leftPanner = new Tone.Panner(-1).connect(this.masterGain);
+    const leftOsc = new T.Oscillator(freq.base, 'sine');
+    const leftPanner = new T.Panner(-1).connect(this.masterGain);
     leftOsc.connect(leftPanner);
 
-    // Right ear - base + beat frequency
-    const rightOsc = new Tone.Oscillator(freq.base + freq.beat, 'sine');
-    const rightPanner = new Tone.Panner(1).connect(this.masterGain);
+    const rightOsc = new T.Oscillator(freq.base + freq.beat, 'sine');
+    const rightPanner = new T.Panner(1).connect(this.masterGain);
     rightOsc.connect(rightPanner);
     
     this.binauralSynths = { left: leftOsc, right: rightOsc };
@@ -241,15 +246,16 @@ export class AudioASMRService {
       }
     } else if (soundPath) {
       // Load and play audio file
-      this.asmrPlayer = new Tone.Player({
+      const T = await getTone();
+      this.asmrPlayer = new T.Player({
         url: soundPath,
         loop: true,
         autostart: false,
         fadeIn: this.config.fadeTime,
         fadeOut: this.config.fadeTime
       }).connect(this.spatialPanner || this.filter!);
-      
-      await Tone.loaded();
+
+      await T.loaded();
       this.asmrPlayer.start(`+${this.config.fadeTime}`);
     }
     
@@ -325,7 +331,8 @@ export class AudioASMRService {
     holdTime: number = 7,
     exhaleTime: number = 8
   ): Promise<void> {
-    const synth = new Tone.Synth({
+    const T = await getTone();
+    const synth = new T.Synth({
       oscillator: { type: 'sine' },
       envelope: {
         attack: inhaleTime,
@@ -334,24 +341,22 @@ export class AudioASMRService {
         release: exhaleTime
       }
     }).connect(this.masterGain!);
-    
-    const loop = new Tone.Loop((time) => {
-      // Inhale
+
+    const loop = new T.Loop((time: number) => {
       synth.triggerAttack('C3', time);
-      
-      // Hold
       synth.triggerRelease(time + inhaleTime + holdTime);
     }, inhaleTime + holdTime + exhaleTime);
-    
+
     loop.start(0);
-    Tone.Transport.start();
+    T.Transport.start();
   }
 
   /**
    * Generate click track for bilateral stimulation
    */
   async startClickTrack(bpm: number = 60): Promise<void> {
-    const click = new Tone.MembraneSynth({
+    const T = await getTone();
+    const click = new T.MembraneSynth({
       pitchDecay: 0.008,
       octaves: 2,
       envelope: {
@@ -360,17 +365,17 @@ export class AudioASMRService {
         sustain: 0
       }
     }).connect(this.spatialPanner!);
-    
+
     let side = -1;
-    
-    const loop = new Tone.Loop((time) => {
+
+    const loop = new T.Loop((time: number) => {
       this.updateSpatialPosition(side);
       click.triggerAttackRelease('C2', '32n', time);
-      side *= -1; // Alternate sides
+      side *= -1;
     }, 60 / bpm);
-    
+
     loop.start(0);
-    Tone.Transport.start();
+    T.Transport.start();
   }
 
   /**
@@ -380,7 +385,8 @@ export class AudioASMRService {
     frequency: number = 528, // Love frequency
     duration: number = 10
   ): Promise<void> {
-    const synth = new Tone.Synth({
+    const T = await getTone();
+    const synth = new T.Synth({
       oscillator: { type: 'sine' },
       envelope: {
         attack: 2,
@@ -449,8 +455,10 @@ export class AudioASMRService {
   async stopAll(): Promise<void> {
     await this.stopBinaural();
     await this.stopASMR();
-    Tone.Transport.stop();
-    Tone.Transport.cancel();
+    if (Tone) {
+      Tone.Transport.stop();
+      Tone.Transport.cancel();
+    }
   }
 
   /**
