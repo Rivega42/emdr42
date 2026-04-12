@@ -56,15 +56,28 @@ services:
     environment:
       - API_URL=http://api:8000
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=your-jwt-secret-change-in-production
+      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-change-in-production}
       - PORT=8002
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
-      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      # Cloud providers (optional fallback)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY:-}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+      # Local providers (primary)
+      - OLLAMA_BASE_URL=http://ollama:11434/v1
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.1:8b}
+      - WHISPER_BASE_URL=http://whisper:8000
+      - PIPER_BASE_URL=http://piper:5000
+      # LiveKit
+      - LIVEKIT_URL=ws://livekit:7880
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
     depends_on:
       - api
       - redis
+      - ollama
+      - whisper
+      - livekit
 
   # PostgreSQL
   postgres:
@@ -97,16 +110,65 @@ services:
       retries: 5
     command: redis-server --appendonly yes
 
-  # LiveKit (WebRTC media server)
+  # LiveKit (WebRTC media server) - Self-hosted
   livekit:
     image: livekit/livekit-server:latest
     ports:
-      - "7880:7880"   # HTTP
+      - "7880:7880"   # HTTP API
       - "7881:7881"   # WebRTC TCP
       - "7882:7882/udp" # WebRTC UDP
+      - "50000-50100:50000-50100/udp" # RTP ports
     environment:
-      - LIVEKIT_KEYS=devkey:secret
-    command: --dev --bind 0.0.0.0
+      - LIVEKIT_KEYS=${LIVEKIT_API_KEY:-devkey}:${LIVEKIT_API_SECRET:-secret}
+    volumes:
+      - ./livekit.yaml:/livekit.yaml
+    command: --config /livekit.yaml
+
+  # Ollama (Local LLM) - для AI диалогов
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # Если нет GPU, закомментировать deploy секцию выше
+
+  # Faster-Whisper (Local STT) - для голоса
+  whisper:
+    image: fedirz/faster-whisper-server:latest-cuda
+    ports:
+      - "8001:8000"
+    environment:
+      - WHISPER__MODEL=Systran/faster-whisper-medium
+      - WHISPER__DEVICE=cuda
+      - WHISPER__COMPUTE_TYPE=float16
+    volumes:
+      - whisper_data:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # Для CPU: использовать image: fedirz/faster-whisper-server:latest
+    # и WHISPER__DEVICE=cpu, WHISPER__COMPUTE_TYPE=int8
+
+  # Piper TTS (Local TTS) - для озвучки
+  piper:
+    image: rhasspy/piper:latest
+    ports:
+      - "5000:5000"
+    volumes:
+      - piper_data:/data
+    command: --voice en_US-lessac-medium
 
   # Prometheus (Metrics)
   prometheus:
@@ -148,3 +210,7 @@ volumes:
   redis_data:
   minio_data:
   grafana_data:
+  ollama_data:
+  whisper_data:
+  piper_data:
+  livekit_data:
