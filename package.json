@@ -14,11 +14,17 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "type-check": "turbo run type-check",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@react-three/drei": "^9.88.0",
     "@react-three/fiber": "^8.13.0",
+    "@tanstack/react-query": "^5.99.0",
+    "@trpc/client": "^11.16.0",
+    "@trpc/react-query": "^11.16.0",
+    "@trpc/server": "^11.16.0",
     "face-api.js": "^0.22.2",
     "framer-motion": "^10.16.0",
     "next": "^13.4.0",
@@ -26,9 +32,11 @@
     "react-dom": "^18.2.0",
     "socket.io-client": "^4.7.0",
     "three": "^0.183.2",
-    "tone": "^14.7.77"
+    "tone": "^14.7.77",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@types/node": "^20.4.0",
