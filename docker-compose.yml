@@ -170,6 +170,18 @@ services:
       - piper_data:/data
     command: --voice en_US-lessac-medium
 
+  # Vosk STT (Realtime Speech-to-Text) - для голосового ввода
+  vosk:
+    image: alphacep/kaldi-vosk-server:latest
+    ports:
+      - "2700:2700"
+    environment:
+      - VOSK_MODEL_PATH=/opt/vosk-model-ru
+    volumes:
+      - vosk_model:/opt/vosk-model-ru
+    # Модель скачается при первом запуске или вручную:
+    # docker exec vosk wget -qO- https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.zip | unzip -d /opt/
+
   # Prometheus (Metrics)
   prometheus:
     image: prom/prometheus:latest
@@ -214,3 +226,4 @@ volumes:
   whisper_data:
   piper_data:
   livekit_data:
+  vosk_model:
