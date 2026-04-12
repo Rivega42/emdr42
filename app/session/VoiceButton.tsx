@@ -23,22 +23,22 @@ interface VoiceButtonProps {
 
 const STATE_CONFIG: Record<VoiceState, { label: string; color: string; icon: string }> = {
   idle: {
-    label: 'Voice Off',
+    label: 'Голос',
     color: 'bg-gray-200',
     icon: '🎤',
   },
   listening: {
-    label: 'Listening...',
+    label: 'Слушаю...',
     color: 'bg-green-500',
     icon: '👂',
   },
   processing: {
-    label: 'Processing...',
+    label: 'Думаю...',
     color: 'bg-amber-500',
     icon: '⏳',
   },
   speaking: {
-    label: 'AI Speaking',
+    label: 'Говорю...',
     color: 'bg-blue-500',
     icon: '🔊',
   },
@@ -229,8 +229,8 @@ export default function VoiceButton({
                 : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
           }
         `}
-        aria-label={isEnabled ? 'Disable voice mode' : 'Enable voice mode'}
-        title={permissionDenied ? 'Microphone access denied' : config.label}
+        aria-label={isEnabled ? 'Выключить голос' : 'Включить голос'}
+        title={permissionDenied ? 'Нет доступа к микрофону' : config.label}
       >
         {/* Icon */}
         <span className="text-2xl">{permissionDenied ? '🚫' : config.icon}</span>
@@ -263,7 +263,7 @@ export default function VoiceButton({
           isEnabled ? 'text-gray-700' : 'text-gray-400'
         }`}
       >
-        {permissionDenied ? 'No mic access' : config.label}
+        {permissionDenied ? 'Нет доступа' : config.label}
       </span>
 
       {/* Live transcript preview */}
