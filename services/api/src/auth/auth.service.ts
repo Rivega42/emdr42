@@ -1,13 +1,33 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { randomBytes, createHash } from 'crypto';
 import { EmailService } from '../email/email.service';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 
-// In-memory token store (production would use Redis)
+// In-memory хранилище (в продакшене — Prisma + Redis)
 const resetTokens = new Map<string, { email: string; expiresAt: Date }>();
 
 @Injectable()
 export class AuthService {
   constructor(private readonly emailService: EmailService) {}
+
+  async register(dto: RegisterDto) {
+    // TODO: Сохранение в БД через PrismaService
+    console.log(`[AUTH] Регистрация пользователя ${dto.email}`);
+    return {
+      id: randomBytes(16).toString('hex'),
+      email: dto.email,
+      name: dto.name,
+      role: dto.role || 'PATIENT',
+    };
+  }
+
+  async login(dto: LoginDto) {
+    // TODO: Проверка пароля через PrismaService + bcrypt
+    console.log(`[AUTH] Вход пользователя ${dto.email}`);
+    // Stub — в продакшене здесь будет реальная аутентификация
+    throw new UnauthorizedException('Аутентификация через БД ещё не реализована');
+  }
 
   async forgotPassword(email: string): Promise<void> {
     // Generate a secure reset token

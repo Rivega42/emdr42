@@ -30,10 +30,20 @@ async function bootstrap() {
     .setDescription('Backend API for EMDR-AI Therapy Assistant')
     .setVersion('0.1.0')
     .addBearerAuth()
+    .addTag('auth', 'Аутентификация и регистрация')
+    .addTag('sessions', 'Терапевтические EMDR-сессии')
+    .addTag('users', 'Управление пользователями и GDPR')
+    .addTag('admin', 'Администрирование платформы')
+    .addTag('health', 'Проверка здоровья сервиса')
+    .addTag('livekit', 'WebRTC токены (LiveKit)')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  });
 
   const port = process.env.PORT || 3001;
   await app.listen(port);
