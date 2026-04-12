@@ -5,7 +5,7 @@ const nextConfig = {
   images: {
     domains: ['localhost'],
   },
-  transpilePackages: ['@emdr42/core', '@emdr42/emdr-engine', '@emdr42/ai-providers'],
+  transpilePackages: ['@emdr42/core'],
   async headers() {
     return [
       {
@@ -35,7 +35,15 @@ const nextConfig = {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://emdr42.vercel.app',
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
     NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8002'
-  }
+  },
+  webpack: (config) => {
+    // ws — опциональные нативные модули, не нужны в браузере
+    config.externals.push({
+      'bufferutil': 'commonjs bufferutil',
+      'utf-8-validate': 'commonjs utf-8-validate',
+    });
+    return config;
+  },
 }
 
 module.exports = nextConfig

@@ -81,10 +81,23 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-/* Disable user select on UI elements */
+/* Отключение выделения текста для UI элементов */
 .no-select {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 640px) {
+  /* Минимальный размер touch-target по WCAG */
+  button, a, select, [role="button"] {
+    min-height: 44px;
+  }
+
+  /* Предотвращение горизонтального скролла */
+  body {
+    overflow-x: hidden;
+  }
 }

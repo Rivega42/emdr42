@@ -141,6 +141,9 @@ export default function SessionPage() {
   // Session ended summary
   const [sessionSummary, setSessionSummary] = useState<SessionEndedData | null>(null);
 
+  // Мобильный переключатель чат/канвас
+  const [mobileTab, setMobileTab] = useState<'chat' | 'canvas'>('chat');
+
   // Audio BLS
   const audioRef = useRef<AudioBlsController | null>(null);
   const [audioEnabled, setAudioEnabled] = useState(false);
@@ -148,6 +151,12 @@ export default function SessionPage() {
 
   // Socket ref for stable access inside callbacks
   const socketRef = useRef<Socket | null>(null);
+
+  // Refs для актуальных значений внутри сокет-обработчиков
+  const audioEnabledRef = useRef(audioEnabled);
+  audioEnabledRef.current = audioEnabled;
+  const blsSpeedRef = useRef(blsConfig.speed);
+  blsSpeedRef.current = blsConfig.speed;
 
   // -------------------------------------------------------------------------
   // Helpers
@@ -276,8 +285,8 @@ export default function SessionPage() {
       setPhase(data.phase);
       if (BLS_PHASES.includes(data.phase)) {
         setBlsConfig(prev => ({ ...prev, paused: false }));
-        if (audioEnabled && audioRef.current) {
-          audioRef.current.startBilateral(blsConfig.speed);
+        if (audioEnabledRef.current && audioRef.current) {
+          audioRef.current.startBilateral(blsSpeedRef.current);
         }
       } else {
         audioRef.current?.stopBilateral();
@@ -290,7 +299,7 @@ export default function SessionPage() {
       if (audioRef.current) {
         if (data.paused) {
           audioRef.current.stopBilateral();
-        } else if (audioEnabled) {
+        } else if (audioEnabledRef.current) {
           audioRef.current.updateSpeed(data.speed);
           audioRef.current.startBilateral(data.speed);
         }
@@ -466,56 +475,62 @@ export default function SessionPage() {
           />
         </div>
 
-        {/* Controls -- light Cal.com style */}
-        <div className="bg-white border-t border-gray-200 p-4 flex flex-wrap items-center gap-4 justify-center">
-          <select
-            value={blsConfig.pattern}
-            onChange={e => setBlsConfig(c => ({ ...c, pattern: e.target.value }))}
-            className="bg-white border border-gray-300 text-gray-900 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-gray-900"
-            aria-label="BLS pattern"
-          >
-            {PATTERNS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
-          <div className="flex items-center gap-2">
-            <span className="text-gray-500 text-sm">Speed</span>
-            <input
-              type="range" min="0.3" max="2.0" step="0.1"
-              value={blsConfig.speed}
-              onChange={e => setBlsConfig(c => ({ ...c, speed: parseFloat(e.target.value) }))}
-              className="w-24"
-              aria-label="BLS speed"
-            />
-            <span className="text-gray-500 text-sm w-10">{blsConfig.speed.toFixed(1)}x</span>
+        {/* Панель управления офлайн-режимом */}
+        <div className="bg-white border-t border-gray-200 p-3 sm:p-4">
+          {/* Основные контролы — первый ряд */}
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 justify-center">
+            <select
+              value={blsConfig.pattern}
+              onChange={e => setBlsConfig(c => ({ ...c, pattern: e.target.value }))}
+              className="bg-white border border-gray-300 text-gray-900 rounded-md px-3 py-2.5 text-sm focus:outline-none focus:border-gray-900"
+              aria-label="Паттерн BLS"
+            >
+              {PATTERNS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+            </select>
+            <button
+              onClick={() => setBlsConfig(c => ({ ...c, paused: !c.paused }))}
+              className={`px-6 py-2.5 rounded-md font-semibold text-sm transition-colors min-w-[80px] ${blsConfig.paused ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-amber-500 hover:bg-amber-400 text-white'}`}
+            >
+              {blsConfig.paused ? 'Start' : 'Pause'}
+            </button>
           </div>
-          <button
-            onClick={() => setBlsConfig(c => ({ ...c, paused: !c.paused }))}
-            className={`px-6 py-2 rounded-md font-semibold text-sm transition-colors ${blsConfig.paused ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-amber-500 hover:bg-amber-400 text-white'}`}
-          >
-            {blsConfig.paused ? 'Start' : 'Pause'}
-          </button>
-          <label className="flex items-center gap-3 text-gray-500 text-sm">
-            <input
-              type="checkbox"
-              checked={audioEnabled}
-              onChange={async (e) => {
-                setAudioEnabled(e.target.checked);
-                if (e.target.checked) {
-                  if (!audioRef.current) {
-                    audioRef.current = new AudioBlsController();
-                    await audioRef.current.initialize();
+          {/* Дополнительные контролы — второй ряд */}
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 justify-center mt-3">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 text-sm">Speed</span>
+              <input
+                type="range" min="0.3" max="2.0" step="0.1"
+                value={blsConfig.speed}
+                onChange={e => setBlsConfig(c => ({ ...c, speed: parseFloat(e.target.value) }))}
+                className="w-20 sm:w-24"
+                aria-label="Скорость BLS"
+              />
+              <span className="text-gray-500 text-sm w-10">{blsConfig.speed.toFixed(1)}x</span>
+            </div>
+            <label className="flex items-center gap-2 text-gray-500 text-sm">
+              <input
+                type="checkbox"
+                checked={audioEnabled}
+                onChange={async (e) => {
+                  setAudioEnabled(e.target.checked);
+                  if (e.target.checked) {
+                    if (!audioRef.current) {
+                      audioRef.current = new AudioBlsController();
+                      await audioRef.current.initialize();
+                    }
+                    if (!blsConfig.paused) audioRef.current.startBilateral(blsConfig.speed);
+                  } else {
+                    audioRef.current?.stopBilateral();
                   }
-                  if (!blsConfig.paused) audioRef.current.startBilateral(blsConfig.speed);
-                } else {
-                  audioRef.current?.stopBilateral();
-                }
-              }}
-              className="w-4 h-4"
-            />
-            Bilateral Audio
-          </label>
-          <div>
-            <label className="text-gray-500 text-sm block mb-1">Color</label>
-            <input type="color" value={blsColor} onChange={(e) => setBlsColor(e.target.value)} className="w-10 h-8 rounded-md cursor-pointer" />
+                }}
+                className="w-4 h-4"
+              />
+              Audio
+            </label>
+            <div className="flex items-center gap-2">
+              <label className="text-gray-500 text-sm">Color</label>
+              <input type="color" value={blsColor} onChange={(e) => setBlsColor(e.target.value)} className="w-10 h-8 rounded-md cursor-pointer" />
+            </div>
           </div>
         </div>
       </div>
@@ -528,25 +543,27 @@ export default function SessionPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* ---- Emotion bar -- light Cal.com style ---- */}
-      <header className="flex items-center gap-6 px-6 py-2 bg-white border-b border-gray-200 text-sm">
-        <button onClick={() => router.push('/')} className="text-gray-400 hover:text-gray-900 transition-colors">
+      {/* ---- Панель эмоций ---- */}
+      <header className="flex items-center gap-3 sm:gap-6 px-3 sm:px-6 py-2 bg-white border-b border-gray-200 text-sm overflow-x-auto">
+        <button onClick={() => router.push('/')} className="text-gray-400 hover:text-gray-900 transition-colors shrink-0 p-1 min-w-[44px] min-h-[44px] flex items-center justify-center">
           &larr;
         </button>
-        <div className="flex items-center gap-2 flex-1">
-          <span className="text-gray-400">Stress</span>
-          <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-gray-400 hidden sm:inline">Stress</span>
+          <span className="text-gray-400 sm:hidden text-xs">S</span>
+          <div className="w-16 sm:w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
             <div className="h-full bg-red-500 transition-all" style={{ width: `${stress * 100}%` }} />
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-1">
-          <span className="text-gray-400">Engagement</span>
-          <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-gray-400 hidden sm:inline">Engagement</span>
+          <span className="text-gray-400 sm:hidden text-xs">E</span>
+          <div className="w-16 sm:w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
             <div className="h-full bg-green-500 transition-all" style={{ width: `${engagement * 100}%` }} />
           </div>
         </div>
-        <span className="text-gray-500">{emotionLabel}</span>
-        <span className="text-gray-400 ml-auto">{formatTime(elapsed)}</span>
+        <span className="text-gray-500 shrink-0">{emotionLabel}</span>
+        <span className="text-gray-400 ml-auto shrink-0">{formatTime(elapsed)}</span>
       </header>
 
       {/* ---- Phase stepper -- light Cal.com style ---- */}
@@ -569,10 +586,32 @@ export default function SessionPage() {
         })}
       </div>
 
-      {/* ---- Main content ---- */}
+      {/* ---- Мобильные табы (чат / канвас) ---- */}
+      <div className="md:hidden flex border-b border-gray-200 bg-white">
+        <button
+          onClick={() => setMobileTab('chat')}
+          className={`flex-1 py-3 text-sm font-semibold transition-colors ${
+            mobileTab === 'chat' ? 'text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'
+          }`}
+        >
+          Чат
+        </button>
+        <button
+          onClick={() => setMobileTab('canvas')}
+          className={`flex-1 py-3 text-sm font-semibold transition-colors ${
+            mobileTab === 'canvas' ? 'text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'
+          }`}
+        >
+          BLS / Управление
+        </button>
+      </div>
+
+      {/* ---- Основной контент ---- */}
       <div className="flex flex-1 overflow-hidden">
-        {/* -- Left: Chat -- light Cal.com style */}
-        <div className="flex flex-col w-full md:w-1/2 lg:w-2/5 border-r border-gray-200 bg-white">
+        {/* -- Чат -- */}
+        <div className={`flex-col w-full md:w-1/2 lg:w-2/5 border-r border-gray-200 bg-white ${
+          mobileTab === 'chat' ? 'flex' : 'hidden md:flex'
+        }`}>
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             {messages.length === 0 && (
@@ -623,8 +662,10 @@ export default function SessionPage() {
           </div>
         </div>
 
-        {/* -- Right: Canvas + Controls -- */}
-        <div className="hidden md:flex flex-1 flex-col">
+        {/* -- Канвас + Управление -- */}
+        <div className={`flex-1 flex-col ${
+          mobileTab === 'canvas' ? 'flex' : 'hidden md:flex'
+        }`}>
           {/* Canvas area -- stays dark for therapy */}
           <div className="flex-1 relative bg-gray-950">
             {isBlsPhase ? (
@@ -644,10 +685,10 @@ export default function SessionPage() {
             )}
           </div>
 
-          {/* Controls panel -- light Cal.com style */}
-          <div className="bg-white border-t border-gray-200 p-4 space-y-4">
-            {/* SUDS / VOC row */}
-            <div className="grid grid-cols-2 gap-4">
+          {/* Панель управления */}
+          <div className="bg-white border-t border-gray-200 p-3 sm:p-4 space-y-3 sm:space-y-4">
+            {/* SUDS / VOC */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="text-gray-400 text-xs block mb-1">Rate your distress (SUDS 0-10)</label>
                 <div className="flex items-center gap-2">
@@ -725,11 +766,11 @@ export default function SessionPage() {
               </div>
             )}
 
-            {/* Action buttons */}
-            <div className="flex gap-3">
+            {/* Кнопки управления */}
+            <div className="flex gap-2 sm:gap-3">
               <button
                 onClick={handlePauseResume}
-                className={`px-5 py-2 rounded-md text-sm font-semibold transition-colors ${
+                className={`px-4 sm:px-5 py-3 sm:py-2 rounded-md text-sm font-semibold transition-colors ${
                   isPaused
                     ? 'bg-green-600 hover:bg-green-500 text-white'
                     : 'bg-amber-500 hover:bg-amber-400 text-white'
@@ -739,13 +780,13 @@ export default function SessionPage() {
               </button>
               <button
                 onClick={handleStop}
-                className="px-5 py-2 rounded-md text-sm font-semibold bg-red-600 hover:bg-red-500 text-white transition-colors"
+                className="px-4 sm:px-5 py-3 sm:py-2 rounded-md text-sm font-semibold bg-red-600 hover:bg-red-500 text-white transition-colors"
               >
                 Stop
               </button>
               <button
                 onClick={handleEnd}
-                className="px-5 py-2 rounded-md text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors ml-auto"
+                className="px-4 sm:px-5 py-3 sm:py-2 rounded-md text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors ml-auto"
               >
                 End Session
               </button>

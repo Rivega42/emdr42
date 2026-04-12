@@ -26,5 +26,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "apps", "services", "packages/livekit-integration"]
+  "exclude": ["node_modules", "apps", "services", "packages/livekit-integration", "packages/ai-providers", "packages/emdr-engine"]
 }

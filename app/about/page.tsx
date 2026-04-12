@@ -28,12 +28,12 @@ export default function AboutPage() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="text-gray-500 hover:text-gray-900 transition-colors">
-              &larr; Back to Home
+            <Link href="/" className="text-gray-500 hover:text-gray-900 transition-colors text-sm sm:text-base">
+              &larr; Home
             </Link>
-            <nav className="flex gap-6">
-              <Link href="/session" className="text-gray-500 hover:text-gray-900">Try Session</Link>
-              <Link href="/register" className="text-gray-500 hover:text-gray-900">Sign Up</Link>
+            <nav className="flex gap-3 sm:gap-6">
+              <Link href="/session" className="text-gray-500 hover:text-gray-900 text-sm sm:text-base">Session</Link>
+              <Link href="/register" className="text-gray-500 hover:text-gray-900 text-sm sm:text-base">Sign Up</Link>
             </nav>
           </div>
         </div>
@@ -41,7 +41,7 @@ export default function AboutPage() {
 
       <div className="max-w-4xl mx-auto px-4 py-16">
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">About EMDR-AI Therapy</h1>
+          <h1 className="text-3xl sm:text-5xl font-bold text-gray-900 mb-6">About EMDR-AI Therapy</h1>
           <p className="text-xl text-gray-500">Revolutionizing mental health care through technology and compassion</p>
         </div>
 
