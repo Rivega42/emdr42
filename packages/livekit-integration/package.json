@@ -1,0 +1,10 @@
+{
+  "name": "@emdr42/livekit",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "dependencies": {
+    "livekit-client": "^2.0.0",
+    "livekit-server-sdk": "^2.0.0"
+  }
+}

@@ -4,32 +4,53 @@
 
 Создание глобальной платформы для доступной, персонализированной и эффективной психологической помощи, используя синергию EMDR-терапии, искусственного интеллекта и технологий распознавания эмоций.
 
-## 📅 Q3 2025 (Сентябрь - Ноябрь) - MVP & Foundation
+## 📅 Q3 2025 - Q1 2026 - MVP & Foundation
 
 ### 🎯 Цели
 - Запуск базовой версии платформы
 - Интеграция ключевых технологий
-- Первые 1,000 пользователей
+- Полная инфраструктура для разработки
 
 ### ✅ Ключевые вехи
 
-#### Сентябрь 2025
+#### Инфраструктура
 - [x] Создание репозитория и документации
-- [ ] Базовая инфраструктура (Backend + Frontend)
-- [ ] Интеграция MorphCast SDK
-- [ ] Система аутентификации
+- [x] Docker Compose dev-окружение (PostgreSQL, Redis, MinIO)
+- [x] CI/CD через GitHub Actions
+- [x] Vercel deployment config
 
-#### Октябрь 2025
-- [ ] Основные EMDR паттерны (4 типа)
-- [ ] Базовый UI/UX
-- [ ] Эмоциональный мониторинг в реальном времени
-- [ ] Локальное хранение данных
+#### Frontend (Next.js App Router)
+- [x] Next.js 13 App Router с 17 страницами
+- [x] Система аутентификации (login, register, protected routes)
+- [x] EMDR-сессия с Three.js визуализацией
+- [x] Dashboard, progress tracking, settings
+- [x] Admin panel, patient management
+- [x] Tailwind CSS + Framer Motion UI
 
-#### Ноябрь 2025
-- [ ] Альфа-тестирование (100 пользователей)
-- [ ] Базовая аналитика
-- [ ] Мобильная адаптация (PWA)
-- [ ] Запуск закрытой беты
+#### Backend (NestJS)
+- [x] API сервис (NestJS, port 8000)
+- [x] JWT аутентификация с Passport
+- [x] Prisma ORM + PostgreSQL
+- [x] Users, Sessions, Admin, Health модули
+- [x] Session Orchestrator (port 8002)
+
+#### Packages
+- [x] @emdr42/core — shared бизнес-логика, EMDR-паттерны, audio
+- [x] @emdr42/emdr-engine — EMDR protocol engine
+- [x] @emdr42/ai-providers — LLM/TTS/STT integrations
+- [ ] @emdr42/livekit — LiveKit client/server utils (in progress)
+
+#### Emotion Recognition
+- [x] TensorFlow.js custom models (replaced MorphCast)
+- [x] Browser-side emotion detection
+
+#### WebRTC (LiveKit)
+- [ ] LiveKit server в Docker Compose (in progress)
+- [ ] LiveKit token endpoint в API
+- [ ] Client-side room connection
+
+#### Monitoring
+- [ ] Prometheus + Grafana в Docker Compose (in progress)
 
 ### 📊 Метрики успеха
 - 100+ альфа-тестеров
@@ -155,8 +176,11 @@
 
 ### Технологические
 - ✅ MVP запуск (Q3 2025)
-- ⏳ 85% точность эмоций (Q4 2025)
-- ⏳ Real-time адаптация (Q1 2026)
+- ✅ Frontend 17 pages (Q4 2025)
+- ✅ Backend API + Orchestrator (Q1 2026)
+- ✅ EMDR Engine + AI Providers (Q1 2026)
+- ✅ TensorFlow.js emotion recognition (Q1 2026)
+- ⏳ LiveKit WebRTC integration (Q2 2026)
 - ⏳ Предиктивная аналитика (Q2 2026)
 
 ### Бизнес
@@ -222,7 +246,7 @@
 ### Q4 2025
 - 3 пилотные клиники
 - 1 университет (исследования)
-- MorphCast (технологии)
+- LiveKit (WebRTC)
 
 ### Q1 2026
 - 10 клиник
@@ -276,8 +300,8 @@
 
 ---
 
-**Последнее обновление:** 06.09.2025
-**Следующее обновление:** 01.12.2025
+**Последнее обновление:** 10.04.2026
+**Следующее обновление:** 01.07.2026
 
 **Контакты:**
 - Email: roadmap@emdr-ai.com

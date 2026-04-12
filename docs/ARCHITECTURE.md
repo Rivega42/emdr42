@@ -1,437 +1,202 @@
-# 🏗️ Архитектура системы EMDR-AI Therapy Assistant
+# Архитектура системы EMDR-AI Therapy Assistant
 
-## 📋 Содержание
+## Содержание
 
 1. [Обзор системы](#обзор-системы)
-2. [Архитектурные принципы](#архитектурные-принципы)
-3. [Компоненты системы](#компоненты-системы)
-4. [Технологический стек](#технологический-стек)
-5. [Диаграммы архитектуры](#диаграммы-архитектуры)
+2. [Технологический стек](#технологический-стек)
+3. [Структура проекта](#структура-проекта)
+4. [Компоненты системы](#компоненты-системы)
+5. [WebRTC-архитектура](#webrtc-архитектура)
 6. [Безопасность](#безопасность)
-7. [Масштабируемость](#масштабируемость)
 
-## 🎯 Обзор системы
+## Обзор системы
 
-EMDR-AI Therapy Assistant - это многослойная система, построенная на принципах микросервисной архитектуры с акцентом на приватность, масштабируемость и клиническую эффективность.
+EMDR-AI Therapy Assistant — многослойная система для виртуальной EMDR-терапии с ИИ. Построена на принципах модульности и privacy-first.
 
 ### Ключевые архитектурные решения
 
-- **Privacy-First**: Вся обработка эмоциональных данных происходит локально
-- **Микросервисная архитектура**: Независимые, масштабируемые компоненты
-- **Progressive Web App**: Кроссплатформенность без установки
-- **Edge Computing**: Минимизация латентности
+- **Privacy-First**: Обработка эмоциональных данных через TensorFlow.js в браузере
+- **Модульная архитектура**: Независимые пакеты и сервисы
+- **Next.js App Router**: Серверный рендеринг и маршрутизация
+- **LiveKit WebRTC**: Real-time аудио/видео коммуникация
 
-## 🎨 Архитектурные принципы
-
-### 1. Конфиденциальность данных
-```
-┌─────────────────────────────────────┐
-│         Локальная обработка         │
-├─────────────────────────────────────┤
-│  • MorphCast SDK в браузере         │
-│  • Локальное ML на устройстве       │
-│  • Шифрование данных перед передачей │
-│  • Zero-knowledge архитектура        │
-└─────────────────────────────────────┘
-```
-
-### 2. Отказоустойчивость
-- Circuit Breaker паттерн для внешних сервисов
-- Graceful degradation при недоступности компонентов
-- Автоматическое восстановление сессий
-- Offline-first подход
-
-### 3. Адаптивность
-- Real-time персонализация на основе эмоций
-- A/B тестирование терапевтических протоколов
-- Машинное обучение для оптимизации
-
-## 🔧 Компоненты системы
-
-### Frontend Layer
-```typescript
-// Основные компоненты Frontend
-interface FrontendArchitecture {
-  core: {
-    framework: 'React 18',
-    stateManagement: 'Redux Toolkit',
-    routing: 'React Router 6',
-    ui: 'Material-UI + Custom Components'
-  },
-  
-  therapeuticModules: {
-    emdrRenderer: 'Canvas/WebGL визуализация',
-    emotionRecognition: 'MorphCast SDK интеграция',
-    audioEngine: 'Tone.js + Web Audio API',
-    avatarSystem: 'Three.js 3D аватары'
-  },
-  
-  dataLayer: {
-    localState: 'Redux + RTK Query',
-    persistence: 'IndexedDB + Encryption',
-    sync: 'Background Sync API'
-  }
-}
-```
-
-### Backend Services
-
-#### 1. API Gateway
-```yaml
-apiGateway:
-  responsibilities:
-    - Аутентификация и авторизация
-    - Rate limiting
-    - Request routing
-    - Response caching
-  technology: Kong/Nginx + Lua
-```
-
-#### 2. Core Services
-```yaml
-coreServices:
-  therapyEngine:
-    description: "Ядро терапевтической логики"
-    responsibilities:
-      - Управление сессиями
-      - Протоколы EMDR
-      - Адаптивная персонализация
-    technology: Node.js + NestJS
-    
-  mlService:
-    description: "Машинное обучение и аналитика"
-    responsibilities:
-      - Обучение моделей персонализации
-      - Предиктивная аналитика
-      - Рекомендательная система
-    technology: Python + FastAPI + TensorFlow
-    
-  userService:
-    description: "Управление пользователями"
-    responsibilities:
-      - Профили пользователей
-      - Прогресс терапии
-      - Настройки приватности
-    technology: Node.js + Express
-```
-
-### Data Layer
-```yaml
-dataStorage:
-  primary:
-    type: PostgreSQL 15
-    purpose: Пользовательские данные, метаданные сессий
-    encryption: AES-256 at rest
-    
-  cache:
-    type: Redis Cluster
-    purpose: Сессии, временные данные
-    
-  analytics:
-    type: ClickHouse
-    purpose: Аналитика использования (анонимизированная)
-    
-  media:
-    type: MinIO/S3
-    purpose: Медиафайлы, аватары, ресурсы
-```
-
-## 💻 Технологический стек
+## Технологический стек
 
 ### Frontend
-```json
-{
-  "framework": {
-    "main": "React 18",
-    "typescript": "5.0+",
-    "build": "Vite",
-    "pwa": "Workbox"
-  },
-  "ui": {
-    "components": "Material-UI v5",
-    "styling": "Emotion + CSS-in-JS",
-    "animations": "Framer Motion",
-    "3d": "Three.js"
-  },
-  "audio": {
-    "engine": "Tone.js",
-    "processing": "Web Audio API",
-    "spatial": "Web Audio Spatialization"
-  },
-  "ml": {
-    "emotions": "MorphCast SDK",
-    "local": "TensorFlow.js",
-    "computervision": "MediaPipe"
-  }
-}
+```
+Framework:    Next.js 13 App Router + React 18
+Language:     TypeScript 5.1, ESM
+UI:           Tailwind CSS, Framer Motion
+3D:           Three.js + @react-three/fiber + @react-three/drei
+Audio:        Tone.js + Web Audio API
+Emotion:      TensorFlow.js (custom models)
+WebRTC:       LiveKit Client SDK
 ```
 
 ### Backend
-```json
-{
-  "runtime": "Node.js 20 LTS",
-  "framework": "NestJS",
-  "database": {
-    "primary": "PostgreSQL 15",
-    "cache": "Redis 7",
-    "search": "Elasticsearch"
-  },
-  "messaging": {
-    "queue": "Bull + Redis",
-    "realtime": "Socket.io",
-    "events": "EventEmitter3"
-  },
-  "ml": {
-    "runtime": "Python 3.11",
-    "framework": "FastAPI",
-    "ml": "TensorFlow/PyTorch",
-    "nlp": "spaCy + Transformers"
-  }
-}
+```
+API:          NestJS (services/api, port 8000)
+Orchestrator: NestJS (services/orchestrator, port 8002)
+Database:     PostgreSQL 15+
+Cache:        Redis 7+
+ORM:          Prisma
+Auth:         JWT + Passport
+WebRTC:       LiveKit Server
 ```
 
-### DevOps & Infrastructure
-```yaml
-containerization:
-  runtime: Docker
-  orchestration: Kubernetes
-  service_mesh: Istio
-
-monitoring:
-  metrics: Prometheus + Grafana
-  logging: ELK Stack
-  tracing: Jaeger
-  errors: Sentry
-
-deployment:
-  ci_cd: GitHub Actions
-  infrastructure: Terraform
-  cloud: AWS/GCP
-  cdn: CloudFlare
+### Infrastructure
+```
+Containers:   Docker Compose
+CI/CD:        GitHub Actions
+Deploy:       Vercel (frontend), Docker (services)
+Monitoring:   Prometheus + Grafana
+Storage:      MinIO (S3-compatible)
 ```
 
-## 📊 Диаграммы архитектуры
+## Структура проекта
 
-### Высокоуровневая архитектура
 ```
-┌─────────────────────────────────────────────┐
-│           Пользовательский слой             │
-├─────────────────────────────────────────────┤
-│  PWA Client  │  Mobile App  │  Web Portal   │
-├─────────────────────────────────────────────┤
-│              API Gateway                    │
-├─────────────────────────────────────────────┤
-│  Therapy     │  ML Service  │  User Service │
-│  Engine      │             │               │
-├─────────────────────────────────────────────┤
-│  PostgreSQL  │  Redis      │  MinIO        │
-└─────────────────────────────────────────────┘
-```
-
-### Поток данных эмоций
-```
-Browser → MorphCast SDK → Local Processing → 
-Encrypted Aggregation → Backend Analytics → 
-ML Model Training → Personalization Update → 
-Real-time Adaptation
-```
-
-### Архитектура безопасности
-```
-┌─────────────────────────────────────────┐
-│         Клиентская сторона              │
-│  ┌─────────────────────────────────┐    │
-│  │     Локальная обработка         │    │
-│  │  • MorphCast (эмоции)          │    │
-│  │  • TensorFlow.js (ML)          │    │
-│  │  • Web Crypto API (шифрование)  │    │
-│  └─────────────────────────────────┘    │
-└─────────────────────────────────────────┘
-              │ TLS 1.3
-              ▼
-┌─────────────────────────────────────────┐
-│           Серверная сторона             │
-│  ┌─────────────────────────────────┐    │
-│  │      Зашифрованное хранение      │    │
-│  │  • AES-256 шифрование           │    │
-│  │  • Ключи управляются HSM        │    │
-│  │  • Анонимизация данных          │    │
-│  └─────────────────────────────────┘    │
-└─────────────────────────────────────────┘
-```
-
-## 🔒 Безопасность
-
-### Принципы безопасности
-1. **Zero Trust Architecture**
-2. **Defense in Depth**
-3. **Privacy by Design**
-4. **Minimal Data Collection**
-
-### Реализация
-```typescript
-interface SecurityMeasures {
-  authentication: {
-    method: 'OAuth 2.0 + PKCE',
-    mfa: 'TOTP/SMS/Биометрия',
-    sessions: 'JWT с коротким TTL'
-  },
-  
-  encryption: {
-    transit: 'TLS 1.3',
-    rest: 'AES-256-GCM',
-    keys: 'HSM + Key Rotation'
-  },
-  
-  privacy: {
-    processing: 'Локальная обработка эмоций',
-    storage: 'Минимальные персональные данные',
-    sharing: 'Explicit consent only'
-  },
-  
-  monitoring: {
-    intrusion: 'Real-time detection',
-    anomaly: 'ML-based behavior analysis',
-    audit: 'Comprehensive logging'
-  }
-}
+emdr42/
+├── app/                           # Next.js App Router (17 pages)
+│   ├── layout.tsx                 # Root layout
+│   ├── providers.tsx              # Client-side providers
+│   ├── globals.css                # Tailwind globals
+│   ├── page.tsx                   # Home
+│   ├── about/page.tsx             # About EMDR
+│   ├── login/page.tsx             # Login
+│   ├── register/page.tsx          # Registration
+│   ├── session/                   # EMDR session (Three.js canvas)
+│   │   ├── page.tsx
+│   │   └── SessionCanvas.tsx
+│   └── (protected)/               # Auth-required pages
+│       ├── layout.tsx             # Sidebar + auth check
+│       ├── admin/page.tsx         # Admin panel
+│       ├── dashboard/page.tsx     # Dashboard
+│       ├── patients/page.tsx      # Patient management
+│       ├── progress/page.tsx      # Progress tracking
+│       └── settings/page.tsx      # Settings
+│
+├── packages/
+│   ├── core/                      # @emdr42/core — shared business logic
+│   │   └── src/
+│   │       ├── patterns/          # EMDR movement patterns
+│   │       └── services/          # Audio, emotion services
+│   ├── emdr-engine/               # @emdr42/emdr-engine — EMDR protocol engine
+│   ├── ai-providers/              # @emdr42/ai-providers — LLM/TTS/STT integrations
+│   └── livekit-integration/       # @emdr42/livekit — LiveKit client/server utils
+│       └── src/
+│           ├── client.ts          # Room connection, track publishing
+│           ├── server.ts          # Token generation
+│           └── index.ts
+│
+├── services/
+│   ├── api/                       # NestJS backend API (port 8000)
+│   │   └── src/
+│   │       ├── auth/              # JWT auth, guards, decorators
+│   │       ├── users/             # User management
+│   │       ├── sessions/          # Therapy sessions
+│   │       ├── admin/             # Admin endpoints
+│   │       ├── health/            # Health checks
+│   │       ├── livekit/           # LiveKit token endpoint
+│   │       └── prisma/            # Prisma ORM
+│   └── orchestrator/              # Session Orchestrator (port 8002)
+│
+├── contexts/                      # React Context providers
+│   ├── AuthContext.tsx
+│   ├── EmotionContext.tsx
+│   └── TherapyContext.tsx
+│
+├── monitoring/
+│   └── prometheus.yml             # Prometheus scrape config
+│
+├── docs/                          # ROADMAP, WHITEPAPER, ARCHITECTURE
+├── .github/workflows/             # CI/CD workflows
+├── docker-compose.yml             # Full dev environment
+├── next.config.js                 # Security headers, standalone output
+└── vercel.json                    # Vercel deployment config
 ```
 
-## ⚡ Масштабируемость
+## Компоненты системы
 
-### Горизонтальное масштабирование
-```yaml
-scalability:
-  frontend:
-    distribution: Global CDN
-    caching: Edge caching + Service Worker
-    optimization: Code splitting + Lazy loading
-    
-  backend:
-    load_balancing: Layer 7 load balancer
-    auto_scaling: Kubernetes HPA
-    database: Read replicas + Sharding
-    
-  performance:
-    targets:
-      response_time: "< 100ms для критических API"
-      availability: "99.9% uptime"
-      concurrent_users: "100,000+ одновременно"
+### Frontend (Next.js App Router)
+
+9 route groups, 17 pages. Использует App Router с серверными и клиентскими компонентами, React Context для state management, Three.js для 3D-визуализации EMDR-паттернов.
+
+### Backend API (NestJS)
+
+REST API на NestJS с модулями:
+- **AuthModule** — JWT аутентификация, guards, decorators
+- **UsersModule** — управление пользователями
+- **SessionsModule** — EMDR-сессии
+- **AdminModule** — администрирование
+- **HealthModule** — health checks
+- **LiveKitModule** — генерация LiveKit токенов
+
+### Session Orchestrator
+
+WebSocket-сервис для real-time управления терапевтическими сессиями. Координирует AI-провайдеры (LLM, TTS, STT), EMDR-движок и эмоциональный анализ.
+
+### Packages
+
+| Package | Назначение |
+|---------|-----------|
+| `@emdr42/core` | Shared бизнес-логика, EMDR-паттерны, audio/ASMR |
+| `@emdr42/emdr-engine` | Протокол EMDR, управление BLS |
+| `@emdr42/ai-providers` | Интеграции LLM, TTS, STT (Anthropic, OpenAI, Deepgram, ElevenLabs) |
+| `@emdr42/livekit` | LiveKit клиент/сервер утилиты, токены |
+
+## WebRTC-архитектура
+
+```
+[Next.js клиент]
+  │ WebRTC (audio+video) via LiveKit
+  ▼
+[LiveKit медиасервер (port 7880)]
+  │ ● аудио клиента → STT (Deepgram/faster-whisper)
+  │ ● видео клиента → TensorFlow.js emotion recognition
+  │ ● аудио от TTS → клиенту
+  │ ● видео BLS → клиенту
+  ▲
+[Backend AI-сервисы]
+  ├── API (NestJS, port 8000)
+  ├── Session Orchestrator (port 8002)
+  ├── AI Providers (LLM, TTS, STT)
+  └── EMDR Engine (BLS patterns)
 ```
 
-### Оптимизация производительности
-```typescript
-const PerformanceOptimizations = {
-  frontend: {
-    bundleSize: 'Tree shaking + Code splitting',
-    rendering: 'React.memo + useMemo',
-    assets: 'WebP + Progressive images',
-    animations: 'GPU acceleration'
-  },
-  
-  backend: {
-    caching: 'Multi-layer caching strategy',
-    database: 'Connection pooling + Query optimization',
-    apis: 'Response compression + Pagination',
-    cdn: 'Static asset optimization'
-  },
-  
-  ml: {
-    inference: 'Model quantization',
-    loading: 'Lazy model loading',
-    optimization: 'WebAssembly для критических путей'
-  }
-};
-```
+### Docker Compose Services
 
-## 🔄 API Design
+| Service | Image/Build | Port |
+|---------|-------------|------|
+| frontend | ./Dockerfile | 3000 |
+| api | ./services/api | 8000 |
+| orchestrator | ./services/orchestrator | 8002 |
+| postgres | postgres:15-alpine | 5432 |
+| redis | redis:7-alpine | 6379 |
+| livekit | livekit/livekit-server | 7880, 7881, 7882/udp |
+| minio | minio/minio | 9000, 9001 |
+| prometheus | prom/prometheus | 9090 |
+| grafana | grafana/grafana | 3001 |
 
-### RESTful API структура
-```typescript
-interface APIEndpoints {
-  // Аутентификация
-  'POST /auth/login': AuthRequest,
-  'POST /auth/logout': void,
-  'POST /auth/refresh': RefreshRequest,
-  
-  // Терапевтические сессии
-  'POST /therapy/sessions': CreateSessionRequest,
-  'GET /therapy/sessions/:id': SessionResponse,
-  'PUT /therapy/sessions/:id': UpdateSessionRequest,
-  
-  // Пользовательские данные
-  'GET /users/profile': UserProfile,
-  'PUT /users/preferences': UserPreferences,
-  'GET /users/progress': ProgressData,
-  
-  // Аналитика (анонимизированная)
-  'POST /analytics/events': AnalyticsEvent[],
-  'GET /analytics/insights': UserInsights
-}
-```
+## Безопасность
 
-### WebSocket Events
-```typescript
-interface WebSocketEvents {
-  // Real-time терапия
-  'session:start': SessionConfig,
-  'session:update': EmotionalState,
-  'session:adapt': AdaptationInstructions,
-  'session:end': SessionSummary,
-  
-  // Система уведомлений
-  'notification:reminder': TherapyReminder,
-  'notification:milestone': Achievement,
-  'notification:emergency': CrisisAlert
-}
-```
+### Security Headers (next.config.js)
+- Permissions-Policy (camera self only)
+- X-Frame-Options: DENY
+- X-Content-Type-Options: nosniff
 
-## 📈 Мониторинг и наблюдаемость
+### Аутентификация
+- JWT tokens с Passport.js
+- Role-based access control (guards)
+- Protected routes в App Router
 
-### Ключевые метрики
-```yaml
-business_metrics:
-  - session_completion_rate
-  - user_engagement_score
-  - therapy_effectiveness_index
-  - user_retention_rate
-
-technical_metrics:
-  - api_response_time
-  - error_rate
-  - system_availability
-  - resource_utilization
-
-clinical_metrics:
-  - emotion_recognition_accuracy
-  - adaptation_response_time
-  - safety_protocol_triggers
-  - therapeutic_outcome_correlation
-```
-
-## 🚀 Развертывание
-
-### Окружения
-```yaml
-environments:
-  development:
-    purpose: Локальная разработка
-    infrastructure: Docker Compose
-    
-  staging:
-    purpose: Тестирование и QA
-    infrastructure: Kubernetes (minikube)
-    
-  production:
-    purpose: Продуктовая среда
-    infrastructure: Managed Kubernetes (EKS/GKE)
-    redundancy: Multi-region deployment
-```
+### Данные
+- PostgreSQL с Prisma ORM
+- Redis для сессий и кэширования
+- Шифрование sensitive данных
 
 ---
 
-**Дата создания**: Сентябрь 2025  
-**Версия**: 1.0  
-**Статус**: В разработке
-
-*Этот документ описывает текущую архитектуру системы и будет обновляться по мере развития проекта.*
+**Версия**: 2.0
+**Обновлено**: Апрель 2026
+**Статус**: В активной разработке

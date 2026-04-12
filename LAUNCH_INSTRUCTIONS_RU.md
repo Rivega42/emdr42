@@ -1,190 +1,162 @@
-# 🚀 Инструкция по запуску EMDR-AI Therapy Assistant
+# Инструкция по запуску EMDR-AI Therapy Assistant
 
-## 📋 Требования к системе
+## Требования к системе
 
-- **Node.js**: версия 18.0 или выше
-- **npm**: версия 9.0 или выше (или yarn/pnpm)
+- **Node.js**: версия 20.0 или выше
+- **npm**: версия 9.0 или выше
+- **Docker** и **Docker Compose**: для запуска всех сервисов
 - **Git**: для клонирования репозитория
-- **Браузер**: Chrome, Firefox, Safari или Edge (последние версии)
 
-## 🛠️ Пошаговая инструкция запуска
+## Быстрый старт (Docker Compose)
 
-### Шаг 1: Клонирование репозитория
+Docker Compose -- основной способ запуска всех сервисов.
+
+### Шаг 1: Клонирование и настройка
 
 ```bash
-# Клонируйте репозиторий
 git clone https://github.com/Rivega42/emdr42.git
-
-# Перейдите в директорию проекта
 cd emdr42
-```
-
-### Шаг 2: Установка зависимостей
-
-```bash
-# Установите зависимости для корневого проекта
-npm install
-
-# Перейдите в директорию веб-приложения
-cd apps/web
-
-# Установите зависимости для веб-приложения
-npm install
-```
-
-### Шаг 3: Настройка переменных окружения
-
-```bash
-# Находясь в папке apps/web, скопируйте файл примера
 cp .env.example .env
-
-# Откройте .env и добавьте ваши ключи (опционально)
-# Для базового запуска ключи не обязательны
 ```
 
-### Шаг 4: Запуск в режиме разработки
+### Шаг 2: Настройка переменных окружения
+
+Откройте `.env` и заполните необходимые ключи:
 
 ```bash
-# Из папки apps/web запустите dev сервер
-npm run dev
+# Обязательные для AI-функций
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+DEEPGRAM_API_KEY=...
+ELEVENLABS_API_KEY=...
 
-# Или если вы в корне проекта
-cd apps/web && npm run dev
+# Авторизация (обязательно сменить для production)
+JWT_SECRET=change-this-to-a-random-secret-in-production
+
+# Распознавание эмоций (опционально)
+MORPHCAST_LICENSE_KEY=...
 ```
 
-Сайт автоматически откроется в браузере по адресу: **http://localhost:3000**
+Остальные переменные (`DATABASE_URL`, `REDIS_URL`, URL приложения) уже настроены для работы с Docker Compose.
 
-## 🎯 Альтернативный быстрый запуск (все команды)
-
-```bash
-# Одной командой (копируйте и вставьте в терминал)
-git clone https://github.com/Rivega42/emdr42.git && \
-cd emdr42/apps/web && \
-npm install && \
-npm run dev
-```
-
-## 📦 Сборка для продакшена
+### Шаг 3: Запуск
 
 ```bash
-# Из папки apps/web
-npm run build
-
-# Файлы будут в папке dist/
-# Для просмотра собранной версии:
-npm run preview
-```
-
-## 🐳 Запуск через Docker (опционально)
-
-```bash
-# Из корневой папки проекта
 docker-compose up -d
-
-# Сайт будет доступен на http://localhost:3000
 ```
 
-## 🔧 Решение возможных проблем
+Дождитесь запуска всех сервисов (первый запуск может занять несколько минут для сборки образов).
 
-### Проблема: "npm: command not found"
-**Решение**: Установите Node.js с [официального сайта](https://nodejs.org/)
+### Шаг 4: Проверка
 
-### Проблема: "Port 3000 is already in use"
-**Решение**: 
+После запуска доступны:
+
+| Сервис | URL | Описание |
+|--------|-----|----------|
+| Frontend | http://localhost:3000 | Next.js приложение |
+| API | http://localhost:8000 | NestJS бэкенд |
+| Orchestrator | http://localhost:8002 | WebSocket-сервер сессий |
+| PostgreSQL | localhost:5432 | База данных |
+| Redis | localhost:6379 | Кэш и очереди |
+| MinIO Console | http://localhost:9001 | Хранилище файлов (login: emdr42/emdr42_secret) |
+
+## Запуск для разработки (без Docker)
+
+### Установка зависимостей
+
 ```bash
-# Измените порт в vite.config.ts
-# Или остановите процесс на порту 3000:
-# На Mac/Linux:
-lsof -ti:3000 | xargs kill
-# На Windows:
-netstat -ano | findstr :3000
-taskkill /PID <PID> /F
-```
-
-### Проблема: "Cannot find module '@emdr42/core'"
-**Решение**:
-```bash
-# Из корневой папки проекта
-cd packages/core
-npm install
-npm run build
-```
-
-### Проблема: Белый экран / не загружается
-**Решение**:
-1. Проверьте консоль браузера (F12)
-2. Очистите кэш браузера
-3. Убедитесь, что все зависимости установлены:
-```bash
-rm -rf node_modules package-lock.json
 npm install
 ```
 
-## 📱 Доступные страницы после запуска
+### Запуск инфраструктуры
 
-После успешного запуска вы можете перейти на следующие страницы:
+PostgreSQL и Redis можно запустить отдельно через Docker:
+
+```bash
+docker-compose up -d postgres redis
+```
+
+### Запуск фронтенда
+
+```bash
+npm run dev
+```
+
+Сайт будет доступен на http://localhost:3000
+
+### Запуск API
+
+```bash
+cd services/api
+npm install
+npm run dev
+```
+
+### Запуск оркестратора
+
+```bash
+cd services/orchestrator
+npm install
+npm run dev
+```
+
+## Доступные страницы
 
 - **Главная**: http://localhost:3000/
 - **О проекте**: http://localhost:3000/about
 - **Сессия терапии**: http://localhost:3000/session
 - **Вход**: http://localhost:3000/login
 - **Регистрация**: http://localhost:3000/register
+- **Личный кабинет**: http://localhost:3000/dashboard (требуется авторизация)
+- **Прогресс**: http://localhost:3000/progress (требуется авторизация)
+- **Настройки**: http://localhost:3000/settings (требуется авторизация)
 
-Для доступа к личному кабинету сначала зарегистрируйтесь или войдите:
-- **Личный кабинет**: http://localhost:3000/dashboard
-- **Прогресс**: http://localhost:3000/progress
-- **Настройки**: http://localhost:3000/settings
-
-## 🎨 Основные функции для тестирования
-
-1. **Просмотр главной страницы** - ознакомьтесь с проектом
-2. **Регистрация** - создайте тестовый аккаунт
-3. **Запуск сессии** - попробуйте EMDR терапию
-4. **Смена паттернов** - протестируйте разные визуальные паттерны
-5. **Просмотр прогресса** - изучите аналитику (с mock данными)
-
-## 💻 Команды для разработчиков
+## Команды
 
 ```bash
-# Запуск в режиме разработки
-npm run dev
-
-# Сборка проекта
-npm run build
-
-# Предпросмотр production сборки
-npm run preview
-
-# Проверка кода линтером
-npm run lint
-
-# Форматирование кода
-npm run format
+npm run dev           # Запуск dev-сервера (фронтенд)
+npm run build         # Production build
+npm run lint          # ESLint
+npm run format        # Prettier
+npm run type-check    # Проверка типов TypeScript
+npm test              # Unit-тесты
 ```
 
-## 🔗 Полезные ссылки
+## Остановка сервисов
+
+```bash
+docker-compose down          # Остановить все контейнеры
+docker-compose down -v       # Остановить и удалить volumes (данные БД)
+```
+
+## Решение проблем
+
+### Порт уже занят
+
+```bash
+# Проверить, что занимает порт
+lsof -ti:3000 | xargs kill
+lsof -ti:8000 | xargs kill
+```
+
+### Проблемы с пакетами @emdr42/*
+
+```bash
+cd packages/core && npm install && npm run build
+cd packages/emdr-engine && npm install && npm run build
+cd packages/ai-providers && npm install && npm run build
+```
+
+### Пересборка Docker-образов
+
+```bash
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+## Полезные ссылки
 
 - **Репозиторий**: [github.com/Rivega42/emdr42](https://github.com/Rivega42/emdr42)
-- **Документация Vite**: [vitejs.dev](https://vitejs.dev/)
-- **Документация React**: [react.dev](https://react.dev/)
-- **Документация Three.js**: [threejs.org](https://threejs.org/)
-
-## 📞 Поддержка
-
-Если у вас возникли проблемы:
-1. Проверьте раздел "Решение проблем" выше
-2. Создайте issue на [GitHub](https://github.com/Rivega42/emdr42/issues)
-3. Проверьте, что у вас последняя версия кода: `git pull`
-
-## ✅ Проверка успешного запуска
-
-Если все работает правильно, вы должны увидеть:
-- ✅ Сообщение в терминале: `Local: http://localhost:3000`
-- ✅ Браузер автоматически откроется
-- ✅ Красивая главная страница с градиентным фоном
-- ✅ Анимированные элементы и кнопки
-- ✅ Возможность навигации между страницами
-
----
-
-**Приятного использования EMDR-AI Therapy Assistant!** 🧠✨
+- **Next.js**: [nextjs.org](https://nextjs.org/)
+- **NestJS**: [nestjs.com](https://nestjs.com/)
+- **Three.js**: [threejs.org](https://threejs.org/)

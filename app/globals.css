@@ -1,33 +1,90 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --cal-bg: white;
+  --cal-bg-subtle: #f3f4f6;
+  --cal-bg-muted: #f9fafb;
+  --cal-bg-emphasis: #e5e7eb;
+  --cal-bg-inverted: #111827;
+  --cal-bg-info: #dee9fc;
+  --cal-bg-success: #e2fbe8;
+  --cal-bg-attention: #fceed8;
+  --cal-bg-error: #f9e3e2;
+  --cal-text: #111827;
+  --cal-text-muted: #6b7280;
+  --cal-text-subtle: #9ca3af;
+  --cal-text-inverted: white;
+  --cal-border: #e5e7eb;
+  --cal-border-emphasis: #d1d5db;
+  --cal-success: #10b981;
+  --cal-warning: #f59e0b;
+  --cal-error: #ef4444;
+  --cal-info: #3b82f6;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
-}
-
+/* Font */
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--cal-bg-subtle);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--cal-border-emphasis);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cal-text-subtle);
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Loading spinner */
+.spinner {
+  border: 3px solid var(--cal-border);
+  border-radius: 50%;
+  border-top: 3px solid var(--cal-bg-inverted);
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Custom focus styles */
+*:focus {
+  outline: none;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--cal-bg-inverted);
+  outline-offset: 2px;
+}
+
+/* Disable user select on UI elements */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }

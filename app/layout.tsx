@@ -1,22 +1,27 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-
-const inter = Inter({ subsets: ['latin'] })
+import type { Metadata } from 'next';
+import Script from 'next/script';
+import './globals.css';
+import Providers from './providers';
 
 export const metadata: Metadata = {
   title: 'EMDR-AI Therapy Assistant',
-  description: 'Revolutionary adaptive virtual therapy platform using emotion recognition and bilateral stimulation',
-}
+  description: 'Revolutionary virtual therapy platform combining EMDR techniques with AI-powered emotion recognition',
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className="font-sans bg-white text-gray-900">
+        <Script
+          src="https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/dist/face-api.min.js"
+          strategy="afterInteractive"
+        />
+        <Providers>{children}</Providers>
+      </body>
     </html>
-  )
+  );
 }
