@@ -16,6 +16,7 @@ import type { EmotionSnapshot } from '@emdr42/emdr-engine';
 import { loadConfig } from './config';
 import { SessionHandler } from './session-handler';
 import { BackendClient } from './backend-client';
+import { VoiceHandler } from './voice-handler';
 
 // -- JWT payload type --
 
@@ -28,6 +29,7 @@ interface JwtPayload {
 // -- Active sessions map --
 
 const activeSessions = new Map<string, SessionHandler>();
+const activeVoiceHandlers = new Map<string, VoiceHandler>();
 
 // -- Bootstrap --
 
@@ -209,12 +211,47 @@ const main = async (): Promise<void> => {
       }
     );
 
+    // ---- voice:start — начать голосовую сессию ----
+    socket.on('voice:start', () => {
+      if (activeVoiceHandlers.has(socket.id)) return;
+
+      const voiceHandler = new VoiceHandler(socket, config.voice);
+      activeVoiceHandlers.set(socket.id, voiceHandler);
+      voiceHandler.start().catch((err) => {
+        console.error('[voice] Start error:', err);
+      });
+      console.log(`[voice] Started for userId=${userId}`);
+    });
+
+    // ---- voice:audio_chunk — аудио-данные от клиента ----
+    socket.on('voice:audio_chunk', (chunk: ArrayBuffer) => {
+      const voiceHandler = activeVoiceHandlers.get(socket.id);
+      if (voiceHandler) {
+        voiceHandler.handleAudioChunk(chunk);
+      }
+    });
+
+    // ---- voice:stop — остановить голосовую сессию ----
+    socket.on('voice:stop', () => {
+      const voiceHandler = activeVoiceHandlers.get(socket.id);
+      if (voiceHandler) {
+        voiceHandler.dispose();
+        activeVoiceHandlers.delete(socket.id);
+        console.log(`[voice] Stopped for userId=${userId}`);
+      }
+    });
+
     // ---- disconnect ----
     socket.on('disconnect', (reason) => {
       console.log(
         `[ws] Client disconnected: userId=${userId} reason=${reason}`
       );
-      // TODO: track socket->sessionId mapping for cleanup on disconnect
+      // Очистка голосового хендлера при отключении
+      const voiceHandler = activeVoiceHandlers.get(socket.id);
+      if (voiceHandler) {
+        voiceHandler.dispose();
+        activeVoiceHandlers.delete(socket.id);
+      }
     });
   });
 

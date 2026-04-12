@@ -9,6 +9,12 @@ export interface OrchestratorConfig {
   apiBaseUrl: string;
   redisUrl: string;
   corsOrigin: string;
+  voice: {
+    voskUrl: string;
+    ollamaUrl: string;
+    piperUrl: string;
+    ollamaModel: string;
+  };
   ai: {
     llm: {
       primary: string;
@@ -74,6 +80,12 @@ export const loadConfig = (): OrchestratorConfig => {
     apiBaseUrl: env('API_BASE_URL', 'http://localhost:3001'),
     redisUrl: env('REDIS_URL', 'redis://localhost:6379'),
     corsOrigin: env('CORS_ORIGIN', 'http://localhost:3000'),
+    voice: {
+      voskUrl: env('VOSK_URL', 'ws://localhost:2700'),
+      ollamaUrl: env('OLLAMA_URL', 'http://localhost:11434'),
+      piperUrl: env('PIPER_URL', 'http://localhost:5000'),
+      ollamaModel: env('OLLAMA_MODEL', 'llama3.1'),
+    },
     ai: {
       llm: {
         primary: llmPrimary,

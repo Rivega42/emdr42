@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { getSocket, disconnectSocket } from '@/lib/socket';
 import { AudioBlsController } from '@/lib/audio-bls';
+import { VoiceButton } from '@/components/VoiceButton';
 import type { Socket } from 'socket.io-client';
 
 const SessionCanvas = dynamic(() => import('./SessionCanvas'), { ssr: false });
@@ -639,26 +640,35 @@ export default function SessionPage() {
           </div>
 
           {/* Input */}
-          <div className="px-4 py-3 bg-white border-t border-gray-200">
+          <div className="px-4 py-3 bg-white border-t border-gray-200 space-y-2">
             <div className="flex gap-2">
               <input
                 type="text"
                 value={inputText}
                 onChange={e => setInputText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                placeholder="Type your message..."
+                placeholder="Введите сообщение или нажмите Голос..."
                 className="flex-1 bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 rounded-md px-4 py-2.5 text-sm outline-none focus:border-gray-900 transition-colors"
-                aria-label="Message input"
+                aria-label="Ввод сообщения"
               />
               <button
                 onClick={sendMessage}
                 disabled={!inputText.trim()}
                 className="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-40 text-white rounded-md text-sm font-semibold transition-colors"
-                aria-label="Send message"
+                aria-label="Отправить"
               >
                 Send
               </button>
             </div>
+            <VoiceButton
+              socket={socketRef.current}
+              onTranscript={(text) => {
+                addMessage({ id: crypto.randomUUID(), role: 'patient', text });
+              }}
+              onAiText={(text) => {
+                addMessage({ id: crypto.randomUUID(), role: 'ai', text });
+              }}
+            />
           </div>
         </div>
 

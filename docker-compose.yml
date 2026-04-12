@@ -58,6 +58,9 @@ services:
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=your-jwt-secret-change-in-production
       - PORT=8002
+      - VOSK_URL=ws://vosk:2700
+      - OLLAMA_URL=http://ollama:11434
+      - PIPER_URL=http://piper:5000
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
@@ -65,6 +68,36 @@ services:
     depends_on:
       - api
       - redis
+      - vosk
+      - ollama
+      - piper
+
+  # Vosk STT — realtime распознавание речи (CPU, ~200ms)
+  vosk:
+    image: alphacep/kaldi-vosk-server:latest
+    ports:
+      - "2700:2700"
+    environment:
+      - VOSK_MODEL_PATH=/opt/vosk-model
+    volumes:
+      - vosk_model:/opt/vosk-model
+
+  # Ollama LLM — локальный LLM (llama3.1)
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  # Piper TTS — локальный синтез речи (~100ms)
+  piper:
+    image: rhasspy/wyoming-piper:latest
+    ports:
+      - "5000:10200"
+    command: --voice en_US-lessac-medium
+    volumes:
+      - piper_data:/data
 
   # PostgreSQL
   postgres:
@@ -148,3 +181,6 @@ volumes:
   redis_data:
   minio_data:
   grafana_data:
+  vosk_model:
+  ollama_data:
+  piper_data:
