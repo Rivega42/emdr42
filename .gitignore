@@ -59,6 +59,7 @@ eggs/
 .eggs/
 lib/*
 !lib/i18n/
+!lib/*.ts
 lib64/
 parts/
 sdist/

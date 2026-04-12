@@ -185,3 +185,21 @@ model PlatformSettings {
 
   @@index([category])
 }
+
+// HIPAA/GDPR Audit Log — запись всех действий с PHI данными
+model AuditLog {
+  id           String   @id @default(uuid())
+  timestamp    DateTime @default(now())
+  userId       String?
+  action       String   // CREATE, READ, UPDATE, DELETE, EXPORT, LOGIN
+  resourceType String   // Session, User, EmotionRecord и т.д.
+  resourceId   String?
+  ipAddress    String?
+  userAgent    String?
+  details      Json?    // Дополнительный контекст действия
+
+  @@index([userId])
+  @@index([timestamp])
+  @@index([action])
+  @@index([resourceType])
+}
