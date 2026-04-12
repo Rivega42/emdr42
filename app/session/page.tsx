@@ -9,6 +9,7 @@ import { AudioBlsController } from '@/lib/audio-bls';
 import type { Socket } from 'socket.io-client';
 
 const SessionCanvas = dynamic(() => import('./SessionCanvas'), { ssr: false });
+import VoiceButton, { VoiceButtonCompact } from './VoiceButton';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -640,7 +641,18 @@ export default function SessionPage() {
 
           {/* Input */}
           <div className="px-4 py-3 bg-white border-t border-gray-200">
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <VoiceButtonCompact
+                socket={socketRef.current}
+                sessionId={sessionId}
+                disabled={!connected}
+                onTranscript={(text, isFinal) => {
+                  if (isFinal) {
+                    addMessage({ id: crypto.randomUUID(), role: 'patient', text });
+                  }
+                }}
+                onError={(err) => console.error('[Voice]', err)}
+              />
               <input
                 type="text"
                 value={inputText}

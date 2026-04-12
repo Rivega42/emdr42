@@ -152,6 +152,56 @@ export class SessionHandler {
     }
   }
 
+  /**
+   * Handle patient message for voice mode.
+   * Returns the full AI response text (for TTS) instead of streaming to socket.
+   */
+  async handlePatientMessageForVoice(text: string): Promise<string> {
+    // Record in timeline
+    this.recordTimeline('patient_utterance', { text, source: 'voice' });
+
+    // Build context
+    const context = this.buildContextMessage();
+
+    // Get AI response without streaming to socket
+    let fullResponse = '';
+    try {
+      const stream = this.aiDialogue.sendMessage(text, context);
+      for await (const chunk of stream) {
+        fullResponse += chunk;
+      }
+
+      // Record in timeline
+      this.recordTimeline('ai_utterance', {
+        text: fullResponse.slice(0, 500),
+        source: 'voice',
+      });
+    } catch (err) {
+      console.error(`[session:${this.sessionId}] Voice AI response error:`, err);
+      fullResponse = 'I apologize, I encountered a technical issue. Please give me a moment.';
+    }
+
+    // Check for phase transitions
+    const { suggestsTransition, nextPhase } =
+      this.aiDialogue.analyzeResponse(fullResponse);
+
+    if (suggestsTransition && nextPhase) {
+      this.tryPhaseTransition(nextPhase, 'ai_suggestion');
+    }
+
+    const transitionCheck = this.adaptiveController.shouldTransitionPhase(
+      this.engine.getState()
+    );
+    if (transitionCheck.transition && transitionCheck.nextPhase) {
+      this.tryPhaseTransition(
+        transitionCheck.nextPhase,
+        transitionCheck.reason ?? 'adaptive_controller'
+      );
+    }
+
+    return fullResponse;
+  }
+
   // --------------------------------------------------------------------------
   // Emotion data
   // --------------------------------------------------------------------------
