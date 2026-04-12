@@ -68,6 +68,8 @@ services:
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.1:8b}
       - WHISPER_BASE_URL=http://whisper:8000
       - PIPER_BASE_URL=http://piper:5000
+      - VOSK_URL=ws://vosk:2700
+      - PIPER_URL=http://piper:5000
       # LiveKit
       - LIVEKIT_URL=ws://livekit:7880
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
@@ -77,6 +79,8 @@ services:
       - redis
       - ollama
       - whisper
+      - vosk
+      - piper
       - livekit
 
   # PostgreSQL

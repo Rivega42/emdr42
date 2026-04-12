@@ -16,6 +16,7 @@ import type { EmotionSnapshot } from '@emdr42/emdr-engine';
 import { loadConfig } from './config';
 import { SessionHandler } from './session-handler';
 import { BackendClient } from './backend-client';
+import { VoiceHandler } from './voice-handler';
 
 // -- JWT payload type --
 
@@ -28,6 +29,7 @@ interface JwtPayload {
 // -- Active sessions map --
 
 const activeSessions = new Map<string, SessionHandler>();
+const activeVoiceHandlers = new Map<string, VoiceHandler>();
 
 // -- Bootstrap --
 
@@ -209,12 +211,70 @@ const main = async (): Promise<void> => {
       }
     );
 
+    // ---- voice:start ----
+    socket.on(
+      'voice:start',
+      async (data: { sessionId: string }) => {
+        const handler = activeSessions.get(data.sessionId);
+        if (!handler) {
+          socket.emit('voice:error', { message: 'Session not found' });
+          return;
+        }
+
+        // Create voice handler if not exists
+        if (!activeVoiceHandlers.has(data.sessionId)) {
+          const voiceHandler = new VoiceHandler(
+            socket,
+            data.sessionId,
+            {
+              voskUrl: config.voskUrl,
+              piperUrl: config.piperUrl,
+            },
+            handler
+          );
+          activeVoiceHandlers.set(data.sessionId, voiceHandler);
+        }
+
+        try {
+          await activeVoiceHandlers.get(data.sessionId)!.start();
+        } catch (err) {
+          console.error(`[voice:${data.sessionId}] Start failed:`, err);
+        }
+      }
+    );
+
+    // ---- voice:audio ----
+    socket.on(
+      'voice:audio',
+      (data: { sessionId: string; audio: ArrayBuffer; timestamp: number }) => {
+        const voiceHandler = activeVoiceHandlers.get(data.sessionId);
+        if (!voiceHandler) return;
+        voiceHandler.handleAudioChunk(data.audio);
+      }
+    );
+
+    // ---- voice:stop ----
+    socket.on(
+      'voice:stop',
+      (data: { sessionId: string }) => {
+        const voiceHandler = activeVoiceHandlers.get(data.sessionId);
+        if (voiceHandler) {
+          voiceHandler.stop();
+          activeVoiceHandlers.delete(data.sessionId);
+        }
+      }
+    );
+
     // ---- disconnect ----
     socket.on('disconnect', (reason) => {
       console.log(
         `[ws] Client disconnected: userId=${userId} reason=${reason}`
       );
-      // TODO: track socket->sessionId mapping for cleanup on disconnect
+      // Cleanup voice handlers for disconnected client
+      for (const [sessionId, voiceHandler] of activeVoiceHandlers) {
+        voiceHandler.stop();
+        activeVoiceHandlers.delete(sessionId);
+      }
     });
   });
 
