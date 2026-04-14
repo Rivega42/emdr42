@@ -24,6 +24,7 @@ import type {
 
 import { AiDialogue } from './ai-dialogue';
 import { BackendClient } from './backend-client';
+import { VoiceAnalyzer } from './voice-analyzer';
 
 /** Interval for batch-flushing emotion records to the backend (ms). */
 const EMOTION_FLUSH_INTERVAL_MS = 10_000;
@@ -33,6 +34,7 @@ export class SessionHandler {
   private safetyMonitor: SafetyMonitor;
   private adaptiveController: AdaptiveController;
   private aiDialogue: AiDialogue;
+  private voiceAnalyzer: VoiceAnalyzer;
   private backendClient: BackendClient;
   private socket: Socket;
   private sessionId: string;
@@ -41,6 +43,9 @@ export class SessionHandler {
   /** Buffered emotions waiting to be flushed to the backend. */
   private emotionBuffer: EmotionSnapshot[] = [];
   private emotionFlushTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** Cross-session history for AI context. */
+  private sessionHistory: string = '';
 
   constructor(
     socket: Socket,
@@ -61,6 +66,7 @@ export class SessionHandler {
     // Build initial system prompt: base + phase 1
     const initialPrompt = `${EMDR_SYSTEM_PROMPT}\n\n${PHASE_PROMPTS.history}`;
     this.aiDialogue = new AiDialogue(aiRouter, initialPrompt);
+    this.voiceAnalyzer = new VoiceAnalyzer();
   }
 
   // --------------------------------------------------------------------------
@@ -84,6 +90,9 @@ export class SessionHandler {
       () => this.flushEmotions(),
       EMOTION_FLUSH_INTERVAL_MS
     );
+
+    // Load cross-session context
+    await this.loadSessionHistory();
 
     // Send initial AI greeting (Phase 1: History)
     await this.streamAiResponse('Begin the EMDR session. Greet the client warmly and start Phase 1 (History Taking).');
@@ -125,8 +134,9 @@ export class SessionHandler {
 
   /** Handle patient text (from STT or typed). */
   async handlePatientMessage(text: string): Promise<void> {
-    // Record in timeline
+    // Record in timeline and voice analytics
     this.recordTimeline('patient_utterance', { text });
+    this.voiceAnalyzer.recordTranscript(text);
 
     // Build context and stream AI response
     const context = this.buildContextMessage();
@@ -484,6 +494,12 @@ export class SessionHandler {
       parts.push(`Suggested cognitive interweave: "${interweave}"`);
     }
 
+    // Voice analytics
+    const voiceContext = this.voiceAnalyzer.formatForContext();
+    if (voiceContext) {
+      parts.push(voiceContext);
+    }
+
     const target = this.engine.getTarget();
     if (target) {
       parts.push(
@@ -492,7 +508,55 @@ export class SessionHandler {
       );
     }
 
+    // Cross-session history
+    if (this.sessionHistory) {
+      parts.push(this.sessionHistory);
+    }
+
     return parts.join('\n');
+  }
+
+  // --------------------------------------------------------------------------
+  // Cross-session history
+  // --------------------------------------------------------------------------
+
+  /** Load previous sessions for AI context enrichment. */
+  private async loadSessionHistory(): Promise<void> {
+    try {
+      const sessions = await this.backendClient.getPatientSessions(this.userId, 5);
+      if (sessions.length === 0) {
+        this.sessionHistory = 'First session — no prior history.';
+        return;
+      }
+
+      const lines = sessions.map((s, i) => {
+        const suds = s.sudsBaseline != null && s.sudsFinal != null
+          ? `SUDS: ${s.sudsBaseline}→${s.sudsFinal}`
+          : 'SUDS: N/A';
+        const voc = s.vocBaseline != null && s.vocFinal != null
+          ? `VOC: ${s.vocBaseline}→${s.vocFinal}`
+          : 'VOC: N/A';
+        return `Session ${i + 1}: ${suds}, ${voc}, status=${s.status}`;
+      });
+
+      // Calculate trends
+      const sudsDrops = sessions
+        .filter((s) => s.sudsBaseline != null && s.sudsFinal != null)
+        .map((s) => (s.sudsBaseline as number) - (s.sudsFinal as number));
+
+      const avgDrop = sudsDrops.length > 0
+        ? Math.round((sudsDrops.reduce((a, b) => a + b, 0) / sudsDrops.length) * 10) / 10
+        : 0;
+
+      this.sessionHistory = [
+        `Previous sessions (${sessions.length}):`,
+        ...lines,
+        avgDrop > 0 ? `Trend: avg SUDS reduction = ${avgDrop} per session.` : '',
+      ].filter(Boolean).join('\n');
+    } catch (err) {
+      console.error(`[session:${this.sessionId}] Failed to load session history:`, err);
+      this.sessionHistory = '';
+    }
   }
 
   // --------------------------------------------------------------------------

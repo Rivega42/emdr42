@@ -25,27 +25,27 @@ const resetPasswordSchema = z.object({
 export const authRouter = router({
   register: publicProcedure
     .input(registerSchema)
-    .mutation(async ({ input }) => {
-      // TODO: Подключить AuthService через DI
-      return { id: crypto.randomUUID(), email: input.email, name: input.name, role: input.role };
+    .mutation(async ({ input, ctx }) => {
+      return ctx.authService.register(input);
     }),
 
   login: publicProcedure
     .input(loginSchema)
-    .mutation(async ({ input }) => {
-      // TODO: Подключить AuthService через DI
-      return { access_token: '', user: { id: '', email: input.email, name: '', role: 'PATIENT' as const } };
+    .mutation(async ({ input, ctx }) => {
+      return ctx.authService.login(input);
     }),
 
   forgotPassword: publicProcedure
     .input(forgotPasswordSchema)
-    .mutation(async () => {
+    .mutation(async ({ input, ctx }) => {
+      await ctx.authService.forgotPassword(input.email);
       return { message: 'If an account with that email exists, a reset link has been sent.' };
     }),
 
   resetPassword: publicProcedure
     .input(resetPasswordSchema)
-    .mutation(async () => {
+    .mutation(async ({ input, ctx }) => {
+      await ctx.authService.resetPassword(input.token, input.newPassword);
       return { message: 'Password has been reset successfully.' };
     }),
 });

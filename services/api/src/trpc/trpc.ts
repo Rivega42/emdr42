@@ -1,9 +1,17 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import type { Request } from 'express';
+import type { AuthService } from '../auth/auth.service';
+import type { SessionsService } from '../sessions/sessions.service';
+import type { UsersService } from '../users/users.service';
+import type { AdminService } from '../admin/admin.service';
 
 export interface TrpcContext {
   req: Request;
   user?: { id: string; email: string; role: string };
+  authService: AuthService;
+  sessionsService: SessionsService;
+  usersService: UsersService;
+  adminService: AdminService;
 }
 
 const t = initTRPC.context<TrpcContext>().create();

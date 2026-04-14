@@ -199,39 +199,10 @@ export default function SessionPage() {
   }, [messages]);
 
   // -------------------------------------------------------------------------
-  // Mock emotion sender (will be replaced by MorphCast)
+  // Real emotion sender (from EmotionContext / EmotionCamera)
+  // Emotion data comes from the camera-based recognition and is forwarded
+  // to the orchestrator via the session socket.
   // -------------------------------------------------------------------------
-
-  useEffect(() => {
-    if (!sessionId || !socketRef.current) return;
-    const interval = setInterval(() => {
-      const mockStress = 0.3 + Math.random() * 0.4;
-      const mockEngagement = 0.5 + Math.random() * 0.3;
-      setStress(mockStress);
-      setEngagement(mockEngagement);
-      setEmotionLabel(mockStress > 0.6 ? 'Elevated' : mockStress > 0.4 ? 'Moderate' : 'Calm');
-
-      socketRef.current?.emit('session:emotion', {
-        sessionId,
-        emotion: {
-          timestamp: Date.now(),
-          stress: mockStress,
-          engagement: mockEngagement,
-          positivity: 0.5,
-          arousal: mockStress,
-          valence: 1 - mockStress,
-          joy: 0.2,
-          sadness: 0.1,
-          anger: 0.05,
-          fear: mockStress * 0.5,
-          surprise: 0.05,
-          disgust: 0.02,
-          confidence: 0.7,
-        },
-      });
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [sessionId]);
 
   // -------------------------------------------------------------------------
   // Socket connection & events

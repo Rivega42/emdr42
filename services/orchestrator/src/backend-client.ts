@@ -127,6 +127,36 @@ export class BackendClient {
 
   // -- HTTP helpers --
 
+  /** Fetch patient's previous sessions for cross-session context. */
+  async getPatientSessions(
+    userId: string,
+    limit = 5
+  ): Promise<Array<{
+    id: string;
+    sessionNumber: number;
+    sudsBaseline: number | null;
+    sudsFinal: number | null;
+    vocBaseline: number | null;
+    vocFinal: number | null;
+    durationSeconds: number | null;
+    status: string;
+    createdAt: string;
+  }>> {
+    try {
+      const res = await fetch(
+        `${this.baseUrl}/users/${userId}/sessions?limit=${limit}&page=1`,
+        {
+          headers: { Authorization: `Bearer ${this.token}` },
+        }
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.data || [];
+    } catch {
+      return [];
+    }
+  }
+
   private async post<T>(path: string, body: unknown): Promise<T> {
     const res = await fetch(`${this.baseUrl}${path}`, {
       method: 'POST',

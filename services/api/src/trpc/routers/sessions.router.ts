@@ -46,45 +46,43 @@ export const sessionsRouter = router({
   create: protectedProcedure
     .input(createSessionSchema)
     .mutation(async ({ input, ctx }) => {
-      // TODO: Подключить SessionsService через DI
-      return { id: crypto.randomUUID(), userId: ctx.user.id, ...input, status: 'SCHEDULED' as const };
+      return ctx.sessionsService.create(ctx.user.id, input);
     }),
 
   list: protectedProcedure
     .input(sessionQuerySchema)
     .query(async ({ input, ctx }) => {
-      void ctx;
-      return { items: [], total: 0, page: input.page, limit: input.limit };
+      return ctx.sessionsService.findAll(ctx.user.id, ctx.user.role, input);
     }),
 
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
-    .query(async ({ input }) => {
-      return { id: input.id, status: 'SCHEDULED' as const };
+    .query(async ({ input, ctx }) => {
+      return ctx.sessionsService.findOne(input.id, ctx.user.id, ctx.user.role);
     }),
 
   update: protectedProcedure
     .input(updateSessionSchema)
-    .mutation(async ({ input }) => {
-      const { id, ...rest } = input;
-      return { id, ...rest };
+    .mutation(async ({ input, ctx }) => {
+      const { id, ...data } = input;
+      return ctx.sessionsService.update(id, ctx.user.id, ctx.user.role, data);
     }),
 
   addSuds: protectedProcedure
     .input(sudsRecordSchema)
-    .mutation(async ({ input }) => {
-      return { id: crypto.randomUUID(), ...input };
+    .mutation(async ({ input, ctx }) => {
+      return ctx.sessionsService.addSudsRecord(input.sessionId, input);
     }),
 
   addVoc: protectedProcedure
     .input(vocRecordSchema)
-    .mutation(async ({ input }) => {
-      return { id: crypto.randomUUID(), ...input };
+    .mutation(async ({ input, ctx }) => {
+      return ctx.sessionsService.addVocRecord(input.sessionId, input);
     }),
 
   compare: protectedProcedure
     .input(z.object({ id: z.string().uuid(), previousId: z.string().uuid() }))
-    .query(async ({ input }) => {
-      return { sessionId: input.id, previousId: input.previousId, comparison: {} };
+    .query(async ({ input, ctx }) => {
+      return ctx.sessionsService.compareSessions(input.id, input.previousId);
     }),
 });

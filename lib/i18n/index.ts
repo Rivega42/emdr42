@@ -3,10 +3,17 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { en, TranslationKeys } from './en';
 import { ru } from './ru';
+import { es } from './es';
 
-type Locale = 'en' | 'ru';
+type Locale = 'en' | 'ru' | 'es';
 
-const translations: Record<Locale, TranslationKeys> = { en, ru };
+const translations: Record<Locale, TranslationKeys> = { en, ru, es };
+
+export const LOCALE_LABELS: Record<Locale, string> = {
+  en: 'English',
+  ru: 'Русский',
+  es: 'Español',
+};
 
 interface I18nContextType {
   locale: Locale;
@@ -44,7 +51,7 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     if (typeof value !== 'string') return key;
     if (params) {
-      return value.replace(/\{(\w+)\}/g, (_, k) => params[k] || `{${k}}`);
+      return value.replace(/\{(\w+)\}/g, (_: string, k: string) => params[k] || `{${k}}`);
     }
     return value;
   }, [locale]);
