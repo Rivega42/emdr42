@@ -56,7 +56,7 @@ export default function SessionReviewPage() {
     if (!sessionId) return;
     setSaving(true);
     try {
-      await api.updateSessionNotes(sessionId, notes);
+      await api.addSessionNote(sessionId, notes);
     } catch {
       // silent
     } finally {

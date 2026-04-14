@@ -46,13 +46,13 @@ export const sessionsRouter = router({
   create: protectedProcedure
     .input(createSessionSchema)
     .mutation(async ({ input, ctx }) => {
-      return ctx.sessionsService.create(ctx.user.id, input);
+      return ctx.sessionsService.create(input as any, ctx.user.id);
     }),
 
   list: protectedProcedure
     .input(sessionQuerySchema)
     .query(async ({ input, ctx }) => {
-      return ctx.sessionsService.findAll(ctx.user.id, ctx.user.role, input);
+      return ctx.sessionsService.findAll(input as any, ctx.user.id, ctx.user.role);
     }),
 
   getById: protectedProcedure
@@ -65,19 +65,21 @@ export const sessionsRouter = router({
     .input(updateSessionSchema)
     .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
-      return ctx.sessionsService.update(id, ctx.user.id, ctx.user.role, data);
+      return ctx.sessionsService.update(id, data as any, ctx.user.id, ctx.user.role);
     }),
 
   addSuds: protectedProcedure
     .input(sudsRecordSchema)
     .mutation(async ({ input, ctx }) => {
-      return ctx.sessionsService.addSudsRecord(input.sessionId, input);
+      const { sessionId, ...dto } = input;
+      return ctx.sessionsService.addSudsRecord(sessionId, dto as any, ctx.user.id, ctx.user.role);
     }),
 
   addVoc: protectedProcedure
     .input(vocRecordSchema)
     .mutation(async ({ input, ctx }) => {
-      return ctx.sessionsService.addVocRecord(input.sessionId, input);
+      const { sessionId, ...dto } = input;
+      return ctx.sessionsService.addVocRecord(sessionId, dto as any, ctx.user.id, ctx.user.role);
     }),
 
   compare: protectedProcedure

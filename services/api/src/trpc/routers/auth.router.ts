@@ -26,7 +26,7 @@ export const authRouter = router({
   register: publicProcedure
     .input(registerSchema)
     .mutation(async ({ input, ctx }) => {
-      return ctx.authService.register(input);
+      return ctx.authService.register(input as any);
     }),
 
   login: publicProcedure

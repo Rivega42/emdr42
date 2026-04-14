@@ -23,13 +23,15 @@ export default function PatientDetailPage() {
     if (!isTherapist || !id) return;
     const load = async () => {
       try {
-        const [sessionsData, patients] = await Promise.all([
+        const [sessionsRes, patientsRes] = await Promise.all([
           api.getPatientSessions(id),
           api.getMyPatients(),
         ]);
-        const found = patients.find((p) => p.id === id);
+        const patientsList: any[] = (patientsRes as any).data || patientsRes || [];
+        const found = patientsList.find((p: any) => p.id === id);
         if (found) setPatient(found);
-        setSessions(sessionsData);
+        const sessionsList: Session[] = (sessionsRes as any).data || sessionsRes || [];
+        setSessions(sessionsList);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load patient data');
       } finally {

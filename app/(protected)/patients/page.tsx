@@ -17,7 +17,7 @@ export default function PatientsPage() {
 
   useEffect(() => {
     if (!isTherapist) return;
-    const load = async () => { try { const data = await api.getMyPatients(); setPatients(data); } catch (err) { setError(err instanceof Error ? err.message : 'Failed to load patients'); } finally { setLoading(false); } };
+    const load = async () => { try { const data = await api.getMyPatients(); setPatients((data as any).data || data || []); } catch (err) { setError(err instanceof Error ? err.message : 'Failed to load patients'); } finally { setLoading(false); } };
     load();
   }, [isTherapist]);
 

@@ -18,7 +18,7 @@ export class AchievementsService {
       orderBy: { createdAt: 'asc' },
     });
 
-    return achievements.map((ach) => {
+    return achievements.map((ach: any) => {
       const userAch = ach.users[0];
       return {
         id: ach.id,

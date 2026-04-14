@@ -150,7 +150,7 @@ export class BackendClient {
         }
       );
       if (!res.ok) return [];
-      const data = await res.json();
+      const data: any = await res.json();
       return data.data || [];
     } catch {
       return [];

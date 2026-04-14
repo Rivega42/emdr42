@@ -27,7 +27,15 @@ export default function DashboardPage() {
         const token = localStorage.getItem('token');
         if (token) api.setToken(token);
         const data = await api.getSessions({ page: 1, limit: 5 });
-        const list = data.data || [];
+        const list: RecentSession[] = (data.data || []).map((s: any) => ({
+          id: s.id,
+          sessionNumber: s.sessionNumber ?? 0,
+          blsPattern: s.blsPattern ?? 'horizontal',
+          durationSeconds: s.durationSeconds ?? s.durationMinutes ? (s.durationMinutes as number) * 60 : null,
+          durationMinutes: s.durationMinutes ?? null,
+          createdAt: s.createdAt,
+          status: s.status,
+        }));
         setSessions(list);
 
         // Calculate stats
