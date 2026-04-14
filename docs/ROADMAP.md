@@ -1,313 +1,158 @@
-# 🗺️ ROADMAP - План развития EMDR-AI Therapy Assistant
+# ROADMAP — EMDR-AI Therapy Assistant
 
-## 🎯 Видение продукта
+Последнее обновление: 2026-04-14
 
-Создание глобальной платформы для доступной, персонализированной и эффективной психологической помощи, используя синергию EMDR-терапии, искусственного интеллекта и технологий распознавания эмоций.
+## Текущее состояние проекта
 
-## 📅 Q3 2025 - Q1 2026 - MVP & Foundation
-
-### 🎯 Цели
-- Запуск базовой версии платформы
-- Интеграция ключевых технологий
-- Полная инфраструктура для разработки
-
-### ✅ Ключевые вехи
-
-#### Инфраструктура
-- [x] Создание репозитория и документации
-- [x] Docker Compose dev-окружение (PostgreSQL, Redis, MinIO)
-- [x] CI/CD через GitHub Actions
-- [x] Vercel deployment config
-
-#### Frontend (Next.js App Router)
-- [x] Next.js 13 App Router с 17 страницами
-- [x] Система аутентификации (login, register, protected routes)
-- [x] EMDR-сессия с Three.js визуализацией
-- [x] Dashboard, progress tracking, settings
-- [x] Admin panel, patient management
-- [x] Tailwind CSS + Framer Motion UI
-
-#### Backend (NestJS)
-- [x] API сервис (NestJS, port 8000)
-- [x] JWT аутентификация с Passport
-- [x] Prisma ORM + PostgreSQL
-- [x] Users, Sessions, Admin, Health модули
-- [x] Session Orchestrator (port 8002)
-
-#### Packages
-- [x] @emdr42/core — shared бизнес-логика, EMDR-паттерны, audio
-- [x] @emdr42/emdr-engine — EMDR protocol engine
-- [x] @emdr42/ai-providers — LLM/TTS/STT integrations
-- [ ] @emdr42/livekit — LiveKit client/server utils (in progress)
-
-#### Emotion Recognition
-- [x] TensorFlow.js custom models (replaced MorphCast)
-- [x] Browser-side emotion detection
-
-#### WebRTC (LiveKit)
-- [ ] LiveKit server в Docker Compose (in progress)
-- [ ] LiveKit token endpoint в API
-- [ ] Client-side room connection
-
-#### Monitoring
-- [ ] Prometheus + Grafana в Docker Compose (in progress)
-
-### 📊 Метрики успеха
-- 100+ альфа-тестеров
-- 85% точность распознавания эмоций
-- <100мс задержка
-- 4.0+ оценка удовлетворенности
-
-## 📅 Q4 2025 (Декабрь) - Q1 2026 (Январь-Февраль) - Enhanced Features
-
-### 🎯 Цели
-- Система виртуальных терапевтов
-- AI персонализация
-- 10,000 активных пользователей
-
-### 🚀 Ключевые функции
-
-#### Декабрь 2025
-- [ ] 4 типа виртуальных аватаров
-- [ ] Голосовой синтез (TTS)
-- [ ] Многоязычная поддержка (3 языка)
-- [ ] Расширенные EMDR паттерны (7 типов)
-
-#### Январь 2026
-- [ ] ML модели персонализации
-- [ ] Адаптивная сложность сессий
-- [ ] Система профилей пользователей
-- [ ] История и прогресс трекинг
-
-#### Февраль 2026
-- [ ] Геймификация (достижения, уровни)
-- [ ] Социальные функции (анонимные)
-- [ ] Интеграция с календарем
-- [ ] Экспорт данных
-
-### 📊 Метрики успеха
-- 10,000 активных пользователей
-- 40% retention rate (30 дней)
-- 30% снижение симптомов тревоги
-- NPS > 50
-
-## 📅 Q2 2026 (Март - Май) - Full Release & Scale
-
-### 🎯 Цели
-- Полная версия платформы
-- B2B интеграции
-- 100,000 пользователей
-
-### 🔬 Инновации
-
-#### Март 2026
-- [ ] LSTM модели для предсказания состояний
-- [ ] Превентивные интервенции
-- [ ] Анализ триггеров
-- [ ] Интеграция с wearables
-
-#### Апрель 2026
-- [ ] API для терапевтов
-- [ ] Панель управления для клиник
-- [ ] Аналитические дашборды
-- [ ] Страховые интеграции
-
-#### Май 2026
-- [ ] Запуск v1.0
-- [ ] iOS/Android нативные приложения
-- [ ] Enterprise решения
-- [ ] Международная экспансия
-
-### 📊 Метрики успеха
-- 100,000+ пользователей
-- $1M ARR
-- 10 партнерских клиник
-- 3 страховые компании
-
-## 📅 Q3-Q4 2026 - Innovation & Expansion
-
-### 🚀 Прорывные технологии
-
-#### Q3 2026
-- [ ] VR/AR терапевтические пространства
-- [ ] Нейропластическая оптимизация
-- [ ] Квантовая эмоциональная синхронизация
-- [ ] Биометрическая мультимодальная интеграция
-
-#### Q4 2026
-- [ ] Эмоциональный цифровой двойник
-- [ ] Коллективные терапевтические сессии
-- [ ] Предиктивная эмоциональная медицина
-- [ ] Интеграция с умным домом
-
-### 🌍 Глобальная экспансия
-- [ ] 10+ языков
-- [ ] 50+ стран
-- [ ] 1M+ пользователей
-- [ ] $10M ARR
-
-## 🎯 Долгосрочное видение (2027-2030)
-
-### 2027: Лидерство на рынке
-- 5M пользователей
-- $50M ARR
-- FDA/CE сертификация
-- IPO подготовка
-
-### 2028: Глобальная платформа
-- 20M пользователей
-- $200M ARR
-- 100+ стран
-- Национальные программы здравоохранения
-
-### 2029: Экосистема здоровья
-- Полная интеграция с healthcare
-- AI терапевты нового поколения
-- Превентивная медицина
-- $500M ARR
-
-### 2030: Революция в mental health
-- 100M+ жизней улучшено
-- Стандарт индустрии
-- $1B+ валюация
-- Глобальный импакт
-
-## 🏆 Ключевые вехи успеха
-
-### Технологические
-- ✅ MVP запуск (Q3 2025)
-- ✅ Frontend 17 pages (Q4 2025)
-- ✅ Backend API + Orchestrator (Q1 2026)
-- ✅ EMDR Engine + AI Providers (Q1 2026)
-- ✅ TensorFlow.js emotion recognition (Q1 2026)
-- ⏳ LiveKit WebRTC integration (Q2 2026)
-- ⏳ Предиктивная аналитика (Q2 2026)
-
-### Бизнес
-- ⏳ 1K пользователей (Q4 2025)
-- ⏳ 10K пользователей (Q1 2026)
-- ⏳ 100K пользователей (Q2 2026)
-- ⏳ $1M ARR (Q2 2026)
-
-### Клинические
-- ⏳ Пилотное исследование (Q1 2026)
-- ⏳ Клинические испытания (Q2 2026)
-- ⏳ Публикация результатов (Q3 2026)
-- ⏳ Медицинская сертификация (Q4 2026)
-
-### Социальный импакт
-- ⏳ 1,000 историй успеха (Q1 2026)
-- ⏳ 10,000 жизней улучшено (Q2 2026)
-- ⏳ 100,000 сессий проведено (Q3 2026)
-- ⏳ 1M часов терапии (Q4 2026)
-
-## 🚧 Риски и митигация
-
-### Технические риски
-- **Риск**: Точность распознавания эмоций
-- **Митигация**: Постоянное улучшение ML моделей
-
-### Регуляторные риски
-- **Риск**: Медицинская сертификация
-- **Митигация**: Позиционирование как wellness
-
-### Конкурентные риски
-- **Риск**: Big Tech входит в рынок
-- **Митигация**: Фокус на специализации EMDR
-
-### Финансовые риски
-- **Риск**: Финансирование развития
-- **Митигация**: Поэтапное привлечение инвестиций
-
-## 📈 Инвестиционные раунды
-
-### Seed (Q3 2025) - $2M
-- Product development
-- Клинические исследования
-- Первоначальный маркетинг
-
-### Series A (Q1 2026) - $15M
-- Масштабирование команды
-- Международная экспансия
-- Enterprise features
-
-### Series B (Q3 2026) - $50M
-- Глобальная экспансия
-- M&A возможности
-- Regulatory approvals
-
-### Series C (2027) - $100M
-- IPO подготовка
-- Консолидация рынка
-- Новые вертикали
-
-## 🤝 Партнерства
-
-### Q4 2025
-- 3 пилотные клиники
-- 1 университет (исследования)
-- LiveKit (WebRTC)
-
-### Q1 2026
-- 10 клиник
-- 3 страховые компании
-- 5 корпоративных клиентов
-
-### Q2 2026
-- 50 клиник
-- 10 страховых компаний
-- 20 корпораций
-- 2 государственные программы
-
-### 2027+
-- 500+ клиник
-- 50+ страховых компаний
-- 100+ корпораций
-- 10+ государственных программ
-
-## 📊 Ключевые показатели (KPIs)
-
-### Рост пользователей
-- Q3 2025: 100
-- Q4 2025: 1,000
-- Q1 2026: 10,000
-- Q2 2026: 100,000
-- Q3 2026: 500,000
-- Q4 2026: 1,000,000
-
-### Финансовые показатели (ARR)
-- Q4 2025: $100K
-- Q1 2026: $500K
-- Q2 2026: $1M
-- Q3 2026: $5M
-- Q4 2026: $10M
-- 2027: $50M
-
-### Клинические результаты
-- Снижение тревоги: 30-40%
-- Улучшение сна: 35%
-- Снижение ПТСР: 40-50%
-- Качество жизни: +25%
-
-## 🔄 Обновления Roadmap
-
-Этот документ обновляется ежеквартально на основе:
-- Обратной связи пользователей
-- Рыночных условий
-- Технологических возможностей
-- Регуляторных изменений
-- Финансовых ресурсов
+| Компонент | Статус | Issues |
+|-----------|--------|--------|
+| **Auth (register/login/JWT)** | ✅ Готово | #69, #70, #71 |
+| **Users CRUD + GDPR** | ✅ Готово | #72, #73 |
+| **Sessions CRUD + Prisma** | ✅ Готово | Реализовано ранее |
+| **tRPC → реальные сервисы** | ✅ Готово | #78 |
+| **Email + Password Reset** | ✅ Готово | #76, #77 |
+| **EMDR Engine (8 фаз)** | ✅ Готово | packages/emdr-engine |
+| **AI Providers (LLM/STT/TTS)** | ✅ Готово | packages/ai-providers |
+| **Session Orchestrator** | ✅ Готово | services/orchestrator |
+| **Voice Analytics** | ✅ Готово | #79 |
+| **Cross-session AI context** | ✅ Готово | #81 |
+| **Emotion Timeline** | ✅ Готово | #80 |
+| **Prometheus Metrics** | ✅ Готово | #82, #83 |
+| **i18n (EN/RU/ES)** | ✅ Готово | #84 |
+| **Security (rate limiting, logging)** | ✅ Готово | #86, #88 |
+| **Gamification (achievements, XP)** | ✅ Готово | #89 |
+| **Therapist Cabinet (API)** | ✅ Готово | #90 |
+| **Health Checks** | ✅ Готово | #101 |
+| **Progress Page** | ✅ Готово | #93 |
+| **Dependabot** | ✅ Готово | #91 |
+| **Emotion Recognition (face-api.js)** | ✅ Готово | packages/core |
+| **MediaPipe Face Mesh** | ⬜ Планируется | #85 |
+| **Dashboard (реальные данные)** | ⬜ Планируется | #94 |
+| **Settings (реальные данные)** | ⬜ Планируется | #95 |
+| **Admin pages (реальные данные)** | ⬜ Планируется | #96 |
+| **Mobile (React Native)** | ⬜ Планируется | #97 |
+| **E2E тесты (расширение)** | ⬜ Планируется | #98 |
+| **Storybook (расширение)** | ⬜ Планируется | #99 |
+| **Docker production** | ⬜ Планируется | #102 |
+| **Sentry error tracking** | ⬜ Планируется | #87 |
 
 ---
 
-**Последнее обновление:** 10.04.2026
-**Следующее обновление:** 01.07.2026
+## Sprint 1 (завершён): Auth + Database
 
-**Контакты:**
-- Email: roadmap@emdr-ai.com
-- GitHub: github.com/Rivega42/emdr42
-- Discord: discord.gg/emdr-ai
+Issues: #69-#75
+
+- AuthService: register с bcrypt + JWT, login с password verify
+- UsersService: 7 методов с Prisma (findAll, findOne, update, deactivate, getUserSessions, exportAllData, deleteAllData)
+- UsersController: JwtAuthGuard, GDPR ownership check
+- Prisma schema: resetToken/resetTokenExpiry
+
+## Sprint 2 (завершён): Email + Password Reset
+
+Issues: #76, #77
+
+- EmailService с nodemailer + SMTP + dev fallback
+- Password reset через БД (не in-memory)
+
+## Sprint 3 (завершён): tRPC
+
+Issue: #78
+
+- tRPC context с JWT auth + service injection
+- Auth/Sessions/Users роутеры подключены к реальным NestJS сервисам
+- Mounted в main.ts через createExpressMiddleware
+
+## Sprint 4 (завершён): Voice Analytics
+
+Issue: #79
+
+- VoiceAnalyzer: паузы, speech rate, volume trend
+- Интеграция в AI context (SessionHandler.buildContextMessage)
+
+## Sprint 5 (завершён): Emotion Timeline
+
+Issue: #80
+
+- EmotionTimeline SVG компонент
+- Графики stress/engagement/valence
+- Маркеры для patient/ai/phase/safety событий
+
+## Sprint 6 (завершён): Cross-session AI Context
+
+Issue: #81
+
+- Загрузка истории из BackendClient при старте сессии
+- SUDS/VOC тренды в AI промпте
+
+## Sprint 7 (завершён): Monitoring
+
+Issues: #82, #83
+
+- MetricsService с prom-client
+- GET /metrics endpoint (Prometheus format)
+- prometheus.yml обновлён
+
+## Sprint 8 (завершён): i18n
+
+Issue: #84
+
+- 200+ ключей на язык
+- 3 языка: EN, RU, ES
+- 11 секций: common, nav, auth, session, dashboard, progress, settings, admin, safety, errors, voice
+
+## Sprint 10 (завершён): Security + Logging
+
+Issues: #86, #88
+
+- Rate limiting на auth endpoints
+- Structured JSON logging с request IDs
+
+## Sprint 11 (завершён): Gamification
+
+Issue: #89
+
+- Achievement + UserAchievement Prisma models
+- 7 достижений в seed
+- XP система, level up
+
+## Sprint 12 (завершён): Therapist Cabinet
+
+Issue: #90
+
+- TherapistNote model
+- API: patients list, sessions, progress, notes
+
+## Sprint 14 (завершён): Убрать моки
+
+Issue: #92
+
+- Mock emotion sender удалён из session page
+
+## Sprint 15 (завершён): Progress Page
+
+Issue: #93
+
+- Stats cards, SUDS trend chart, session history table
+
+## Sprint 23 (завершён): Health Checks
+
+Issue: #101
+
+- GET /health/live, GET /health/ready
+- Проверки: PostgreSQL, Redis, Vosk, Ollama, Piper
 
 ---
 
-*Этот roadmap является живым документом и может изменяться в зависимости от обстоятельств и возможностей.*
+## Следующие шаги
+
+| Приоритет | Issue | Описание |
+|-----------|-------|----------|
+| P1 | #85 | MediaPipe Face Mesh — замена face-api.js |
+| P1 | #87 | Sentry error tracking |
+| P2 | #94 | Dashboard — реальные данные |
+| P2 | #95 | Settings — реальные данные |
+| P2 | #96 | Admin pages — реальные данные |
+| P2 | #98 | Playwright E2E расширение |
+| P2 | #102 | Docker production-ready |
+| P3 | #97 | React Native mobile app |
+| P3 | #99 | Storybook расширение |
