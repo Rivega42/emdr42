@@ -64,6 +64,25 @@ async function main() {
     });
   }
 
+  // Create default achievements
+  const achievements = [
+    { type: 'first_session', name: 'First Step', description: 'Complete your first EMDR session', icon: '🌱', xpReward: 20 },
+    { type: '3_sessions', name: 'Getting Started', description: 'Complete 3 sessions', icon: '🌿', xpReward: 30 },
+    { type: '10_sessions', name: 'Committed', description: 'Complete 10 sessions', icon: '🌳', xpReward: 50 },
+    { type: '7_day_streak', name: 'Week Warrior', description: '7 days in a row', icon: '🔥', xpReward: 40 },
+    { type: 'suds_drop_50', name: 'Breakthrough', description: 'SUDS dropped by 50%+', icon: '⭐', xpReward: 30 },
+    { type: 'voc_max', name: 'Full Belief', description: 'VOC reached 7/7', icon: '💎', xpReward: 25 },
+    { type: 'full_protocol', name: 'Complete Protocol', description: 'All 8 EMDR phases completed', icon: '🏆', xpReward: 50 },
+  ];
+
+  for (const ach of achievements) {
+    await prisma.achievement.upsert({
+      where: { type: ach.type },
+      update: {},
+      create: ach,
+    });
+  }
+
   console.log('Seed completed:', { admin: admin.email, therapist: therapist.email, patient: patient.email });
 }
 

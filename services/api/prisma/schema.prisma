@@ -44,10 +44,38 @@ model User {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   sessions         Session[]
+  achievements     UserAchievement[]
   settings         Json?
+  level            Int       @default(1)
+  xp               Int       @default(0)
 
   @@index([email])
   @@index([role])
+}
+
+model Achievement {
+  id          String            @id @default(uuid())
+  type        String            @unique
+  name        String
+  description String
+  icon        String
+  xpReward    Int               @default(10)
+  createdAt   DateTime          @default(now())
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  achievementId String
+  progress      Float       @default(0)
+  completed     Boolean     @default(false)
+  unlockedAt    DateTime?
+  user          User        @relation(fields: [userId], references: [id])
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+  @@index([userId])
 }
 
 model Session {
