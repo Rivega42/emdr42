@@ -78,7 +78,7 @@ class ApiClient {
   }
 
   async getProfile(): Promise<User> {
-    return this.request('/auth/profile');
+    return this.request('/users/me');
   }
 
   // Sessions
@@ -116,36 +116,95 @@ class ApiClient {
     key: string,
     value: unknown,
   ): Promise<PlatformSetting> {
-    return this.request('/admin/settings', {
+    return this.request(`/admin/settings/${key}`, {
       method: 'PATCH',
-      body: JSON.stringify({ key, value }),
+      body: JSON.stringify({ value }),
     });
   }
 
-  async getAdminUsers(): Promise<AdminUser[]> {
-    return this.request('/admin/users');
+  async getAdminUsers(
+    params?: { page?: number; limit?: number },
+  ): Promise<AdminUser[]> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return this.request(`/admin/users${qs ? `?${qs}` : ''}`);
+  }
+
+  // Achievements
+  async getAchievements(): Promise<any[]> {
+    return this.request('/achievements');
+  }
+
+  async checkAchievements(): Promise<{ unlocked: string[] }> {
+    return this.request('/achievements/check', { method: 'POST' });
   }
 
   // Therapist
-  async getMyPatients(): Promise<PatientSummary[]> {
-    return this.request('/users?role=PATIENT');
+  async getMyPatients(
+    params?: { page?: number; limit?: number },
+  ): Promise<PaginatedResponse<PatientSummary>> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return this.request(`/therapist/patients${qs ? `?${qs}` : ''}`);
   }
 
-  async getPatientSessions(patientId: string): Promise<Session[]> {
-    return this.request(`/users/${patientId}/sessions`);
+  async getPatientSessions(
+    patientId: string,
+    params?: { page?: number; limit?: number },
+  ): Promise<PaginatedResponse<Session>> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return this.request(`/therapist/patients/${patientId}/sessions${qs ? `?${qs}` : ''}`);
+  }
+
+  async getPatientProgress(
+    patientId: string,
+  ): Promise<{ sessions: Session[]; total: number }> {
+    return this.request(`/therapist/patients/${patientId}/progress`);
   }
 
   async getSessionDetail(sessionId: string): Promise<SessionDetail> {
     return this.request(`/sessions/${sessionId}`);
   }
 
-  async updateSessionNotes(
+  async addSessionNote(
     sessionId: string,
-    notes: string,
-  ): Promise<void> {
-    return this.request(`/sessions/${sessionId}/notes`, {
+    content: string,
+  ): Promise<any> {
+    return this.request(`/therapist/sessions/${sessionId}/notes`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+  }
+
+  async getSessionNotes(sessionId: string): Promise<any[]> {
+    return this.request(`/therapist/sessions/${sessionId}/notes`);
+  }
+
+  // User profile
+  async updateProfile(data: { name?: string; settings?: Record<string, any> }): Promise<User> {
+    return this.request('/users/me', {
       method: 'PATCH',
-      body: JSON.stringify({ notes }),
+      body: JSON.stringify(data),
+    });
+  }
+
+  // GDPR
+  async exportMyData(): Promise<any> {
+    return this.request('/users/me').then(async (user: any) => {
+      return this.request(`/users/${user.id}/export`);
+    });
+  }
+
+  async deleteMyData(): Promise<void> {
+    return this.request('/users/me').then(async (user: any) => {
+      return this.request(`/users/${user.id}/data`, { method: 'DELETE' });
     });
   }
 }
