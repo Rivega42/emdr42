@@ -10,6 +10,7 @@ import { LiveKitModule } from './livekit/livekit.module';
 import { EmailModule } from './email/email.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { AchievementsModule } from './achievements/achievements.module';
+import { TherapistModule } from './therapist/therapist.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 @Module({
@@ -25,6 +26,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     EmailModule,
     MetricsModule,
     AchievementsModule,
+    TherapistModule,
   ],
 })
 export class AppModule implements NestModule {

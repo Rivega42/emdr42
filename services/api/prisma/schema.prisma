@@ -122,9 +122,10 @@ model Session {
 
   timelineEvents TimelineEvent[]
   emotionRecords EmotionRecord[]
-  sudsRecords    SudsRecord[]
-  vocRecords     VocRecord[]
-  safetyEvents   SafetyEvent[]
+  sudsRecords     SudsRecord[]
+  vocRecords      VocRecord[]
+  safetyEvents    SafetyEvent[]
+  therapistNotes  TherapistNote[]
 
   @@index([userId])
   @@index([status])
@@ -204,6 +205,19 @@ model SafetyEvent {
 
   @@index([sessionId])
   @@index([severity])
+}
+
+model TherapistNote {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id])
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([authorId])
 }
 
 model PlatformSettings {
