@@ -30,6 +30,19 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
     }
 
+    // Log unhandled errors (500s) for monitoring
+    if (status >= 500) {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          statusCode: status,
+          message,
+          stack: exception instanceof Error ? exception.stack : undefined,
+          timestamp: new Date().toISOString(),
+        }),
+      );
+    }
+
     response.status(status).json({
       statusCode: status,
       message,
