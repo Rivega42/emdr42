@@ -38,11 +38,13 @@ model User {
   passwordHash String
   name         String
   role         Role      @default(PATIENT)
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  sessions     Session[]
-  settings     Json?
+  isActive         Boolean   @default(true)
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  sessions         Session[]
+  settings         Json?
 
   @@index([email])
   @@index([role])

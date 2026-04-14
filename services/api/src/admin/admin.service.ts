@@ -30,12 +30,19 @@ export class AdminService {
     ]);
 
     const sudsReductions = completedSessions
-      .filter((s) => s.sudsBaseline != null && s.sudsFinal != null)
-      .map((s) => (s.sudsBaseline as number) - (s.sudsFinal as number));
+      .filter(
+        (s: { sudsBaseline: number | null; sudsFinal: number | null }) =>
+          s.sudsBaseline != null && s.sudsFinal != null,
+      )
+      .map(
+        (s: { sudsBaseline: number | null; sudsFinal: number | null }) =>
+          (s.sudsBaseline as number) - (s.sudsFinal as number),
+      );
 
     const avgSudsReduction = sudsReductions.length
       ? Math.round(
-          (sudsReductions.reduce((a, b) => a + b, 0) / sudsReductions.length) *
+          (sudsReductions.reduce((a: number, b: number) => a + b, 0) /
+            sudsReductions.length) *
             100,
         ) / 100
       : null;
@@ -99,7 +106,7 @@ export class AdminService {
       this.prisma.user.count(),
     ]);
 
-    const data = users.map((user) => {
+    const data = users.map((user: any) => {
       const lastSession = user.sessions[0];
       return {
         id: user.id,

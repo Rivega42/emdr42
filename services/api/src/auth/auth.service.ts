@@ -1,36 +1,74 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 import { randomBytes, createHash } from 'crypto';
+import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
-// In-memory хранилище (в продакшене — Prisma + Redis)
+// In-memory хранилище для password reset (Sprint 2 #77: перенос в БД)
 const resetTokens = new Map<string, { email: string; expiresAt: Date }>();
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly emailService: EmailService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
+  ) {}
 
   async register(dto: RegisterDto) {
-    // TODO: Сохранение в БД через PrismaService
-    console.log(`[AUTH] Регистрация пользователя ${dto.email}`);
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+    if (existing) {
+      throw new ConflictException('Email already registered');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        passwordHash,
+        name: dto.name,
+        role: dto.role,
+      },
+    });
+
+    const accessToken = this.jwtService.sign({ sub: user.id, role: user.role });
     return {
-      id: randomBytes(16).toString('hex'),
-      email: dto.email,
-      name: dto.name,
-      role: dto.role || 'PATIENT',
+      accessToken,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role },
     };
   }
 
   async login(dto: LoginDto) {
-    // TODO: Проверка пароля через PrismaService + bcrypt
-    console.log(`[AUTH] Вход пользователя ${dto.email}`);
-    // Stub — в продакшене здесь будет реальная аутентификация
-    throw new UnauthorizedException('Аутентификация через БД ещё не реализована');
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const valid = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const accessToken = this.jwtService.sign({ sub: user.id, role: user.role });
+    return {
+      accessToken,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+    };
   }
 
   async forgotPassword(email: string): Promise<void> {
-    // Generate a secure reset token
     const token = randomBytes(32).toString('hex');
     const hashedToken = createHash('sha256').update(token).digest('hex');
 
@@ -55,7 +93,7 @@ export class AuthService {
       throw new BadRequestException('Reset token has expired');
     }
 
-    // TODO: Hash newPassword and update user record in DB
+    // TODO (#77): Hash newPassword and update user record in DB
     console.log(`[AUTH] Password reset for ${stored.email} — new password accepted`);
 
     resetTokens.delete(hashedToken);
