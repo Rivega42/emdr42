@@ -13,9 +13,11 @@ import { CrisisModule } from './crisis/crisis.module';
 import { UsageModule } from './usage/usage.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
+import { RedisModule } from './common/redis/redis.module';
 
 @Module({
   imports: [
+    RedisModule,
     PrismaModule,
     AuditModule,
     AuthModule,

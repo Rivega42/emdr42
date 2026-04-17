@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { AuditService } from '../audit/audit.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { Throttle, ThrottleGuard } from '../common/guards/throttle.guard';
 
 const extractMeta = (req: Request) => ({
   ipAddress: req.ip,
@@ -15,6 +16,7 @@ const extractMeta = (req: Request) => ({
 
 @ApiTags('auth')
 @Controller('auth')
+@UseGuards(ThrottleGuard)
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -22,6 +24,7 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @Throttle(5, 3600) // 5 регистраций в час на IP
   @ApiOperation({ summary: 'Register a new user' })
   async register(@Body() dto: RegisterDto, @Req() req: Request) {
     const meta = extractMeta(req);
@@ -50,6 +53,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Throttle(10, 60) // 10 попыток в минуту — базовая защита от brute force (account lockout — #114)
   @ApiOperation({ summary: 'Login and receive JWT token' })
   async login(@Body() dto: LoginDto, @Req() req: Request) {
     const meta = extractMeta(req);
@@ -78,6 +82,7 @@ export class AuthController {
   }
 
   @Post('forgot-password')
+  @Throttle(3, 3600) // 3 запроса сброса в час на IP — защита от email flooding
   @ApiOperation({ summary: 'Request password reset email' })
   async forgotPassword(@Body() body: { email: string }, @Req() req: Request) {
     await this.authService.forgotPassword(body.email);
@@ -95,6 +100,7 @@ export class AuthController {
   }
 
   @Post('reset-password')
+  @Throttle(5, 3600)
   @ApiOperation({ summary: 'Reset password with token' })
   async resetPassword(
     @Body() body: { token: string; newPassword: string },
