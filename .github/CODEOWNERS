@@ -1,0 +1,46 @@
+# CODEOWNERS — правила обязательных ревьюеров
+# Синтаксис: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Последнее совпадение выигрывает.
+
+# Default owner — всегда владелец репозитория
+*                               @rivega42
+
+# Frontend
+/app/                           @rivega42
+/components/                    @rivega42
+/contexts/                      @rivega42
+/lib/                           @rivega42
+/public/                        @rivega42
+
+# Backend services
+/services/api/                  @rivega42
+/services/orchestrator/         @rivega42
+/services/gateway/              @rivega42
+
+# Shared packages
+/packages/core/                 @rivega42
+/packages/emdr-engine/          @rivega42
+/packages/ai-providers/         @rivega42
+/packages/livekit-integration/  @rivega42
+/packages/events/               @rivega42
+/packages/common/               @rivega42
+
+# Prisma / DB schema — особый контроль (миграции необратимы)
+**/prisma/schema.prisma         @rivega42
+**/prisma/migrations/           @rivega42
+
+# Security-sensitive
+/services/api/src/auth/         @rivega42
+/services/api/src/audit/        @rivega42
+/next.config.js                 @rivega42
+/services/gateway/nginx.conf    @rivega42
+/.github/workflows/             @rivega42
+/docker-compose.yml             @rivega42
+/Dockerfile                     @rivega42
+**/Dockerfile                   @rivega42
+
+# Docs — могут апрувить все с write доступом
+/docs/                          @rivega42
+/README.md                      @rivega42
+/CLAUDE.md                      @rivega42
