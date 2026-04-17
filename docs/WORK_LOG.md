@@ -2,13 +2,31 @@
 
 Ветка: `claude/project-review-issues-En09l`
 Начало: 2026-04-17
-Финальное обновление: 2026-04-17 (итерация 3)
+Финальное обновление: 2026-04-17 (итерация 4)
 
 ## Контекст
 
-После полного ревью проекта создано 35 новых GitHub issues (#104–#151) в дополнение к 47 существующим (#46–#102). Этот журнал фиксирует три последовательных волны фиксов P0/P1 задач.
+После полного ревью проекта создано 35 новых GitHub issues (#104–#151) в дополнение к 47 существующим (#46–#102). Этот журнал фиксирует четыре последовательные волны фиксов.
 
-## Итог трёх волн (43 коммита суммарно)
+## Итог четырёх волн (55 коммитов суммарно)
+
+### Волна 4 — Product polish + Observability + Russification (13 коммитов)
+
+| # | Issue | Коммит | Описание |
+|---|-------|--------|----------|
+| 43 | #84 | `d7111f5` | Русификация home + about + crisis disclaimer |
+| 44 | #82, #83 | `72d62c1` | Prometheus метрики (API + Orchestrator voice pipeline) |
+| 45 | #88 | `6b69e70` | Pino JSON structured logs с PII redaction |
+| 46 | #87 | `a8a8bd2` | Sentry skeleton + инструкция Вика (DSN) |
+| 47 | #80 | `0d5b9e0` | EmotionTimeline SVG chart component |
+| 48 | #81 | `1496563` | Cross-session patient context для AI |
+| 49 | #89 | `60f9d77` | Gamification: XP/levels/streaks/13 achievements |
+| 50 | #79 | `f299cf2` | Voice pattern analysis (паузы, темп, filler, активация) |
+| 51 | #92-95 | `d704385` | Progress/Dashboard/Settings на реальных API + русский |
+| 52 | #91 | `f321090` | Playwright E2E workflow + .nvmrc в ci |
+| 53 | #100 | `7db2d39` | Актуализация ROADMAP.md |
+
+## Итог предыдущих волн
 
 ### Волна 1 — Foundation / Hygiene (10 коммитов)
 
