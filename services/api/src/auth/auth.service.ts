@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ConflictException,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -11,9 +12,17 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { RefreshTokenService } from './refresh-token.service';
 
-// In-memory хранилище для password reset (Sprint 2 #77: перенос в БД)
-const resetTokens = new Map<string, { email: string; expiresAt: Date }>();
+const BCRYPT_COST = 12;
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1h
+
+export interface AuthMeta {
+  ip?: string;
+  userAgent?: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -21,17 +30,18 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
+    private readonly refreshTokens: RefreshTokenService,
   ) {}
 
-  async register(dto: RegisterDto) {
+  // ---------- Register ----------
+
+  async register(dto: RegisterDto, meta?: AuthMeta) {
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
-    if (existing) {
-      throw new ConflictException('Email already registered');
-    }
+    if (existing) throw new ConflictException('Email already registered');
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_COST);
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
@@ -41,61 +51,197 @@ export class AuthService {
       },
     });
 
-    const accessToken = this.jwtService.sign({ sub: user.id, role: user.role });
-    return {
-      accessToken,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
-    };
+    return this.issueTokenPair(user, meta);
   }
 
-  async login(dto: LoginDto) {
+  // ---------- Login ----------
+
+  async login(dto: LoginDto, meta?: AuthMeta) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
-    if (!user) {
+
+    // Always perform bcrypt compare even if user not found — constant time (прятать user enumeration)
+    const dummyHash =
+      '$2b$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalid';
+    const valid = await bcrypt.compare(
+      dto.password,
+      user?.passwordHash ?? dummyHash,
+    );
+
+    if (!user || user.deletedAt) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const valid = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!user.isActive) {
+      throw new ForbiddenException('Account is deactivated');
+    }
+
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const minutesLeft = Math.ceil(
+        (user.lockedUntil.getTime() - Date.now()) / 60_000,
+      );
+      throw new ForbiddenException(
+        `Account locked. Try again in ${minutesLeft} minute(s).`,
+      );
+    }
+
     if (!valid) {
+      await this.handleFailedAttempt(user.id);
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Successful login — reset counters
+    if (user.failedAttempts > 0 || user.lockedUntil) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { failedAttempts: 0, lockedUntil: null },
+      });
+    }
+
+    // MFA challenge skeleton — полноценный TOTP flow требует отдельных endpoints
+    if ((user as any).mfaEnabled) {
+      return { mfaRequired: true, userId: user.id };
+    }
+
+    return this.issueTokenPair(user, meta);
+  }
+
+  private async handleFailedAttempt(userId: string) {
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { failedAttempts: { increment: 1 } },
+      select: { failedAttempts: true },
+    });
+
+    if (updated.failedAttempts >= MAX_FAILED_ATTEMPTS) {
+      const lockedUntil = new Date(Date.now() + LOCKOUT_MINUTES * 60_000);
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { lockedUntil, failedAttempts: 0 },
+      });
+    }
+  }
+
+  // ---------- Refresh ----------
+
+  async refresh(refreshToken: string, meta?: AuthMeta) {
+    const { userId, newToken } = await this.refreshTokens.rotate(
+      refreshToken,
+      meta,
+    );
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.deletedAt || !user.isActive) {
+      throw new UnauthorizedException('User no longer active');
     }
 
     const accessToken = this.jwtService.sign({ sub: user.id, role: user.role });
     return {
       accessToken,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      refreshToken: newToken.token,
+      refreshTokenExpiresAt: newToken.expiresAt,
+      user: this.publicUser(user),
     };
   }
 
-  async forgotPassword(email: string): Promise<void> {
-    const token = randomBytes(32).toString('hex');
-    const hashedToken = createHash('sha256').update(token).digest('hex');
+  async logout(refreshToken?: string) {
+    if (refreshToken) await this.refreshTokens.revoke(refreshToken);
+    return { success: true };
+  }
 
-    resetTokens.set(hashedToken, {
-      email,
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+  async logoutAll(userId: string) {
+    await this.refreshTokens.revokeAllForUser(userId);
+    return { success: true };
+  }
+
+  // ---------- Password reset (#77 теперь в БД) ----------
+
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    // Always behave the same (mitigate enumeration)
+    if (!user || user.deletedAt) return;
+
+    const token = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+
+    await (this.prisma as any).verificationToken.updateMany({
+      where: { userId: user.id, purpose: 'PASSWORD_RESET', usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    await (this.prisma as any).verificationToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        purpose: 'PASSWORD_RESET',
+        expiresAt,
+      },
     });
 
     await this.emailService.sendPasswordReset(email, token);
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
-    const hashedToken = createHash('sha256').update(token).digest('hex');
-    const stored = resetTokens.get(hashedToken);
-
-    if (!stored) {
-      throw new BadRequestException('Invalid or expired reset token');
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const record = await (this.prisma as any).verificationToken.findUnique({
+      where: { tokenHash },
+    });
+    if (!record || record.purpose !== 'PASSWORD_RESET') {
+      throw new BadRequestException('Invalid reset token');
+    }
+    if (record.usedAt) {
+      throw new BadRequestException('Reset token already used');
+    }
+    if (record.expiresAt < new Date()) {
+      throw new BadRequestException('Reset token expired');
     }
 
-    if (stored.expiresAt < new Date()) {
-      resetTokens.delete(hashedToken);
-      throw new BadRequestException('Reset token has expired');
-    }
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
 
-    // TODO (#77): Hash newPassword and update user record in DB
-    console.log(`[AUTH] Password reset for ${stored.email} — new password accepted`);
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: record.userId },
+        data: { passwordHash, failedAttempts: 0, lockedUntil: null },
+      }),
+      (this.prisma as any).verificationToken.update({
+        where: { id: record.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
 
-    resetTokens.delete(hashedToken);
+    // Revoke все active refresh — old sessions должны выкинуть
+    await this.refreshTokens.revokeAllForUser(record.userId);
+  }
+
+  // ---------- Helpers ----------
+
+  private publicUser(user: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+  }) {
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
+  }
+
+  private async issueTokenPair(
+    user: { id: string; email: string; name: string; role: string },
+    meta?: AuthMeta,
+  ) {
+    const accessToken = this.jwtService.sign({ sub: user.id, role: user.role });
+    const refresh = await this.refreshTokens.issue(user.id, meta);
+
+    return {
+      accessToken,
+      refreshToken: refresh.token,
+      refreshTokenExpiresAt: refresh.expiresAt,
+      user: this.publicUser(user),
+    };
   }
 }
