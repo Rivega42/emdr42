@@ -4,6 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { SanitizePipe } from './common/pipes/sanitize.pipe';
+import { PinoLoggerService } from './common/logger/pino-logger';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const helmet = require('helmet');
 
@@ -12,6 +13,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     // rawBody нужен для Stripe webhook подписи (#145)
     rawBody: true,
+    // Pino logger для structured JSON logs (#88)
+    logger: new PinoLoggerService('App'),
   });
 
   // Graceful shutdown (#124) — обязательно до listen
