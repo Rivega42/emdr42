@@ -274,4 +274,71 @@ export class SessionsService {
 
     return session;
   }
+
+  // --- Recording metadata (#122) ---
+
+  async recordConsent(
+    sessionId: string,
+    userId: string,
+    userRole: string,
+  ): Promise<{ recordingConsentAt: Date }> {
+    await this.ensureAccess(sessionId, userId, userRole);
+    const now = new Date();
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { recordingConsentAt: now },
+    });
+    return { recordingConsentAt: now };
+  }
+
+  async attachRecording(
+    sessionId: string,
+    userId: string,
+    userRole: string,
+    data: {
+      recordingUrl: string;
+      recordingStorageKey: string;
+      recordingEncryptionKeyId?: string;
+    },
+  ) {
+    const session = await this.ensureAccess(sessionId, userId, userRole);
+    if (!session.recordingConsentAt) {
+      throw new ForbiddenException(
+        'Cannot attach recording without patient consent (call POST /sessions/:id/recording-consent first)',
+      );
+    }
+    return this.prisma.session.update({
+      where: { id: sessionId },
+      data,
+      select: {
+        id: true,
+        recordingUrl: true,
+        recordingStorageKey: true,
+        recordingConsentAt: true,
+      },
+    });
+  }
+
+  async saveTranscript(
+    sessionId: string,
+    userId: string,
+    userRole: string,
+    transcriptText: string,
+  ) {
+    await this.ensureAccess(sessionId, userId, userRole);
+    return this.prisma.session.update({
+      where: { id: sessionId },
+      data: { transcriptText },
+      select: { id: true },
+    });
+  }
+
+  async getTranscript(
+    sessionId: string,
+    userId: string,
+    userRole: string,
+  ): Promise<{ transcriptText: string | null }> {
+    const session = await this.ensureAccess(sessionId, userId, userRole);
+    return { transcriptText: session.transcriptText ?? null };
+  }
 }
