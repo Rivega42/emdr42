@@ -12,12 +12,30 @@
 export type EmdrPhase =
   | 'history'
   | 'preparation'
+  | 'resource_development' // #131 RDI — Resource Development & Installation (EMDRIA standard)
   | 'assessment'
   | 'desensitization'
   | 'installation'
   | 'body_scan'
   | 'closure'
   | 'reevaluation';
+
+/**
+ * Канонический порядок фаз EMDR-протокола (EMDRIA).
+ * Phase 2.5 `resource_development` опциональна — выполняется если пациент
+ * недостаточно stabilized в preparation (низкий engagement, crisis history).
+ */
+export const EMDR_PHASE_ORDER: EmdrPhase[] = [
+  'history',
+  'preparation',
+  'resource_development',
+  'assessment',
+  'desensitization',
+  'installation',
+  'body_scan',
+  'closure',
+  'reevaluation',
+];
 
 export interface EmdrSessionState {
   sessionId: string;
