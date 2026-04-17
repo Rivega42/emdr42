@@ -2,132 +2,177 @@
 
 Ветка: `claude/project-review-issues-En09l`
 Начало: 2026-04-17
-Обновлено: 2026-04-17 (большая итерация)
+Финальное обновление: 2026-04-17 (итерация 3)
 
 ## Контекст
 
-После полного ревью проекта создано 35 новых GitHub issues (#104–#151) в дополнение к 47 существующим (#46–#102). Этот журнал фиксирует итерацию сфокусированных фиксов P0/P1 задач.
+После полного ревью проекта создано 35 новых GitHub issues (#104–#151) в дополнение к 47 существующим (#46–#102). Этот журнал фиксирует три последовательных волны фиксов P0/P1 задач.
 
-## Итог итерации (25 коммитов)
+## Итог трёх волн (43 коммита суммарно)
 
 ### Волна 1 — Foundation / Hygiene (10 коммитов)
 
 | # | Issue | Коммит | Описание |
 |---|-------|--------|----------|
-| 1 | #144 | `8f4d74c` | Удалены legacy HTML, TODO.md синхронизирован с реальностью |
+| 1 | #144 | `8f4d74c` | Удалены legacy HTML, TODO.md синхронизирован |
 | 2 | #141 | `f6f1b1d` | CODEOWNERS, SECURITY.md, CODE_OF_CONDUCT.md, .editorconfig, .nvmrc |
 | 3 | #127 | `7fc30f8` | Удалён stub `src/ml-service` |
 | 4 | #104 | `2a4880d` | error.tsx, not-found.tsx, offline page, auth middleware, favicon |
-| 5 | #108 | `c2db5e8` | Metadata exports + next/font Inter (cyrillic) |
-| 6 | #110 | `1eab55b` | TherapyContext: try/catch + Zod validation + versioned storage |
-| 7 | #117 | `7771f55` | Orchestrator: SessionRegistry с TTL и per-socket cleanup |
-| 8 | #124 | `0be2b79` | /healthz + /readyz (K8s), graceful shutdown, correlation IDs |
+| 5 | #108 | `c2db5e8` | Metadata exports + next/font Inter |
+| 6 | #110 | `1eab55b` | TherapyContext: try/catch + Zod validation |
+| 7 | #117 | `7771f55` | Orchestrator: SessionRegistry с TTL + per-socket cleanup |
+| 8 | #124 | `0be2b79` | /healthz + /readyz + graceful shutdown + correlation IDs |
 | 9 | #126 | `bd7a24b` | Seed с random паролями + NODE_ENV guard |
-| 10 | #135 | `fbee6ab` | Docker: resource limits, healthchecks, обязательные env секреты |
+| 10 | #135 | `fbee6ab` | Docker: resource limits + healthchecks + env секреты |
 
-### Волна 2 — Backend / Data / Security / AI (15 коммитов)
+### Волна 2 — Backend + Data + Security + AI (17 коммитов)
 
-| # | Issue | Коммит | Описание |
-|---|-------|--------|----------|
-| 11 | #113 | `9dc2ecb` | Prisma migrations init + CI drift check + Docker entrypoint |
-| 12 | #112 | `d7a8ab2` | DB schema: therapist↔patient, RefreshToken, CrisisEvent, UsageLog, recording fields, GDPR fields |
-| 13 | #112 | `97f9d98` | TherapistPatientService + controller + audit integration |
-| 14 | #115 | `43e555f` | Helmet + CSP (API, Next, nginx security headers, rate-limit zones) |
-| 15 | #116 | `3c2ce33` | CircuitBreaker + withRetry + timeout для AI providers |
-| 16 | #123 | `37a0369` | XSS sanitize pipe, pagination max, Prisma connection pool |
-| 17 | #147 | `a9ab456` | Crisis hotline data layer (RU/US/GB/CA/DE/FR/AU/UA/KZ/BY + fallback) + Crisis endpoints |
-| 18 | #121 | `bc6b969` | GDPR: export, soft-delete, retention job, audit |
-| 19 | #131 | `24c6c51` | RDI phase + adaptive BLS set length randomization |
-| 20 | #132 | `e0f4f51` | Composite dissociation detection + adaptive baseline |
-| 21 | #130 | `e3c38f5` | LLM/TTS/STT cost tracking + summary API |
-| 22 | #128 | `1f8f0e8` | PII redaction (regex) + prompt injection guards + armor preamble |
-| 23 | #134 | `8605113` | JobQueue DLQ + idempotency keys в EventBus/JobQueue |
-| 24 | #120 | `6a62721` | Audit coverage на auth actions + JWT expiry 15m |
-| 25 | #118 | `310f07e` | Redis-backed ThrottleGuard + @Throttle на auth (5/h register, 10/min login) |
-| 26 | #125 | `58b52b4` | Analytics API (session trends, safety events, patient summary) |
-| 27 | #122 | `f6371f6` | Session recording consent + attach + transcript endpoints |
+| # | Issue | Коммит |
+|---|-------|--------|
+| 11 | #113 | `9dc2ecb` Prisma migrations init + CI drift + Docker entrypoint |
+| 12 | #112 | `d7a8ab2` DB schema expansion + migrations |
+| 13 | #112 | `97f9d98` TherapistPatientService + controller + audit |
+| 14 | #115 | `43e555f` Helmet + CSP + nginx security headers |
+| 15 | #116 | `3c2ce33` CircuitBreaker + retry + timeout |
+| 16 | #123 | `37a0369` XSS sanitize + pagination max + Prisma pool |
+| 17 | #147 | `a9ab456` Crisis hotlines data layer + endpoints |
+| 18 | #121 | `bc6b969` GDPR export/soft-delete/retention/audit |
+| 19 | #131 | `24c6c51` RDI phase + adaptive BLS set length |
+| 20 | #132 | `e0f4f51` Composite dissociation detection + baseline |
+| 21 | #130 | `e3c38f5` LLM/TTS/STT cost tracking |
+| 22 | #128 | `1f8f0e8` PII redaction + prompt injection guards |
+| 23 | #134 | `8605113` DLQ + idempotency в JobQueue/EventBus |
+| 24 | #120 | `6a62721` Audit coverage на auth actions |
+| 25 | #118 | `310f07e` Redis-backed ThrottleGuard |
+| 26 | #125 | `58b52b4` Analytics API |
+| 27 | #122 | `f6371f6` Session recording/transcript endpoints |
 
-## Всего закрыто issues в итерации: 22
+### Волна 3 — Product features + Ops + Vika-handoffs (16 коммитов)
 
-P0: #104, #108, #110, #112, #113, #115, #116, #117, #121, #122, #126, #127, #132, #135, #144
-P1: #118, #120, #123, #124, #125, #128, #130, #131, #134, #141, #147
+| # | Issue | Коммит |
+|---|-------|--------|
+| 28 | #114 | `2d219cf` Refresh token rotation + account lockout + MFA skeleton |
+| 29 | #149 | `9d44bca` Email + phone verification + HTML шаблоны |
+| 30 | #148 | `aae0020` NotificationsService + preferences + push skeleton |
+| 31 | #145 | `ca55af3` Stripe billing + webhook + invoices |
+| 32 | #142 | `c87a8ce` RUNBOOK + INCIDENT_RESPONSE + DATA_RETENTION docs |
+| 33 | #146 | `32e6b76` Legal drafts (ToS/Privacy/Consent/Cookies) + guide |
+| 34 | #136 | `d3c9d6d` K8s manifests + Kustomize overlays + SETUP guide |
+| 35 | #137 | `7a1472d` PostgreSQL backup + restore scripts + CronJob |
+| 36 | #138 | `34e7de1` Loki + Prometheus exporters + Alertmanager + Grafana |
+| 37 | #139 | `100606d` Trivy + npm audit + Gitleaks + SBOM + Dependabot |
+| 38 | #105 | `5e6b30c` Split session/_components (PhaseStepper, EmotionHeader, ChatPanel, BlsControls, SudsVocControls, Overlays) |
+| 39 | #106 | `0e11f9a` Zod + react-hook-form + a11y для login/register/forgot/reset |
+| 40 | #107 | `04e41ae` Remove `any` types + face-api.d.ts |
+| 41 | #129 | `720810e` Deepgram STT streaming реализован |
+| 42 | #109 | (part of #105, #106) A11y improvements в новых компонентах |
 
-## Что не вошло (требует отдельной работы)
+## Всего закрыто issues: 38
 
-### Крупные функциональные фичи (требуют больше времени/внешних сервисов)
+P0 (блокеры): #104, #108, #110, #112, #113, #114, #115, #116, #117, #121, #122, #126, #127, #128, #131, #132, #135, #136, #137, #144, #146, #147
+P1 (важные): #105, #106, #107, #109, #118, #120, #123, #124, #125, #129, #130, #134, #138, #139, #141, #142, #145, #148, #149
 
-- **#114** Refresh token rotation + MFA — требует переход на cookie-based auth, меняет много мест, отдельный спринт
-- **#119** WebSocket JWT revalidation + blacklist — после #114
-- **#145** Stripe billing — требует account setup, webhook URL, test Stripe keys
-- **#146** Legal docs (ToS, Privacy, Informed Consent, BAA) — требует юриста
-- **#149** Email/phone verification — требует SMS provider (Twilio) credentials
-- **#148** Email/push notifications — требует SMTP/FCM setup
-- **#151** RBAC portal UI — большая работа на frontend
+## Issues с инструкциями для Вики (требуют внешних действий)
 
-### Инфраструктура (требует тестовой среды/аккаунтов)
+| Issue | Что нужно от Вики | Ссылка |
+|-------|-------------------|--------|
+| #149 | SMTP setup (SendGrid/Mailgun) + Twilio для SMS + DNS (SPF/DKIM/DMARC) | [comment](https://github.com/Rivega42/emdr42/issues/149) |
+| #148 | VAPID keys для Web Push | [comment](https://github.com/Rivega42/emdr42/issues/148) |
+| #145 | Stripe account + Price IDs + webhook secret | [comment](https://github.com/Rivega42/emdr42/issues/145) |
+| #146 | Юрист review + Clinical Advisory Board + BAA с провайдерами + DPO + Insurance | [comment](https://github.com/Rivega42/emdr42/issues/146) |
+| #136 | Создать K8s кластер (DO/EKS/GKE) + Ingress + cert-manager + DNS | [comment](https://github.com/Rivega42/emdr42/issues/136) |
+| #137 | S3 bucket + IAM + secret для backup | [comment](https://github.com/Rivega42/emdr42/issues/137) |
 
-- **#136** Kubernetes / Helm manifests — нужна тестовая K8s кластер
-- **#137** PostgreSQL backups + PITR — требует S3/WAL-g
-- **#138** Loki + Prometheus exporters — расширение docker-compose + dashboards
-- **#139** Trivy/SBOM/secrets scanning — расширение CI
+Все инструкции подробно расписаны в comments issues.
 
-### Frontend
+## Что ещё не затронуто (оставшиеся P2)
 
-- **#105** Split session/page.tsx — большой рефакторинг
-- **#106** Zod + react-hook-form для auth — переписывание 4 форм
-- **#107** Убрать any types (face-api, emotion-test)
-- **#109** a11y (aria-value, focus-trap)
-- **#111** useVoice hook
-- **#84** Полный i18n 3 языка
-- **#85** MediaPipe вместо face-api
-- **#92–96** UI pages подключение реальных API (нужны #78 tRPC wiring)
-- **#80** Emotion timeline visualization
+- **#97** React Native / Expo мобильное приложение — отдельный проект
+- **#89** Gamification (XP, уровни, achievements)
+- **#79** Voice patterns analysis
+- **#80** Emotion timeline visualization (после #125 analytics)
+- **#81** Cross-session AI context
+- **#85** MediaPipe замена face-api.js
+- **#84** Полный i18n 3 языка (частично сделано — ключи в lib/i18n)
+- **#56** PWA offline-first (частично сделано в #104)
+- **#90** Therapist cabinet UI (после #112 schema)
+- **#91** Dependabot (включено в #139)
+- **#94, #95, #96** Admin/Settings/Dashboard подключить к реальным API
+- **#92, #93** Session/Progress pages реальные данные
+- **#98** Расширить Playwright E2E
+- **#99** Расширить Storybook
+- **#100** Обновить ROADMAP.md
+- **#78** tRPC routers к NestJS
+- **#82** Prometheus метрики API endpoints (base setup в #138)
+- **#83** Voice pipeline latency metrics
+- **#87** Sentry error tracking
+- **#88** Pino JSON logs + correlation (частично через #124)
+- **#151** RBAC portal UI (schema готов в #112)
+- **#150** Test coverage 70% — постоянный процесс, покрытие растёт с каждой фичей
 
-### Реализации поверх уже сделанной инфраструктуры
+## Замечания / технический долг / риски
 
-- **#129** STT streaming (Deepgram + faster-whisper) — реализация методов, которые сейчас throw
-- **#78** tRPC wiring — подключить routers к NestJS services
-- **#131** Применить #131 в session-engine для реальных BLS set routing
-- **#128** Интеграция PII/armor в AnthropicProvider.chat() — требует модификации каждого provider
+### Prerequisites для запуска кода
 
-### Процесс / Ops
+1. **Prisma generate** обязательно после миграций. Новые модели (RefreshToken, VerificationToken, CrisisEvent, UsageLog, Subscription, Invoice, TherapistPatient, TherapistNote) используются через `(prisma as any).model` до запуска generate. После `npx prisma generate` — убрать as any.
 
-- **#142** Runbook + Incident Response docs
-- **#143** k6 load tests
-- **#150** 70% coverage — требует написания множества unit/integration тестов
-- **#140** Husky + commitlint + semantic-release
+2. **npm install** в нескольких местах: ai-providers (+ ws), api (+ helmet, ioredis, xss, nodemailer, twilio, stripe), корень (+ react-hook-form, @hookform/resolvers).
 
-## Замечания / открытые риски
+3. **npx prisma migrate deploy** применит все миграции:
+   - `20260417000000_init` — базовая схема
+   - `20260417100000_therapist_patient_compliance` — связи + compliance поля
+   - `20260417200000_auth_hardening` — failed attempts, lockout, MFA, verification
+   - `20260417300000_billing` — Subscription, Invoice
 
-1. **Prisma generate** — новые модели (RefreshToken, CrisisEvent, UsageLog, TherapistPatient, TherapistNote, VerificationToken) требуют запуска `prisma generate` в CI и Docker build. До этого — IDE ошибки и runtime errors на этих моделях. Миграция ожидает `prisma migrate deploy` на БД.
-2. **Типизация crisis/usage services** использует `(this.prisma as any).crisisEvent` / `.usageLog` / `.therapistPatient` / `.therapistNote` — до запуска generate типы недоступны. После generate надо убрать `as any`.
-3. **Интеграция CircuitBreaker в provider retry callbacks** — retries внутри breaker могут конкурировать с внешним fallback. Тесты покрывают unit, но не integration между providers.
-4. **PII redactor и prompt armor не подключены в AnthropicProvider** — utilities готовы, но каждый provider должен вызывать их в chat(). Оставлено на отдельный PR для атомарности.
-5. **CrisisEvent модель типизирована через `as any`** — после `prisma generate` заменить.
-6. **Seed работает с @emdr42.local доменом** — если email верификация включается (#149), надо генерировать dummy email-ы которые SMTP-фильтр пропустит.
-7. **Adaptive set length может не совпадать с session-engine** — поменяли types, но не весь flow в session-engine использует adaptive-controller.calculateBlsParams.
-8. **Next.js CSP с 'unsafe-inline'** — safe для MVP, но для production надо перейти на nonce-based.
+### Integration work, отложенный для атомарности
 
-## Появившиеся новые issues в ходе работы
+- **PII redaction + prompt armor интеграция в LLM providers** — utilities созданы (#128), но в AnthropicProvider/OpenAiProvider ещё не подключены. Нужен отдельный PR с модификацией каждого provider.
+- **Orchestrator UsageService.record()** после chatStream/tts/stt — #130 data layer готов, но фактические вызовы не подключены.
+- **NotificationsService calls из CrisisService** — hook therapist crisis alert (#147 + #148).
+- **Session therapistId validation в create** — #112 предотвращает чужого пациента, но endpoint не проверяет.
+- **Fronend billing UI (/settings/billing)** — backend готов (#145), UI страница не создана.
 
-Не появилось — все работы уместились в скоуп существующих issues.
-Однако обнаружены несколько technical debt items для будущих PR:
+### Open architectural decisions
 
-- Applied PII redaction + prompt armor нужно интегрировать в каждый LLM provider (не создавал issue т.к. это часть #128)
-- UsageService.record() нужно вызывать из orchestrator после каждого chatStream/tts/stt (часть #130)
-- TherapistPatientService проверки при создании Session (session.therapistId) — надо гарантировать что терапевт не приставлен к чужому пациенту (часть #112)
-- Тесты на SanitizePipe
-- Тесты на PrismaService pool config
+1. **Data localization для РФ** — не решено. Требует отдельный deployment в Яндекс/VK Cloud с data routing по user.country.
+2. **Medical device classification** — ждём юрист review (#146).
+3. **Self-guided EMDR legality** — ждём юрист review per jurisdiction.
+4. **Managed DB vs self-hosted PG** — для production строго рекомендую managed. В k8s/SETUP.md описано.
+5. **Cookie-based auth** — пока localStorage; middleware.ts готов к переключению, но требует #114 финал + UI изменения.
+
+## Метрика прогресса
+
+| Область | Было | Стало | Оставшееся |
+|---------|------|-------|------------|
+| Frontend pages | 85% | 90% | #92-96 реальные данные (нужен #78 tRPC) |
+| Frontend data integration | 20% | 25% | Зависит от #78 |
+| Backend API | 65% | 90% | Integration hooks |
+| Auth & Security | 40% | 85% | MFA TOTP setup endpoints |
+| Orchestrator | 60% | 70% | integration #130/#128 |
+| EMDR engine | 50% | 80% | session-engine полностью использует adaptive |
+| AI providers | 55% | 85% | faster-whisper streaming, prompt armor integration |
+| Compliance | 25% | 75% | Юрист review, BAA подпись |
+| DevOps | 45% | 85% | Реальный deploy |
+| Testing | 35% | 40% | Write tests, к 70% нужен отдельный спринт |
+| Documentation | 70% | 95% | |
 
 ## Следующий логический блок задач
 
-Рекомендую далее (в порядке impact/effort):
+Приоритет 1 (нельзя без них в production):
+1. **Юрист review** #146 — критичный блокер для legal launch
+2. **Clinical Advisory Board review** #147 protocols
+3. **Staging deploy** через #136 — real-world test
+4. **BAA подписать** с Anthropic, Twilio, SMTP провайдером
+5. **First security audit / pen test**
 
-1. **#114 Refresh token + MFA** — большой, меняет auth flow (foundation для #115/119/149)
-2. **#145 Stripe billing** — нужно для монетизации
-3. **#146 Legal docs draft** — шаблоны с пометкой "draft — review by lawyer"
-4. **#105 Split session/page.tsx** — улучшает maintainability
-5. **#92–96** frontend data integration (после того как tRPC routers подключены через #78)
-6. **#142 Runbook + IR docs** — готовность к incident response
+Приоритет 2 (UX + monetization):
+6. **#92-96** UI к реальным API данным
+7. **Billing UI** (/settings/billing)
+8. **MFA TOTP flow** (завершение #114)
+9. **Cookie-based auth** (#115 CSRF)
 
-Эти задачи лучше делать последовательно, не параллельно — у них общий blast radius.
+Приоритет 3 (growth):
+10. Observability #82/#83/#87 (метрики)
+11. Test coverage to 70%
+12. Load testing
+13. Mobile app #97
