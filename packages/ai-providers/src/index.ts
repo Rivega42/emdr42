@@ -33,6 +33,10 @@ export type { CircuitState, CircuitBreakerOptions } from './circuit-breaker';
 // Config
 export { DEFAULT_CONFIG } from './config';
 
+// Cost tracking (#130)
+export { calculateCostUsd, LLM_PRICES, TTS_PRICES, STT_PRICES } from './pricing';
+export type { LlmPricing, TtsPricing, SttPricing, UsageCostInput } from './pricing';
+
 // LLM providers
 export { AnthropicProvider } from './llm/anthropic-provider';
 export type { AnthropicProviderConfig } from './llm/anthropic-provider';
