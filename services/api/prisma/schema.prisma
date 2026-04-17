@@ -279,6 +279,36 @@ model Invoice {
   @@index([status])
 }
 
+// #89 — Gamification (XP, levels, achievements).
+model UserProgress {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  xp             Int      @default(0)
+  level          Int      @default(1)
+  currentStreak  Int      @default(0)
+  longestStreak  Int      @default(0)
+  lastActivityAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  achievements UserAchievement[]
+
+  @@index([userId])
+  @@index([level])
+}
+
+model UserAchievement {
+  id           String   @id @default(uuid())
+  progressId   String
+  progress     UserProgress @relation(fields: [progressId], references: [id], onDelete: Cascade)
+  achievementKey String
+  unlockedAt   DateTime @default(now())
+  progress_pct Int      @default(100)
+
+  @@unique([progressId, achievementKey])
+  @@index([progressId])
+}
+
 // #130 — LLM/TTS/STT usage tracking.
 model UsageLog {
   id           String   @id @default(uuid())
