@@ -1,4 +1,5 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
@@ -15,13 +16,16 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { VerificationModule } from './verification/verification.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { BillingModule } from './billing/billing.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
+import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 import { RedisModule } from './common/redis/redis.module';
 
 @Module({
   imports: [
     RedisModule,
+    MetricsModule,
     PrismaModule,
     AuditModule,
     AuthModule,
@@ -39,10 +43,13 @@ import { RedisModule } from './common/redis/redis.module';
     NotificationsModule,
     BillingModule,
   ],
+  providers: [
+    { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // CorrelationId должен идти ДО LoggerMiddleware, чтобы logger видел cid.
+    // CorrelationId ДО LoggerMiddleware, чтобы logger видел cid.
     consumer.apply(CorrelationIdMiddleware, LoggerMiddleware).forRoutes('*');
   }
 }

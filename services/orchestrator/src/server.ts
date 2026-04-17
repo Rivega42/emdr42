@@ -18,6 +18,7 @@ import { SessionHandler } from './session-handler';
 import { BackendClient } from './backend-client';
 import { VoiceHandler } from './voice-handler';
 import { SessionRegistry } from './session-registry';
+import { metrics, metricsHandler } from './metrics';
 
 // -- JWT payload type --
 
@@ -43,14 +44,37 @@ const main = async (): Promise<void> => {
   // Start idle sweeper
   registry.startSweeper();
 
-  // Create HTTP + Socket.io server
-  const httpServer = createServer();
+  // Create HTTP + Socket.io server with /metrics + /health routes
+  const httpServer = createServer(async (req, res) => {
+    if (!req.url) return res.end();
+    if (req.url.startsWith('/metrics')) {
+      const { contentType, body } = await metricsHandler();
+      res.writeHead(200, { 'Content-Type': contentType });
+      res.end(body);
+      return;
+    }
+    if (req.url.startsWith('/health') || req.url.startsWith('/healthz')) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', uptime: process.uptime() }));
+      return;
+    }
+    res.writeHead(404);
+    res.end('Not Found');
+  });
+
   const io = new Server(httpServer, {
     cors: {
       origin: config.corsOrigin,
       methods: ['GET', 'POST'],
     },
   });
+
+  // Обновляем Gauge метрики периодически
+  setInterval(() => {
+    const { sessions, voice } = registry.size();
+    metrics.activeSessions.set(sessions);
+    metrics.activeVoice.set(voice);
+  }, 5000).unref();
 
   // -- /session namespace --
   const sessionNs = io.of('/session');
@@ -81,6 +105,7 @@ const main = async (): Promise<void> => {
     const userToken = (socket as any).userToken as string;
 
     console.log(`[ws] Client connected: userId=${userId} socketId=${socket.id}`);
+    metrics.wsConnections.inc();
 
     // ---- session:start ----
     socket.on(
@@ -288,6 +313,7 @@ const main = async (): Promise<void> => {
       console.log(
         `[ws] Client disconnected: userId=${userId} socketId=${socket.id} reason=${reason}`
       );
+      metrics.wsConnections.dec();
 
       // Cleanup только сессий ЭТОГО socket (ранее чистились все сессии всех клиентов).
       const voiceIds = registry.voiceBySocket(socket.id);
