@@ -37,6 +37,16 @@ export { DEFAULT_CONFIG } from './config';
 export { calculateCostUsd, LLM_PRICES, TTS_PRICES, STT_PRICES } from './pricing';
 export type { LlmPricing, TtsPricing, SttPricing, UsageCostInput } from './pricing';
 
+// PII redaction & prompt armor (#128)
+export { redactPii } from './pii-redactor';
+export type { RedactionOptions } from './pii-redactor';
+export {
+  analyzeForInjection,
+  wrapUserMessage,
+  THERAPIST_ARMOR_PREAMBLE,
+} from './prompt-armor';
+export type { InjectionAnalysis } from './prompt-armor';
+
 // LLM providers
 export { AnthropicProvider } from './llm/anthropic-provider';
 export type { AnthropicProviderConfig } from './llm/anthropic-provider';
