@@ -13,10 +13,13 @@ export interface DomainEvent<T = any> {
   type: string;
   data: T;
   correlationId?: string;
+  idempotencyKey?: string; // #134
   timestamp?: string;
 }
 
 type EventHandler<T = any> = (event: DomainEvent<T>) => void | Promise<void>;
+
+const IDEMPOTENCY_TTL_SEC = 24 * 60 * 60;
 
 export class EventBus {
   private pub: Redis;
@@ -27,25 +30,64 @@ export class EventBus {
     this.pub = new Redis(redisUrl);
     this.sub = new Redis(redisUrl);
 
-    this.sub.on('pmessage', (_pattern, channel, message) => {
+    this.sub.on('pmessage', async (_pattern, channel, message) => {
       const event: DomainEvent = JSON.parse(message);
-      // Вызвать обработчики для всех совпадающих паттернов
+
+      // #134 idempotency — на consumer side тоже dedup
+      if (event.idempotencyKey) {
+        const redisKey = `eventbus:consumed:${channel}:${event.idempotencyKey}`;
+        const already = await this.pub.set(
+          redisKey,
+          '1',
+          'EX',
+          IDEMPOTENCY_TTL_SEC,
+          'NX',
+        );
+        if (already === null) {
+          // Уже обработано — пропускаем
+          return;
+        }
+      }
+
       for (const [pattern, handlers] of this.handlers.entries()) {
         if (this.matchPattern(pattern, channel)) {
-          handlers.forEach((h) => h(event));
+          for (const h of handlers) {
+            try {
+              await h(event);
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error(`[eventBus] handler error for ${channel}:`, err);
+            }
+          }
         }
       }
     });
   }
 
-  /** Публикация события */
-  async publish<T>(event: DomainEvent<T>): Promise<void> {
+  /**
+   * Публикация события (#134 idempotency на publisher side).
+   * Если idempotencyKey задан, повторная публикация в течение 24h проигнорируется.
+   */
+  async publish<T>(event: DomainEvent<T>): Promise<{ published: boolean }> {
+    if (event.idempotencyKey) {
+      const redisKey = `eventbus:published:${event.type}:${event.idempotencyKey}`;
+      const ok = await this.pub.set(
+        redisKey,
+        '1',
+        'EX',
+        IDEMPOTENCY_TTL_SEC,
+        'NX',
+      );
+      if (ok === null) return { published: false }; // уже публиковано
+    }
+
     const payload = JSON.stringify({
       ...event,
       timestamp: event.timestamp || new Date().toISOString(),
       correlationId: event.correlationId || crypto.randomUUID(),
     });
     await this.pub.publish(event.type, payload);
+    return { published: true };
   }
 
   /** Подписка на события по паттерну (поддерживает * wildcard) */
