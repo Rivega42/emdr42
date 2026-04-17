@@ -9,6 +9,7 @@ import { HealthModule } from './health/health.module';
 import { LiveKitModule } from './livekit/livekit.module';
 import { EmailModule } from './email/email.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(LoggerMiddleware).forRoutes('*');
+    // CorrelationId должен идти ДО LoggerMiddleware, чтобы logger видел cid.
+    consumer.apply(CorrelationIdMiddleware, LoggerMiddleware).forRoutes('*');
   }
 }
