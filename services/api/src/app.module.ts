@@ -4,6 +4,7 @@ import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { TherapistPatientModule } from './therapist-patient/therapist-patient.module';
 import { AdminModule } from './admin/admin.module';
 import { HealthModule } from './health/health.module';
 import { LiveKitModule } from './livekit/livekit.module';
@@ -18,6 +19,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
     AuthModule,
     UsersModule,
     SessionsModule,
+    TherapistPatientModule,
     AdminModule,
     HealthModule,
     LiveKitModule,
