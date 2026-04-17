@@ -165,6 +165,111 @@ class ApiClient {
       body: JSON.stringify({ notes }),
     });
   }
+
+  // Analytics (#125)
+  async getMyAnalytics(params?: { from?: string; to?: string }): Promise<{
+    totalSessions: number;
+    completed: number;
+    aborted: number;
+    completionRate: number;
+    avgSudsReduction: number;
+    avgVocGain: number;
+    avgDurationSec: number;
+    sessions: Array<{
+      id: string;
+      startedAt: string | null;
+      durationSec: number | null;
+      sudsBaseline: number | null;
+      sudsFinal: number | null;
+      vocBaseline: number | null;
+      vocFinal: number | null;
+    }>;
+  }> {
+    const qs = new URLSearchParams();
+    if (params?.from) qs.set('from', params.from);
+    if (params?.to) qs.set('to', params.to);
+    return this.request(`/analytics/me/sessions${qs.toString() ? `?${qs}` : ''}`);
+  }
+
+  async getPatientAnalyticsSummary(patientId: string) {
+    return this.request(`/analytics/patients/${patientId}/summary`);
+  }
+
+  // Gamification (#89)
+  async getMyProgress(): Promise<{
+    xp: number;
+    level: number;
+    currentStreak: number;
+    longestStreak: number;
+    xpToNextLevel: number;
+    achievements: Array<{
+      key: string;
+      title: string;
+      description: string;
+      icon: string;
+      unlockedAt: string;
+    }>;
+    locked: Array<{ key: string; title: string; description: string; icon: string }>;
+  }> {
+    return this.request('/gamification/me');
+  }
+
+  // Usage / billing (#130, #145)
+  async getMyUsage(days = 30): Promise<{
+    totalCostUsd: number;
+    byProvider: Record<string, { totalCost: number; count: number }>;
+    totalEvents: number;
+  }> {
+    return this.request(`/usage/me?days=${days}`);
+  }
+
+  async getMySubscription(): Promise<{
+    plan: string;
+    status: string;
+    currentPeriodEnd?: string | null;
+    cancelAtPeriodEnd?: boolean;
+    invoices?: Array<{
+      id: string;
+      amountCents: number;
+      currency: string;
+      status: string;
+      hostedInvoiceUrl?: string | null;
+      paidAt?: string | null;
+      createdAt: string;
+    }>;
+  }> {
+    return this.request('/billing/subscription');
+  }
+
+  async getBillingPlans(): Promise<Array<{
+    id: string;
+    name: string;
+    priceCentsMonthly: number;
+    features: string[];
+    role: string;
+  }>> {
+    return this.request('/billing/plans');
+  }
+
+  async createCheckout(planId: string): Promise<{ checkoutUrl: string }> {
+    return this.request(`/billing/checkout/${planId}`, { method: 'POST' });
+  }
+
+  // Crisis
+  async getCrisisHotlines(): Promise<{
+    country: string;
+    emergencyNumber: string;
+    hotlines: Array<{
+      name: string;
+      phone: string;
+      sms?: string;
+      online?: string;
+      languages: string[];
+      available247: boolean;
+    }>;
+  }> {
+    return this.request('/crisis/hotlines');
+  }
 }
 
 export { ApiClient, ApiError };
