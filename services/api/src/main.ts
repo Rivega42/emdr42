@@ -5,10 +5,14 @@ import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { SanitizePipe } from './common/pipes/sanitize.pipe';
 import { PinoLoggerService } from './common/logger/pino-logger';
+import { initSentry } from './common/sentry/sentry';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const helmet = require('helmet');
 
 async function bootstrap() {
+  // Sentry обязательно до NestFactory для capture startup errors (#87)
+  initSentry();
+
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule, {
     // rawBody нужен для Stripe webhook подписи (#145)
