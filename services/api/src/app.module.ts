@@ -9,6 +9,7 @@ import { AdminModule } from './admin/admin.module';
 import { HealthModule } from './health/health.module';
 import { LiveKitModule } from './livekit/livekit.module';
 import { EmailModule } from './email/email.module';
+import { CrisisModule } from './crisis/crisis.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 
@@ -24,6 +25,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
     HealthModule,
     LiveKitModule,
     EmailModule,
+    CrisisModule,
   ],
 })
 export class AppModule implements NestModule {
