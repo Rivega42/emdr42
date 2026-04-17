@@ -240,6 +240,45 @@ model VerificationToken {
   @@index([expiresAt])
 }
 
+// #145 — Subscription plans / Stripe integration.
+model Subscription {
+  id                   String   @id @default(uuid())
+  userId               String   @unique
+  stripeCustomerId     String?  @unique
+  stripeSubscriptionId String?  @unique
+  plan                 String   // FREE | PATIENT_BASIC | PATIENT_PREMIUM | THERAPIST_PRO
+  status               String   // ACTIVE | PAST_DUE | CANCELED | INCOMPLETE | TRIALING
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean  @default(false)
+  trialEndsAt          DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  invoices Invoice[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([stripeCustomerId])
+}
+
+model Invoice {
+  id                String   @id @default(uuid())
+  subscriptionId    String
+  subscription      Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  stripeInvoiceId   String?  @unique
+  amountCents       Int
+  currency          String   @default("usd")
+  status            String   // PAID | UNPAID | VOID | OPEN
+  hostedInvoiceUrl  String?
+  pdfUrl            String?
+  paidAt            DateTime?
+  createdAt         DateTime @default(now())
+
+  @@index([subscriptionId])
+  @@index([status])
+}
+
 // #130 — LLM/TTS/STT usage tracking.
 model UsageLog {
   id           String   @id @default(uuid())

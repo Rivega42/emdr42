@@ -9,7 +9,10 @@ const helmet = require('helmet');
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    // rawBody нужен для Stripe webhook подписи (#145)
+    rawBody: true,
+  });
 
   // Graceful shutdown (#124) — обязательно до listen
   app.enableShutdownHooks();

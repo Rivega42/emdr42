@@ -14,6 +14,7 @@ import { UsageModule } from './usage/usage.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { VerificationModule } from './verification/verification.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { BillingModule } from './billing/billing.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { RedisModule } from './common/redis/redis.module';
@@ -36,6 +37,7 @@ import { RedisModule } from './common/redis/redis.module';
     AnalyticsModule,
     VerificationModule,
     NotificationsModule,
+    BillingModule,
   ],
 })
 export class AppModule implements NestModule {
