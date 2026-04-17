@@ -17,6 +17,7 @@ import { VerificationModule } from './verification/verification.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { BillingModule } from './billing/billing.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { PatientContextModule } from './patient-context/patient-context.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
@@ -42,6 +43,7 @@ import { RedisModule } from './common/redis/redis.module';
     VerificationModule,
     NotificationsModule,
     BillingModule,
+    PatientContextModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
