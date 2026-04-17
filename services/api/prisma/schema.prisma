@@ -41,19 +41,83 @@ model User {
   isActive         Boolean   @default(true)
   resetToken       String?
   resetTokenExpiry DateTime?
+
+  // Crisis / emergency (#147)
+  country            String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  emergencyContactRel   String?
+
+  // GDPR (#121)
+  deletedAt          DateTime?
+  dataConsentAt      DateTime?
+  tosAcceptedVersion String?
+
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
-  sessions         Session[]
+
+  // Sessions owned by this user (as patient)
+  sessions         Session[] @relation("PatientSessions")
+
+  // Sessions supervised (as therapist)
+  therapistSessions Session[] @relation("TherapistSessions")
+
+  // Therapist ↔ Patient relationships (#112)
+  patientsAsTherapist TherapistPatient[] @relation("TherapistRelations")
+  therapistsAsPatient TherapistPatient[] @relation("PatientRelations")
+
+  // Therapist notes authored
+  authoredNotes    TherapistNote[]     @relation("AuthoredNotes")
+
   settings         Json?
 
   @@index([email])
   @@index([role])
+  @@index([deletedAt])
+}
+
+// #112 — M:N between therapists and patients. Therapist может назначать
+// себя пациенту, пациент видит список своих therapists.
+model TherapistPatient {
+  id          String   @id @default(uuid())
+  therapistId String
+  patientId   String
+  therapist   User     @relation("TherapistRelations", fields: [therapistId], references: [id], onDelete: Cascade)
+  patient     User     @relation("PatientRelations", fields: [patientId], references: [id], onDelete: Cascade)
+  status      String   @default("ACTIVE") // ACTIVE | PAUSED | DISCHARGED
+  assignedAt  DateTime @default(now())
+  dischargedAt DateTime?
+  notes       String?
+
+  @@unique([therapistId, patientId])
+  @@index([therapistId])
+  @@index([patientId])
+  @@index([status])
+}
+
+// #112, #122 — терапевтические заметки между сессиями / supervisor notes.
+model TherapistNote {
+  id           String   @id @default(uuid())
+  therapistId  String
+  patientId    String
+  sessionId    String?
+  author       User     @relation("AuthoredNotes", fields: [therapistId], references: [id])
+  content      String
+  visibility   String   @default("PRIVATE") // PRIVATE | SHARED_WITH_PATIENT | SUPERVISION
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([therapistId])
+  @@index([patientId])
+  @@index([sessionId])
 }
 
 model Session {
   id            String        @id @default(uuid())
   userId        String
-  user          User          @relation(fields: [userId], references: [id])
+  user          User          @relation("PatientSessions", fields: [userId], references: [id])
+  therapistId   String?
+  therapist     User?         @relation("TherapistSessions", fields: [therapistId], references: [id])
   sessionNumber Int
   status        SessionStatus @default(SCHEDULED)
   phase         EmdrPhase     @default(HISTORY)
@@ -89,6 +153,17 @@ model Session {
   clientStateAtEnd    String?
   betweenSessionNotes String?
 
+  // Recording / transcript (#122)
+  recordingUrl         String?
+  recordingStorageKey  String?
+  recordingEncryptionKeyId String?
+  recordingConsentAt   DateTime?
+  transcriptText       String?  @db.Text
+
+  // Data retention (#121)
+  dataExpiresAt DateTime?
+  deletedAt     DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -99,8 +174,81 @@ model Session {
   safetyEvents   SafetyEvent[]
 
   @@index([userId])
+  @@index([therapistId])
   @@index([status])
   @@index([userId, createdAt])
+  @@index([dataExpiresAt])
+  @@index([deletedAt])
+}
+
+// #147 — Crisis events (suicide ideation, severe dissociation, etc).
+model CrisisEvent {
+  id          String   @id @default(uuid())
+  userId      String
+  sessionId   String?
+  severity    String   // LOW | MODERATE | HIGH | CRITICAL
+  type        String   // SUICIDE_IDEATION | SELF_HARM | DISSOCIATION | PANIC | OTHER
+  triggerText String?
+  actionTaken String
+  hotlineShown String?
+  therapistNotified Boolean @default(false)
+  acknowledged Boolean @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([severity])
+  @@index([createdAt])
+}
+
+// #114 — Refresh token rotation storage.
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+}
+
+// #149 — Email verification tokens.
+model VerificationToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  purpose   String   // EMAIL_VERIFY | PHONE_VERIFY | ACCOUNT_RECOVERY
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+}
+
+// #130 — LLM/TTS/STT usage tracking.
+model UsageLog {
+  id           String   @id @default(uuid())
+  userId       String?
+  sessionId    String?
+  provider     String   // anthropic | openai | deepgram | ...
+  providerType String   // LLM | TTS | STT
+  model        String?
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  durationMs   Int?
+  costUsd      Float    @default(0)
+  timestamp    DateTime @default(now())
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([provider])
+  @@index([timestamp])
 }
 
 model TimelineEvent {
@@ -188,20 +336,25 @@ model PlatformSettings {
   @@index([category])
 }
 
-// HIPAA/GDPR Audit Log — запись всех действий с PHI данными
+// HIPAA/GDPR Audit Log — запись всех действий с PHI данными (#120)
 model AuditLog {
-  id           String   @id @default(uuid())
-  timestamp    DateTime @default(now())
-  userId       String?
-  action       String   // CREATE, READ, UPDATE, DELETE, EXPORT, LOGIN
-  resourceType String   // Session, User, EmotionRecord и т.д.
-  resourceId   String?
-  ipAddress    String?
-  userAgent    String?
-  details      Json?    // Дополнительный контекст действия
+  id             String   @id @default(uuid())
+  timestamp      DateTime @default(now())
+  userId         String?
+  actorId        String?  // кто выполнил действие (для admin/therapist actions)
+  correlationId  String?  // trace ID для debug (#124)
+  action         String   // LOGIN, LOGOUT, REGISTER, PASSWORD_RESET, CREATE, READ, UPDATE, DELETE, EXPORT
+  resourceType   String   // Session, User, EmotionRecord и т.д.
+  resourceId     String?
+  success        Boolean  @default(true)
+  ipAddress      String?
+  userAgent      String?
+  details        Json?    // Дополнительный контекст действия
 
   @@index([userId])
+  @@index([actorId])
   @@index([timestamp])
   @@index([action])
   @@index([resourceType])
+  @@index([userId, timestamp])
 }
