@@ -6,6 +6,8 @@ import {
   IsEnum,
   Min,
   Max,
+  MaxLength,
+  ArrayMaxSize,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -17,46 +19,61 @@ enum BlsPattern {
   random = 'random',
 }
 
+// Длины из EMDR best practices: targetMemory нередко описательный, остальные — короткие cognition.
+const MAX_TARGET_MEMORY = 5000;
+const MAX_COGNITION = 500;
+const MAX_DOMAIN = 100;
+const MAX_BODY_LOCATION = 200;
+
 export class CreateSessionDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: MAX_TARGET_MEMORY })
   @IsOptional()
   @IsString()
+  @MaxLength(MAX_TARGET_MEMORY)
   targetMemory?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: MAX_TARGET_MEMORY })
   @IsOptional()
   @IsString()
+  @MaxLength(MAX_TARGET_MEMORY)
   targetImage?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: MAX_COGNITION })
   @IsOptional()
   @IsString()
+  @MaxLength(MAX_COGNITION)
   negativeCognition?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: MAX_DOMAIN })
   @IsOptional()
   @IsString()
+  @MaxLength(MAX_DOMAIN)
   ncDomain?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: MAX_COGNITION })
   @IsOptional()
   @IsString()
+  @MaxLength(MAX_COGNITION)
   positiveCognition?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: MAX_DOMAIN })
   @IsOptional()
   @IsString()
+  @MaxLength(MAX_DOMAIN)
   pcDomain?: string;
 
-  @ApiPropertyOptional({ type: [String] })
+  @ApiPropertyOptional({ type: [String], maxItems: 20 })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(20)
   @IsString({ each: true })
+  @MaxLength(50, { each: true })
   initialEmotions?: string[];
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: MAX_BODY_LOCATION })
   @IsOptional()
   @IsString()
+  @MaxLength(MAX_BODY_LOCATION)
   bodyLocation?: string;
 
   @ApiPropertyOptional({ enum: BlsPattern, default: BlsPattern.horizontal })
