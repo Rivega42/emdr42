@@ -12,6 +12,7 @@ import { EmailModule } from './email/email.module';
 import { CrisisModule } from './crisis/crisis.module';
 import { UsageModule } from './usage/usage.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { VerificationModule } from './verification/verification.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { RedisModule } from './common/redis/redis.module';
@@ -32,6 +33,7 @@ import { RedisModule } from './common/redis/redis.module';
     CrisisModule,
     UsageModule,
     AnalyticsModule,
+    VerificationModule,
   ],
 })
 export class AppModule implements NestModule {
