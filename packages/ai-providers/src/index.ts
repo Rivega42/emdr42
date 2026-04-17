@@ -19,8 +19,16 @@ export type {
   AiRouterEventHandler,
 } from './types';
 
-// Router
+// Router + reliability
 export { AiRouter } from './router';
+export type { RouterReliabilityOptions } from './router';
+export {
+  CircuitBreaker,
+  CircuitOpenError,
+  CircuitTimeoutError,
+  withRetry,
+} from './circuit-breaker';
+export type { CircuitState, CircuitBreakerOptions } from './circuit-breaker';
 
 // Config
 export { DEFAULT_CONFIG } from './config';
