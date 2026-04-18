@@ -33,6 +33,16 @@ export interface LlmOptions {
   temperature?: number;
   maxTokens?: number;
   systemPrompt?: string;
+  /**
+   * Armor options (#128). Если enableArmor=true:
+   *   - Детектится injection; при подозрении вызывается onInjection (если задан), иначе flag в AuditLog
+   *   - User messages оборачиваются в USER_MESSAGE_START/END delimiters
+   *   - К system prompt добавляется THERAPIST_ARMOR_PREAMBLE
+   */
+  enableArmor?: boolean;
+  /** Names для PII redaction в user messages (#128). */
+  redactPersonalNames?: string[];
+  onInjection?: (analysis: { suspicious: boolean; score: number; matched: string[] }) => void;
 }
 
 // ========== STT ==========

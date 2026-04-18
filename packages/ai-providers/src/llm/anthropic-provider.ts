@@ -5,6 +5,7 @@ import type {
   ChatResponse,
   LlmOptions,
 } from '../types';
+import { applyArmor } from '../armor-helper';
 
 export interface AnthropicProviderConfig {
   apiKey: string;
@@ -26,14 +27,14 @@ export class AnthropicProvider implements LlmProvider {
     options?: LlmOptions
   ): Promise<ChatResponse> {
     const start = Date.now();
-    const { system, userMessages } = this.extractSystem(messages, options);
+    const armored = applyArmor(messages, options);
 
     const response = await this.client.messages.create({
       model: options?.model ?? this.defaultModel,
       max_tokens: options?.maxTokens ?? 4096,
       temperature: options?.temperature,
-      system: system || undefined,
-      messages: userMessages.map((m) => ({
+      system: armored.systemPrompt || undefined,
+      messages: armored.messages.map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
@@ -57,14 +58,14 @@ export class AnthropicProvider implements LlmProvider {
     messages: ChatMessage[],
     options?: LlmOptions
   ): AsyncGenerator<string> {
-    const { system, userMessages } = this.extractSystem(messages, options);
+    const armored = applyArmor(messages, options);
 
     const stream = this.client.messages.stream({
       model: options?.model ?? this.defaultModel,
       max_tokens: options?.maxTokens ?? 4096,
       temperature: options?.temperature,
-      system: system || undefined,
-      messages: userMessages.map((m) => ({
+      system: armored.systemPrompt || undefined,
+      messages: armored.messages.map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
