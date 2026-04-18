@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { getHotlinesForCountry, type CountryHotlines } from '@emdr42/core';
 
 export type CrisisSeverity = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
@@ -37,6 +38,7 @@ export class CrisisService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async getHotlinesForUser(userId: string): Promise<CountryHotlines> {
@@ -79,7 +81,38 @@ export class CrisisService {
       },
     });
 
-    // TODO(#148): send therapist notification when severity >= HIGH
+    // Notify therapists at severity >= HIGH (#148)
+    if (input.severity === 'HIGH' || input.severity === 'CRITICAL') {
+      const assignments = await (this.prisma as any).therapistPatient.findMany({
+        where: { patientId: input.userId, status: 'ACTIVE' },
+        include: { therapist: { select: { id: true, name: true, email: true } } },
+      });
+      const patient = await this.prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { name: true },
+      });
+      for (const a of assignments) {
+        try {
+          await this.notifications.notify({
+            type: 'therapist_crisis_alert',
+            userId: a.therapist.id,
+            data: {
+              patientName: patient?.name ?? 'Пациент',
+              severity: input.severity,
+            },
+          });
+        } catch {
+          /* best effort */
+        }
+      }
+      if (assignments.length > 0) {
+        await (this.prisma as any).crisisEvent.update({
+          where: { id: event.id },
+          data: { therapistNotified: true },
+        });
+      }
+    }
+
     return { event, hotlines };
   }
 

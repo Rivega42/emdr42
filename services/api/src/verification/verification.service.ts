@@ -6,6 +6,7 @@ import {
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { GamificationService } from '../gamification/gamification.service';
 
 const EMAIL_VERIFY_TTL_MS = 48 * 60 * 60 * 1000; // 48h
 const PHONE_CODE_TTL_MS = 10 * 60 * 1000; // 10m
@@ -22,6 +23,7 @@ export class VerificationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
+    private readonly gamification: GamificationService,
   ) {}
 
   private hash(token: string): string {
@@ -78,6 +80,9 @@ export class VerificationService {
         data: { usedAt: new Date() },
       }),
     ]);
+
+    // Gamification hook (#89)
+    this.gamification.onEmailVerified(record.userId).catch(() => void 0);
 
     return { userId: record.userId };
   }

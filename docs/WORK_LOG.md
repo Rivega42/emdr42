@@ -2,7 +2,39 @@
 
 Ветка: `claude/project-review-issues-En09l`
 Начало: 2026-04-17
-Финальное обновление: 2026-04-17 (итерация 4)
+Финальное обновление: 2026-04-17 (итерация 5 — MVP-полнота)
+
+## Волна 5 — MVP-полнота (integration hooks + UI завершение)
+
+Главная цель: подключить все skeleton-компоненты в рабочие integration hooks и довести UI до MVP-готовности.
+
+### Integration hooks (12 коммитов в волне 5)
+
+| Область | Что сделано |
+|---------|-------------|
+| LLM armor integration | applyArmor() helper подключён в AnthropicProvider / OpenAiProvider / OllamaProvider. #128 закрыт end-to-end. |
+| Orchestrator patient context | session-handler загружает cross-session context (#81) перед LLM call |
+| Usage tracking | chatStream → backendClient.recordUsage() с tokens + duration (#130) |
+| Gamification events | endSession → notifyGamificationEvent('session_completed'); verify-email → onEmailVerified (#89) |
+| Crisis notifications | CrisisService при severity ≥ HIGH → NotificationsService → therapist alert (#147, #148) |
+| Prompt injection detection | onInjection callback пишет в timeline event |
+| MFA TOTP | mfa.service.ts: setup/verifySetup/verifyChallenge/disable + 10 backup codes (#114 завершён) |
+| Session create validation | Проверка что therapistId — assigned therapist (#112) |
+
+### Product UI (6 коммитов)
+
+- **Billing UI** (#145): /settings/billing с plans + Stripe Checkout + customer portal + invoice history; /billing/success; /billing/cancel
+- **CrisisBanner** (#147): floating 🆘 кнопка на каждой странице, модалка с hotlines из /crisis/hotlines
+- **Admin dashboard + users** (#96): полностью на русском + a11y, реальные данные
+- **Therapist cabinet** (#90): /patients список через therapist-patient API
+- **Settings page** — GDPR export/delete работают
+- **Session create** — валидация therapist assignment
+
+### i18n (#84)
+
+- lib/i18n/en.ts + ru.ts расширены до 12 секций, 130 ключей
+- Добавлены: home, progress, settings, billing, auth, safety
+- Полный перевод ru для всех client-side UI
 
 ## Контекст
 
