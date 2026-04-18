@@ -17,7 +17,10 @@ import { SessionQueryDto } from './dto/session-query.dto';
 export class SessionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateSessionDto, userId: string) {
+  async create(
+    dto: CreateSessionDto & { therapistId?: string },
+    userId: string,
+  ) {
     const lastSession = await this.prisma.session.findFirst({
       where: { userId },
       orderBy: { sessionNumber: 'desc' },
@@ -26,11 +29,30 @@ export class SessionsService {
 
     const sessionNumber = (lastSession?.sessionNumber ?? 0) + 1;
 
+    // Validate therapist assignment if provided (#112)
+    if (dto.therapistId) {
+      const rel = await (this.prisma as any).therapistPatient.findUnique({
+        where: {
+          therapistId_patientId: {
+            therapistId: dto.therapistId,
+            patientId: userId,
+          },
+        },
+      });
+      if (!rel || rel.status === 'DISCHARGED') {
+        throw new ForbiddenException(
+          'Указанный терапевт не назначен этому пациенту',
+        );
+      }
+    }
+
+    const { therapistId, ...sessionData } = dto as any;
     return this.prisma.session.create({
       data: {
-        ...dto,
+        ...sessionData,
         userId,
         sessionNumber,
+        ...(therapistId ? { therapistId } : {}),
       },
     });
   }
