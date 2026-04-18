@@ -117,6 +117,14 @@ export class SessionHandler {
       phasesCompleted: exportData.phases.length,
       safetyEventsCount: exportData.safetyEvents.length,
     });
+
+    // Notify gamification (#89) — best-effort, не ломает endSession
+    this.backendClient.notifyGamificationEvent({
+      type: 'session_completed',
+      finalSuds: latestSuds,
+      finalVoc: latestVoc,
+      phasesCompleted: exportData.phases.length,
+    }).catch(() => void 0);
   }
 
   // --------------------------------------------------------------------------
@@ -457,9 +465,29 @@ export class SessionHandler {
     context: string
   ): Promise<string> {
     let fullResponse = '';
+    const start = Date.now();
+
+    // Load cross-session patient context (#81). Best-effort — не ломает flow.
+    let patientContext: string | undefined;
+    try {
+      const ctx = await this.backendClient.getPatientContext();
+      patientContext = ctx?.prompt;
+    } catch {
+      // Continue without patient context
+    }
 
     try {
-      const stream = this.aiDialogue.sendMessage(userMessage, context);
+      const stream = this.aiDialogue.sendMessage(userMessage, context, {
+        enableArmor: true,
+        patientContext,
+        onInjection: (analysis) => {
+          this.recordTimeline('interweave', {
+            kind: 'prompt_injection_detected',
+            score: analysis.score,
+            matched: analysis.matched.slice(0, 3),
+          });
+        },
+      });
 
       for await (const chunk of stream) {
         fullResponse += chunk;
@@ -468,6 +496,16 @@ export class SessionHandler {
           text: chunk,
         });
       }
+
+      // Usage tracking (#130) — best-effort
+      this.backendClient.recordUsage({
+        sessionId: this.sessionId,
+        provider: 'anthropic', // TODO: router should report actual provider
+        providerType: 'LLM',
+        inputTokens: userMessage.length / 4, // rough estimate
+        outputTokens: fullResponse.length / 4,
+        durationMs: Date.now() - start,
+      }).catch(() => void 0);
 
       // Emit complete response
       this.socket.emit('session:ai_response', {

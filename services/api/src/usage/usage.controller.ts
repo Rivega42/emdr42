@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -12,6 +12,25 @@ import { UsageService } from './usage.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UsageController {
   constructor(private readonly usage: UsageService) {}
+
+  @Post('record')
+  @ApiOperation({ summary: 'Record usage event (called from Orchestrator)' })
+  async record(
+    @CurrentUser() user: { userId: string },
+    @Body()
+    body: {
+      sessionId?: string;
+      provider: string;
+      providerType: 'LLM' | 'TTS' | 'STT';
+      model?: string;
+      inputTokens?: number;
+      outputTokens?: number;
+      durationMs?: number;
+    },
+  ) {
+    await this.usage.record({ ...body, userId: user.userId });
+    return { recorded: true };
+  }
 
   @Get('me')
   @ApiOperation({ summary: 'Cost summary за последние N дней для текущего пользователя' })
