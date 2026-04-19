@@ -19,34 +19,29 @@ export default function PatientsPage() {
     if (!isTherapist) return;
     const load = async () => {
       try {
-        // Сначала пытаемся через therapist-patient API (реальные assigned patients)
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/therapist-patient/patients?pageSize=100`,
-          {
-            headers: {
-              Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}`,
-            },
-          },
+        const tpData = await api.getAssignedPatients();
+        setPatients(
+          tpData.items.map((item) => ({
+            id: item.patient.id,
+            name: item.patient.name,
+            email: item.patient.email,
+            role: 'PATIENT',
+            isActive: true,
+            createdAt: item.patient.createdAt,
+            updatedAt: item.patient.createdAt,
+            sessionsCount: 0,
+            lastSessionAt: null,
+            avgSudsReduction: null,
+          })),
         );
-        if (res.ok) {
-          const tpData = await res.json();
-          setPatients(
-            tpData.items.map((item: any) => ({
-              id: item.patient.id,
-              name: item.patient.name,
-              email: item.patient.email,
-              sessionsCount: 0,
-              lastSessionAt: null,
-              avgSudsReduction: null,
-            })),
-          );
-        } else {
-          // Fallback на старый API
+      } catch {
+        // Fallback на старый API
+        try {
           const data = await api.getMyPatients();
           setPatients(data);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Не удалось загрузить пациентов');
         }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Не удалось загрузить пациентов');
       } finally {
         setLoading(false);
       }

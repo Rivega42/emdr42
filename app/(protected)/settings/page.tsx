@@ -73,15 +73,7 @@ export default function SettingsPage() {
     setSaving(true);
     setStatus('idle');
     try {
-      // API endpoint PATCH /users/me ожидает { name, settings: JSON }
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}`,
-        },
-        body: JSON.stringify({ name, settings }),
-      });
+      await api.updateProfile({ name, settings });
       setStatus('saved');
     } catch {
       setStatus('error');
@@ -91,19 +83,30 @@ export default function SettingsPage() {
   };
 
   const handleExport = async () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/users/me/export`;
+    try {
+      const blob = await api.exportMyData();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `emdr42-export-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('Не удалось скачать данные.');
+    }
   };
 
   const handleDelete = async () => {
-    if (!confirm('Вы уверены, что хотите удалить аккаунт? Данные будут удалены через 30 дней (можно отменить).')) return;
+    if (
+      !confirm(
+        'Вы уверены, что хотите удалить аккаунт? Данные будут удалены через 30 дней (можно отменить).',
+      )
+    ) {
+      return;
+    }
     setDeleting(true);
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}`,
-        },
-      });
+      await api.requestAccountDeletion();
       logout();
       router.push('/');
     } catch {

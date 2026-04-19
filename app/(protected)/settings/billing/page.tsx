@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { formatPrice } from '@/lib/formatters';
 
 interface Plan {
   id: string;
@@ -27,12 +28,6 @@ interface Subscription {
     createdAt: string;
   }>;
 }
-
-const formatPrice = (cents: number, currency = 'usd') => {
-  if (cents === 0) return 'Бесплатно';
-  const dollars = cents / 100;
-  return `$${dollars.toFixed(0)}/мес`;
-};
 
 export default function BillingPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -75,13 +70,7 @@ export default function BillingPage() {
   const handlePortal = async () => {
     setBusy(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/billing/portal`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}`,
-        },
-      });
-      const { portalUrl } = await res.json();
+      const { portalUrl } = await api.createBillingPortalSession();
       window.location.href = portalUrl;
     } catch {
       setError('Не удалось открыть портал');

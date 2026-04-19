@@ -35,7 +35,7 @@ export class VerificationService {
   async sendEmailVerification(userId: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
-    if ((user as any).emailVerifiedAt) return; // already verified, no-op
+    if (user.emailVerifiedAt) return; // already verified, no-op
 
     // Invalidate prior unused tokens
     await this.prisma.verificationToken.updateMany({
@@ -73,7 +73,7 @@ export class VerificationService {
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: record.userId },
-        data: { emailVerifiedAt: new Date() } as any,
+        data: { emailVerifiedAt: new Date() },
       }),
       this.prisma.verificationToken.update({
         where: { id: record.id },
@@ -142,7 +142,7 @@ export class VerificationService {
     // Update user's phone number in DB (unverified yet)
     await this.prisma.user.update({
       where: { id: userId },
-      data: { phone } as any,
+      data: { phone },
     });
 
     await this.sendSms(
@@ -167,7 +167,7 @@ export class VerificationService {
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: userId },
-        data: { phoneVerifiedAt: new Date() } as any,
+        data: { phoneVerifiedAt: new Date() },
       }),
       this.prisma.verificationToken.update({
         where: { id: record.id },

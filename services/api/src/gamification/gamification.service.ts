@@ -138,23 +138,30 @@ export class GamificationService {
     userId: string,
     opts: { finalSuds?: number | null; finalVoc?: number | null; phasesCompleted?: number } = {},
   ) {
-    await this.bumpStreak(userId);
-    await this.addXp(userId, 20, 'session_completed');
+    // Parallelize streak + XP + count (все независимы)
+    const [, , sessionCount] = await Promise.all([
+      this.bumpStreak(userId),
+      this.addXp(userId, 20, 'session_completed'),
+      this.prisma.session.count({ where: { userId, status: 'COMPLETED' } }),
+    ]);
 
-    // Count sessions
-    const sessionCount = await this.prisma.session.count({
-      where: { userId, status: 'COMPLETED' },
-    });
-    if (sessionCount === 1) await this.unlockAchievement(userId, 'FIRST_SESSION');
-    if (sessionCount === 5) await this.unlockAchievement(userId, 'SESSIONS_5');
-    if (sessionCount === 25) await this.unlockAchievement(userId, 'SESSIONS_25');
-    if (sessionCount === 100) await this.unlockAchievement(userId, 'SESSIONS_100');
-
-    if (opts.finalSuds === 0) await this.unlockAchievement(userId, 'SUDS_ZERO');
-    if (opts.finalVoc === 7) await this.unlockAchievement(userId, 'VOC_SEVEN');
-    if (opts.phasesCompleted && opts.phasesCompleted >= 7) {
-      await this.unlockAchievement(userId, 'FULL_PROTOCOL');
+    const milestones: Array<[number, string]> = [
+      [1, 'FIRST_SESSION'],
+      [5, 'SESSIONS_5'],
+      [25, 'SESSIONS_25'],
+      [100, 'SESSIONS_100'],
+    ];
+    const unlocks: string[] = [];
+    for (const [target, key] of milestones) {
+      if (sessionCount === target) unlocks.push(key);
     }
+    if (opts.finalSuds === 0) unlocks.push('SUDS_ZERO');
+    if (opts.finalVoc === 7) unlocks.push('VOC_SEVEN');
+    if (opts.phasesCompleted && opts.phasesCompleted >= 7) {
+      unlocks.push('FULL_PROTOCOL');
+    }
+
+    await Promise.all(unlocks.map((key) => this.unlockAchievement(userId, key)));
   }
 
   async onEmailVerified(userId: string) {

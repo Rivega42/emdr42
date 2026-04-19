@@ -81,31 +81,30 @@ export class CrisisService {
       },
     });
 
-    // Notify therapists at severity >= HIGH (#148)
+    // Notify therapists at severity >= HIGH (#148) — все параллельно
     if (input.severity === 'HIGH' || input.severity === 'CRITICAL') {
-      const assignments = await this.prisma.therapistPatient.findMany({
-        where: { patientId: input.userId, status: 'ACTIVE' },
-        include: { therapist: { select: { id: true, name: true, email: true } } },
-      });
-      const patient = await this.prisma.user.findUnique({
-        where: { id: input.userId },
-        select: { name: true },
-      });
-      for (const a of assignments) {
-        try {
-          await this.notifications.notify({
-            type: 'therapist_crisis_alert',
-            userId: a.therapist.id,
-            data: {
-              patientName: patient?.name ?? 'Пациент',
-              severity: input.severity,
-            },
-          });
-        } catch {
-          /* best effort */
-        }
-      }
+      const [assignments, patient] = await Promise.all([
+        this.prisma.therapistPatient.findMany({
+          where: { patientId: input.userId, status: 'ACTIVE' },
+          include: { therapist: { select: { id: true } } },
+        }),
+        this.prisma.user.findUnique({
+          where: { id: input.userId },
+          select: { name: true },
+        }),
+      ]);
+
       if (assignments.length > 0) {
+        const patientName = patient?.name ?? 'Пациент';
+        await Promise.allSettled(
+          assignments.map((a) =>
+            this.notifications.notify({
+              type: 'therapist_crisis_alert',
+              userId: a.therapist.id,
+              data: { patientName, severity: input.severity },
+            }),
+          ),
+        );
         await this.prisma.crisisEvent.update({
           where: { id: event.id },
           data: { therapistNotified: true },

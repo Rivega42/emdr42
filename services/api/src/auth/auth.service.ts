@@ -100,7 +100,7 @@ export class AuthService {
     }
 
     // MFA challenge skeleton — полноценный TOTP flow требует отдельных endpoints
-    if ((user as any).mfaEnabled) {
+    if (user.mfaEnabled) {
       return { mfaRequired: true, userId: user.id };
     }
 

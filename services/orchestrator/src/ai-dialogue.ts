@@ -56,15 +56,16 @@ export class AiDialogue {
     // Add user message to history
     this.history.push({ role: 'user', content: userMessage });
 
-    // Build messages array: system prompt (с context + cross-session прошлым) + history
-    const systemParts = [this.systemPrompt];
-    if (context) systemParts.push(`--- Current Session Context ---\n${context}`);
-    if (opts?.patientContext) {
-      systemParts.push(`--- Patient History (cross-session) ---\n${opts.patientContext}`);
-    }
+    const systemContent = [
+      this.systemPrompt,
+      context && `--- Current Session Context ---\n${context}`,
+      opts?.patientContext && `--- Patient History (cross-session) ---\n${opts.patientContext}`,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
 
     const messages: ChatMessage[] = [
-      { role: 'system', content: systemParts.join('\n\n') },
+      { role: 'system', content: systemContent },
       ...this.history,
     ];
 

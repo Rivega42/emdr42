@@ -78,8 +78,4 @@ export const PATTERNS = [
   { value: 'random_smooth', label: 'Random Smooth' },
 ] as const;
 
-export const formatTime = (s: number) => {
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-};
+export { formatTime } from '@/lib/formatters';

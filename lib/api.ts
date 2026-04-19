@@ -270,6 +270,43 @@ class ApiClient {
   }> {
     return this.request('/crisis/hotlines');
   }
+
+  // User profile + GDPR (#121)
+  async updateProfile(data: { name?: string; settings?: unknown }): Promise<unknown> {
+    return this.request('/users/me', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async requestAccountDeletion(): Promise<{ status: string; hardDeleteAt: string }> {
+    return this.request('/users/me', { method: 'DELETE' });
+  }
+
+  async exportMyData(): Promise<Blob> {
+    const headers: Record<string, string> = {};
+    if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
+    const res = await fetch(`${this.baseUrl}/users/me/export`, { headers });
+    if (!res.ok) throw new ApiError(res.status, 'Export failed');
+    return res.blob();
+  }
+
+  // Therapist (#112)
+  async getAssignedPatients(): Promise<{
+    items: Array<{
+      id: string;
+      status: string;
+      patient: { id: string; email: string; name: string; createdAt: string };
+    }>;
+    total: number;
+  }> {
+    return this.request('/therapist-patient/patients?pageSize=100');
+  }
+
+  // Billing portal (#145)
+  async createBillingPortalSession(): Promise<{ portalUrl: string }> {
+    return this.request('/billing/portal', { method: 'POST' });
+  }
 }
 
 export { ApiClient, ApiError };

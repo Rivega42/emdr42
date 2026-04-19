@@ -98,15 +98,14 @@ export class MfaService {
   async setupTotp(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
-    if ((user as any).mfaEnabled) {
+    if (user.mfaEnabled) {
       throw new BadRequestException('MFA уже включён. Сначала отключите.');
     }
 
     const secret = randomBase32(20); // 160 bits
-    // Сохраняем secret но пока mfaEnabled=false
     await this.prisma.user.update({
       where: { id: userId },
-      data: { mfaSecret: secret } as any,
+      data: { mfaSecret: secret },
     });
 
     const issuer = encodeURIComponent('EMDR-AI');
@@ -118,7 +117,7 @@ export class MfaService {
 
   async verifySetup(userId: string, code: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    const secret = (user as any)?.mfaSecret as string | undefined;
+    const secret = user?.mfaSecret ?? undefined;
     if (!user || !secret) {
       throw new BadRequestException('Сначала вызовите setup');
     }
@@ -151,7 +150,7 @@ export class MfaService {
     // Activate MFA
     await this.prisma.user.update({
       where: { id: userId },
-      data: { mfaEnabled: true } as any,
+      data: { mfaEnabled: true },
     });
 
     await this.audit.log({
@@ -176,8 +175,8 @@ export class MfaService {
     meta?: { ip?: string; userAgent?: string },
   ) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    const secret = (user as any)?.mfaSecret as string | undefined;
-    if (!user || !secret || !(user as any).mfaEnabled) {
+    const secret = user?.mfaSecret ?? undefined;
+    if (!user || !secret || !user.mfaEnabled) {
       throw new UnauthorizedException('MFA не настроен');
     }
 
@@ -247,7 +246,7 @@ export class MfaService {
 
     await this.prisma.user.update({
       where: { id: userId },
-      data: { mfaEnabled: false, mfaSecret: null } as any,
+      data: { mfaEnabled: false, mfaSecret: null },
     });
     await this.prisma.verificationToken.deleteMany({
       where: { userId, purpose: 'BACKUP_CODE' },
