@@ -20,6 +20,8 @@
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
+    "@emdr42/ai-providers": "workspace:*",
+    "@emdr42/core": "workspace:*",
     "@nestjs/common": "^10.3.0",
     "@nestjs/core": "^10.3.0",
     "@nestjs/jwt": "^10.2.0",

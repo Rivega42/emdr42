@@ -45,8 +45,11 @@ const main = async (): Promise<void> => {
   registry.startSweeper();
 
   // Create HTTP + Socket.io server with /metrics + /health routes
-  const httpServer = createServer(async (req, res) => {
-    if (!req.url) return res.end();
+  const httpServer = createServer(async (req, res): Promise<void> => {
+    if (!req.url) {
+      res.end();
+      return;
+    }
     if (req.url.startsWith('/metrics')) {
       const { contentType, body } = await metricsHandler();
       res.writeHead(200, { 'Content-Type': contentType });

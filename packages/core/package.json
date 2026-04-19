@@ -9,5 +9,13 @@
     "./patterns/movements": "./src/patterns/movements.ts",
     "./services/emotion-recognition": "./src/services/emotion-recognition.ts",
     "./services/audio-asmr": "./src/services/audio-asmr.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
   }
 }

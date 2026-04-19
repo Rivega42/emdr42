@@ -42,23 +42,25 @@ export const CrisisBanner: React.FC<CrisisBannerProps> = ({ expanded = false, on
 
   useEffect(() => {
     if (expanded && !data) {
-      api.getCrisisHotlines().then(setData).catch(() => {
-        // Fallback на международный
-        setData({
-          country: 'International',
-          countryCode: 'XX',
-          emergencyNumber: '112',
-          hotlines: [
-            {
-              name: 'Befrienders Worldwide',
-              phone: '',
-              online: 'https://www.befrienders.org',
-              languages: ['multi'],
-              available247: true,
-            },
-          ],
+      api
+        .getCrisisHotlines()
+        .then((d) => setData({ ...d, countryCode: (d as { countryCode?: string }).countryCode ?? 'XX' }))
+        .catch(() => {
+          setData({
+            country: 'International',
+            countryCode: 'XX',
+            emergencyNumber: '112',
+            hotlines: [
+              {
+                name: 'Befrienders Worldwide',
+                phone: '',
+                online: 'https://www.befrienders.org',
+                languages: ['multi'],
+                available247: true,
+              },
+            ],
+          });
         });
-      });
     }
   }, [expanded, data]);
 

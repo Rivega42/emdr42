@@ -140,7 +140,7 @@ export class DeepgramProvider implements SttProvider {
       // Browser не пропускает custom headers → Authorization приходится через sec-websocket-protocol
       // Для Node: headers работают напрямую
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...(typeof window === 'undefined'
+      ...(typeof (globalThis as unknown as { window?: unknown }).window === 'undefined'
         ? {
             headers: { Authorization: `Token ${this.apiKey}` },
           }
@@ -148,7 +148,7 @@ export class DeepgramProvider implements SttProvider {
     } as unknown as string | string[]);
 
     // В браузере авторизация только через subprotocol hack:
-    if (typeof window !== 'undefined') {
+    if (typeof (globalThis as unknown as { window?: unknown }).window !== 'undefined') {
       // eslint-disable-next-line no-console
       console.warn(
         'Deepgram streaming в браузере требует backend proxy с Authorization header. Не используйте напрямую из client.',
@@ -177,7 +177,8 @@ export class DeepgramProvider implements SttProvider {
 
     ws.addEventListener('message', (e: MessageEvent) => messageHandler(e.data));
     ws.addEventListener('error', (e: Event) => {
-      error = new Error(`Deepgram WS error: ${(e as ErrorEvent).message ?? 'unknown'}`);
+      const msg = (e as Event & { message?: string }).message ?? 'unknown';
+      error = new Error(`Deepgram WS error: ${msg}`);
     });
     ws.addEventListener('close', () => {
       closed = true;

@@ -69,6 +69,8 @@ export interface SttOptions {
   language?: string;
   model?: string;
   sampleRate?: number;
+  /** Audio encoding для streaming (linear16, opus, flac, mulaw, ...) */
+  encoding?: string;
 }
 
 export interface TranscriptionResult {
