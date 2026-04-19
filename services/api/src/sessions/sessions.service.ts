@@ -31,7 +31,7 @@ export class SessionsService {
 
     // Validate therapist assignment if provided (#112)
     if (dto.therapistId) {
-      const rel = await (this.prisma as any).therapistPatient.findUnique({
+      const rel = await this.prisma.therapistPatient.findUnique({
         where: {
           therapistId_patientId: {
             therapistId: dto.therapistId,

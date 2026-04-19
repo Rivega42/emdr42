@@ -133,12 +133,12 @@ export class MfaService {
     );
 
     // Hash backup codes и сохраняем в VerificationToken с purpose=BACKUP_CODE
-    await (this.prisma as any).verificationToken.deleteMany({
+    await this.prisma.verificationToken.deleteMany({
       where: { userId, purpose: 'BACKUP_CODE' },
     });
     for (const code of backupCodes) {
       const hash = await bcrypt.hash(code, 10);
-      await (this.prisma as any).verificationToken.create({
+      await this.prisma.verificationToken.create({
         data: {
           userId,
           tokenHash: hash,
@@ -185,13 +185,13 @@ export class MfaService {
 
     // Fallback: backup code
     if (!verified) {
-      const backupTokens = await (this.prisma as any).verificationToken.findMany({
+      const backupTokens = await this.prisma.verificationToken.findMany({
         where: { userId, purpose: 'BACKUP_CODE', usedAt: null },
       });
       for (const t of backupTokens) {
         if (await bcrypt.compare(code, t.tokenHash)) {
           verified = true;
-          await (this.prisma as any).verificationToken.update({
+          await this.prisma.verificationToken.update({
             where: { id: t.id },
             data: { usedAt: new Date() },
           });
@@ -249,7 +249,7 @@ export class MfaService {
       where: { id: userId },
       data: { mfaEnabled: false, mfaSecret: null } as any,
     });
-    await (this.prisma as any).verificationToken.deleteMany({
+    await this.prisma.verificationToken.deleteMany({
       where: { userId, purpose: 'BACKUP_CODE' },
     });
 

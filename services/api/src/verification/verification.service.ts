@@ -38,7 +38,7 @@ export class VerificationService {
     if ((user as any).emailVerifiedAt) return; // already verified, no-op
 
     // Invalidate prior unused tokens
-    await (this.prisma as any).verificationToken.updateMany({
+    await this.prisma.verificationToken.updateMany({
       where: { userId, purpose: 'EMAIL_VERIFY', usedAt: null },
       data: { usedAt: new Date() },
     });
@@ -46,7 +46,7 @@ export class VerificationService {
     const token = randomBytes(32).toString('hex');
     const tokenHash = this.hash(token);
 
-    await (this.prisma as any).verificationToken.create({
+    await this.prisma.verificationToken.create({
       data: {
         userId,
         tokenHash,
@@ -60,7 +60,7 @@ export class VerificationService {
 
   async verifyEmail(token: string): Promise<{ userId: string }> {
     const tokenHash = this.hash(token);
-    const record = await (this.prisma as any).verificationToken.findUnique({
+    const record = await this.prisma.verificationToken.findUnique({
       where: { tokenHash },
     });
     if (!record || record.purpose !== 'EMAIL_VERIFY') {
@@ -75,7 +75,7 @@ export class VerificationService {
         where: { id: record.userId },
         data: { emailVerifiedAt: new Date() } as any,
       }),
-      (this.prisma as any).verificationToken.update({
+      this.prisma.verificationToken.update({
         where: { id: record.id },
         data: { usedAt: new Date() },
       }),
@@ -125,12 +125,12 @@ export class VerificationService {
     const code = (Math.floor(Math.random() * 900000) + 100000).toString();
     const codeHash = this.hash(code);
 
-    await (this.prisma as any).verificationToken.updateMany({
+    await this.prisma.verificationToken.updateMany({
       where: { userId, purpose: 'PHONE_VERIFY', usedAt: null },
       data: { usedAt: new Date() },
     });
 
-    await (this.prisma as any).verificationToken.create({
+    await this.prisma.verificationToken.create({
       data: {
         userId,
         tokenHash: codeHash,
@@ -153,7 +153,7 @@ export class VerificationService {
 
   async verifyPhone(userId: string, code: string): Promise<void> {
     const codeHash = this.hash(code);
-    const record = await (this.prisma as any).verificationToken.findFirst({
+    const record = await this.prisma.verificationToken.findFirst({
       where: {
         userId,
         purpose: 'PHONE_VERIFY',
@@ -169,7 +169,7 @@ export class VerificationService {
         where: { id: userId },
         data: { phoneVerifiedAt: new Date() } as any,
       }),
-      (this.prisma as any).verificationToken.update({
+      this.prisma.verificationToken.update({
         where: { id: record.id },
         data: { usedAt: new Date() },
       }),

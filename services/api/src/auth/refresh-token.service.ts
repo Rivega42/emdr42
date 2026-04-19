@@ -41,7 +41,7 @@ export class RefreshTokenService {
     const tokenHash = this.hash(token);
     const expiresAt = new Date(Date.now() + REFRESH_TTL_MS);
 
-    const record = await (this.prisma as any).refreshToken.create({
+    const record = await this.prisma.refreshToken.create({
       data: {
         userId,
         tokenHash,
@@ -59,7 +59,7 @@ export class RefreshTokenService {
     meta?: { ip?: string; userAgent?: string },
   ): Promise<{ userId: string; newToken: IssuedRefreshToken }> {
     const tokenHash = this.hash(presentedToken);
-    const record = await (this.prisma as any).refreshToken.findUnique({
+    const record = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
     });
 
@@ -76,7 +76,7 @@ export class RefreshTokenService {
     if (record.revokedAt) {
       // Token theft detection: токен уже revoked, но его предъявляют снова.
       // Отзываем все активные токены этого пользователя.
-      await (this.prisma as any).refreshToken.updateMany({
+      await this.prisma.refreshToken.updateMany({
         where: { userId: record.userId, revokedAt: null },
         data: { revokedAt: now },
       });
@@ -86,7 +86,7 @@ export class RefreshTokenService {
     }
 
     // Ротация: revoke старый, выдать новый
-    await (this.prisma as any).refreshToken.update({
+    await this.prisma.refreshToken.update({
       where: { id: record.id },
       data: { revokedAt: now },
     });
@@ -97,14 +97,14 @@ export class RefreshTokenService {
 
   async revoke(presentedToken: string): Promise<void> {
     const tokenHash = this.hash(presentedToken);
-    await (this.prisma as any).refreshToken.updateMany({
+    await this.prisma.refreshToken.updateMany({
       where: { tokenHash, revokedAt: null },
       data: { revokedAt: new Date() },
     });
   }
 
   async revokeAllForUser(userId: string): Promise<void> {
-    await (this.prisma as any).refreshToken.updateMany({
+    await this.prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
@@ -112,7 +112,7 @@ export class RefreshTokenService {
 
   /** Cleanup job — удаляет expired tokens (вызывается из cron). */
   async cleanup(): Promise<number> {
-    const result = await (this.prisma as any).refreshToken.deleteMany({
+    const result = await this.prisma.refreshToken.deleteMany({
       where: { expiresAt: { lt: new Date() } },
     });
     return result.count;

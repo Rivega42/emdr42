@@ -118,7 +118,7 @@ export class PatientContextService {
             select: { type: true, severity: true, createdAt: true },
           })
         : Promise.resolve([]),
-      (this.prisma as any).crisisEvent.count({ where: { userId: patientId } }),
+      this.prisma.crisisEvent.count({ where: { userId: patientId } }),
     ]);
 
     // Emotional baseline — average последних 500 emotion records
@@ -140,7 +140,7 @@ export class PatientContextService {
     }
 
     // Shared notes (visible to patient)
-    const sharedNotes = await (this.prisma as any).therapistNote.findMany({
+    const sharedNotes = await this.prisma.therapistNote.findMany({
       where: { patientId, visibility: 'SHARED_WITH_PATIENT' },
       orderBy: { createdAt: 'desc' },
       take: 5,

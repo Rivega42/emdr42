@@ -53,7 +53,7 @@ export class CrisisService {
     const hotlines = await this.getHotlinesForUser(input.userId);
     const primary = hotlines.hotlines[0];
 
-    const event = await (this.prisma as any).crisisEvent.create({
+    const event = await this.prisma.crisisEvent.create({
       data: {
         userId: input.userId,
         sessionId: input.sessionId,
@@ -83,7 +83,7 @@ export class CrisisService {
 
     // Notify therapists at severity >= HIGH (#148)
     if (input.severity === 'HIGH' || input.severity === 'CRITICAL') {
-      const assignments = await (this.prisma as any).therapistPatient.findMany({
+      const assignments = await this.prisma.therapistPatient.findMany({
         where: { patientId: input.userId, status: 'ACTIVE' },
         include: { therapist: { select: { id: true, name: true, email: true } } },
       });
@@ -106,7 +106,7 @@ export class CrisisService {
         }
       }
       if (assignments.length > 0) {
-        await (this.prisma as any).crisisEvent.update({
+        await this.prisma.crisisEvent.update({
           where: { id: event.id },
           data: { therapistNotified: true },
         });
@@ -117,14 +117,14 @@ export class CrisisService {
   }
 
   async acknowledge(eventId: string, userId: string) {
-    return (this.prisma as any).crisisEvent.updateMany({
+    return this.prisma.crisisEvent.updateMany({
       where: { id: eventId, userId },
       data: { acknowledged: true },
     });
   }
 
   async listForUser(userId: string, limit = 50) {
-    return (this.prisma as any).crisisEvent.findMany({
+    return this.prisma.crisisEvent.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: Math.min(Math.max(limit, 1), 100),

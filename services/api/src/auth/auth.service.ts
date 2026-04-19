@@ -165,12 +165,12 @@ export class AuthService {
     const tokenHash = createHash('sha256').update(token).digest('hex');
     const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
 
-    await (this.prisma as any).verificationToken.updateMany({
+    await this.prisma.verificationToken.updateMany({
       where: { userId: user.id, purpose: 'PASSWORD_RESET', usedAt: null },
       data: { usedAt: new Date() },
     });
 
-    await (this.prisma as any).verificationToken.create({
+    await this.prisma.verificationToken.create({
       data: {
         userId: user.id,
         tokenHash,
@@ -184,7 +184,7 @@ export class AuthService {
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
     const tokenHash = createHash('sha256').update(token).digest('hex');
-    const record = await (this.prisma as any).verificationToken.findUnique({
+    const record = await this.prisma.verificationToken.findUnique({
       where: { tokenHash },
     });
     if (!record || record.purpose !== 'PASSWORD_RESET') {
@@ -204,7 +204,7 @@ export class AuthService {
         where: { id: record.userId },
         data: { passwordHash, failedAttempts: 0, lockedUntil: null },
       }),
-      (this.prisma as any).verificationToken.update({
+      this.prisma.verificationToken.update({
         where: { id: record.id },
         data: { usedAt: new Date() },
       }),

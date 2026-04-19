@@ -139,7 +139,7 @@ export class NotificationsService {
     }
 
     // Реальная реализация: web-push library + fetch subscriptions из БД
-    // const subs = await (this.prisma as any).pushSubscription.findMany({ where: { userId: user.id } })
+    // const subs = await this.prisma.pushSubscription.findMany({ where: { userId: user.id } })
     // for (const s of subs) await webpush.sendNotification(s, JSON.stringify({ ... }))
   }
 

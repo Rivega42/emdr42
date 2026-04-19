@@ -103,7 +103,7 @@ export class BillingService {
   }
 
   async getOrCreateCustomer(userId: string): Promise<string> {
-    const sub = await (this.prisma as any).subscription.findUnique({
+    const sub = await this.prisma.subscription.findUnique({
       where: { userId },
     });
     if (sub?.stripeCustomerId) return sub.stripeCustomerId;
@@ -118,7 +118,7 @@ export class BillingService {
       metadata: { userId: user.id },
     });
 
-    await (this.prisma as any).subscription.upsert({
+    await this.prisma.subscription.upsert({
       where: { userId },
       update: { stripeCustomerId: customer.id },
       create: {
@@ -224,7 +224,7 @@ export class BillingService {
 
     const plan = PLANS.find((p) => p.stripePriceId === sub.items?.data?.[0]?.price?.id);
 
-    await (this.prisma as any).subscription.upsert({
+    await this.prisma.subscription.upsert({
       where: { userId },
       create: {
         userId,
@@ -263,12 +263,12 @@ export class BillingService {
   }
 
   private async syncInvoiceFromEvent(invoice: any) {
-    const subscription = await (this.prisma as any).subscription.findFirst({
+    const subscription = await this.prisma.subscription.findFirst({
       where: { stripeCustomerId: invoice.customer },
     });
     if (!subscription) return;
 
-    await (this.prisma as any).invoice.upsert({
+    await this.prisma.invoice.upsert({
       where: { stripeInvoiceId: invoice.id },
       create: {
         subscriptionId: subscription.id,
@@ -288,7 +288,7 @@ export class BillingService {
   }
 
   async getSubscription(userId: string) {
-    const sub = await (this.prisma as any).subscription.findUnique({
+    const sub = await this.prisma.subscription.findUnique({
       where: { userId },
       include: { invoices: { orderBy: { createdAt: 'desc' }, take: 20 } },
     });

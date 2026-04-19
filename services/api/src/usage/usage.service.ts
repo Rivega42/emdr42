@@ -37,7 +37,7 @@ export class UsageService {
         durationSec: input.durationMs ? input.durationMs / 1000 : undefined,
       });
 
-      await (this.prisma as any).usageLog.create({
+      await this.prisma.usageLog.create({
         data: {
           userId: input.userId,
           sessionId: input.sessionId,
@@ -58,7 +58,7 @@ export class UsageService {
 
   async getUserCosts(userId: string, days = 30) {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    const logs = await (this.prisma as any).usageLog.findMany({
+    const logs = await this.prisma.usageLog.findMany({
       where: { userId, timestamp: { gte: since } },
     });
 
@@ -82,7 +82,7 @@ export class UsageService {
   }
 
   async getSessionCost(sessionId: string) {
-    const logs = await (this.prisma as any).usageLog.findMany({
+    const logs = await this.prisma.usageLog.findMany({
       where: { sessionId },
     });
 

@@ -28,7 +28,7 @@ export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
   private get auditLog(): AuditLogDelegate {
-    return (this.prisma as any).auditLog;
+    return this.prisma.auditLog;
   }
 
   /** Записать событие в журнал аудита */

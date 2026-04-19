@@ -135,7 +135,7 @@ export class AnalyticsService {
       this.prisma.safetyEvent.count({
         where: { session: { userId: patientId } },
       }),
-      (this.prisma as any).crisisEvent.count({ where: { userId: patientId } }),
+      this.prisma.crisisEvent.count({ where: { userId: patientId } }),
       this.prisma.session.findFirst({
         where: { userId: patientId, deletedAt: null },
         orderBy: { createdAt: 'desc' },

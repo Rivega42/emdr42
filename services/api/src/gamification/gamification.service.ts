@@ -38,11 +38,11 @@ export class GamificationService {
 
   /** Вызывается при событиях — гарантирует наличие UserProgress */
   private async ensureProgress(userId: string) {
-    const existing = await (this.prisma as any).userProgress.findUnique({
+    const existing = await this.prisma.userProgress.findUnique({
       where: { userId },
     });
     if (existing) return existing;
-    return (this.prisma as any).userProgress.create({
+    return this.prisma.userProgress.create({
       data: { userId },
     });
   }
@@ -53,7 +53,7 @@ export class GamificationService {
     const newXp = progress.xp + amount;
     const newLevel = calculateLevel(newXp);
 
-    await (this.prisma as any).userProgress.update({
+    await this.prisma.userProgress.update({
       where: { id: progress.id },
       data: { xp: newXp, level: newLevel, lastActivityAt: new Date() },
     });
@@ -74,7 +74,7 @@ export class GamificationService {
     const progress = await this.ensureProgress(userId);
 
     // idempotent — если уже unlocked, skip
-    const existing = await (this.prisma as any).userAchievement.findUnique({
+    const existing = await this.prisma.userAchievement.findUnique({
       where: {
         progressId_achievementKey: {
           progressId: progress.id,
@@ -84,7 +84,7 @@ export class GamificationService {
     });
     if (existing) return false;
 
-    await (this.prisma as any).userAchievement.create({
+    await this.prisma.userAchievement.create({
       data: {
         progressId: progress.id,
         achievementKey: key,
@@ -122,7 +122,7 @@ export class GamificationService {
 
     const longestStreak = Math.max(progress.longestStreak, currentStreak);
 
-    await (this.prisma as any).userProgress.update({
+    await this.prisma.userProgress.update({
       where: { id: progress.id },
       data: { currentStreak, longestStreak, lastActivityAt: today },
     });
@@ -175,7 +175,7 @@ export class GamificationService {
 
   async getSummary(userId: string): Promise<ProgressSummary> {
     const progress = await this.ensureProgress(userId);
-    const unlocked = await (this.prisma as any).userAchievement.findMany({
+    const unlocked = await this.prisma.userAchievement.findMany({
       where: { progressId: progress.id },
       orderBy: { unlockedAt: 'desc' },
     });
