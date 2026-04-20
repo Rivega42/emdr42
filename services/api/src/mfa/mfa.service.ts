@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { createHmac, randomBytes } from 'crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { RefreshTokenService } from '../auth/refresh-token.service';
@@ -28,7 +28,8 @@ const TOTP_DIGITS = 6;
 const TOTP_ALGORITHM = 'sha1';
 
 const BACKUP_CODES_COUNT = 10;
-const BACKUP_CODE_LENGTH = 8;
+// 8 bytes = 64 bits of entropy per code. Encoded as 16 hex chars.
+const BACKUP_CODE_ENTROPY_BYTES = 8;
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
@@ -126,9 +127,9 @@ export class MfaService {
       throw new BadRequestException('Неверный код');
     }
 
-    // Generate backup codes
+    // Generate backup codes — full 64 bits of entropy each (16 hex chars).
     const backupCodes = Array.from({ length: BACKUP_CODES_COUNT }, () =>
-      randomBytes(BACKUP_CODE_LENGTH).toString('hex').slice(0, BACKUP_CODE_LENGTH).toUpperCase(),
+      randomBytes(BACKUP_CODE_ENTROPY_BYTES).toString('hex').toUpperCase(),
     );
 
     // Hash backup codes и сохраняем в VerificationToken с purpose=BACKUP_CODE
@@ -265,11 +266,21 @@ export class MfaService {
   }
 
   private verifyCode(secret: string, code: string): boolean {
+    if (typeof code !== 'string' || code.length !== TOTP_DIGITS) return false;
     const now = Math.floor(Date.now() / 1000 / TOTP_STEP_SEC);
+    const provided = Buffer.from(code);
+    let matched = false;
+    // Check every window unconditionally to avoid timing leaks about which
+    // offset matched (or that none matched early).
     for (const offset of [-1, 0, 1]) {
-      const computed = computeTotp(secret, now + offset);
-      if (computed === code) return true;
+      const computed = Buffer.from(computeTotp(secret, now + offset));
+      if (
+        computed.length === provided.length &&
+        timingSafeEqual(computed, provided)
+      ) {
+        matched = true;
+      }
     }
-    return false;
+    return matched;
   }
 }

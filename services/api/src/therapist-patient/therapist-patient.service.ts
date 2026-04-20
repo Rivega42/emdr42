@@ -165,6 +165,19 @@ export class TherapistPatientService {
   ) {
     await this.ensureTherapistCanAccessPatient(therapistId, dto.patientId);
 
+    // If sessionId provided, it must belong to this patient and not be deleted.
+    // Prevents a therapist (with access to patient A) from attaching a note
+    // to a session owned by patient B.
+    if (dto.sessionId) {
+      const session = await this.prisma.session.findFirst({
+        where: { id: dto.sessionId, userId: dto.patientId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!session) {
+        throw new NotFoundException('Session not found for this patient');
+      }
+    }
+
     const note = await this.prisma.therapistNote.create({
       data: {
         therapistId,
