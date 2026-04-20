@@ -374,6 +374,9 @@ importers:
       '@emdr42/ai-providers':
         specifier: workspace:*
         version: link:../../packages/ai-providers
+      '@emdr42/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@emdr42/emdr-engine':
         specifier: workspace:*
         version: link:../../packages/emdr-engine

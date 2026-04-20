@@ -58,9 +58,21 @@ export class SafetyMonitor {
   private recentSnapshots: EmotionSnapshot[] = [];
 
   /**
+   * Voice pattern signals (#79) — накапливаются от analyzeVoiceSegment() вызовов.
+   * Используются вместе с emotion данными для dissociation detection.
+   * Null до первого voice segment.
+   */
+  private voiceIndicators: {
+    hesitation: number;
+    emotionalActivation: number;
+    flatAffect: number;
+    rushedSpeech: number;
+    updatedAt: number;
+  } | null = null;
+
+  /**
    * Adaptive baseline (#132) — усреднённые значения engagement/stress/valence
-   * за первые BASELINE_WINDOW_SIZE снимков сессии. Используется для detecting
-   * devianтов от нормального состояния конкретного пациента.
+   * за первые BASELINE_WINDOW_SIZE снимков сессии.
    */
   private baseline: {
     engagement: number;
@@ -83,6 +95,25 @@ export class SafetyMonitor {
     this.baseline = null;
     this.baselineCollector = [];
     this.recentSnapshots = [];
+    this.voiceIndicators = null;
+  }
+
+  /**
+   * Обновить voice pattern indicators от analyzeVoiceSegment (#79).
+   * Вызывается после каждого STT-финального сегмента.
+   */
+  updateVoiceIndicators(indicators: {
+    hesitation: number;
+    emotionalActivation: number;
+    flatAffect: number;
+    rushedSpeech: number;
+  }): void {
+    this.voiceIndicators = { ...indicators, updatedAt: Date.now() };
+  }
+
+  /** Для телеметрии / отладки */
+  getVoiceIndicators() {
+    return this.voiceIndicators;
   }
 
   // -----------------------------------------------------------------------
@@ -211,10 +242,21 @@ export class SafetyMonitor {
       // Критерии (any of the following):
       //  1. Устойчивое падение engagement > DISSOCIATION_DEVIATION_THRESHOLD от baseline
       //  2. Низкая valence variance (< 0.05) — numbing
-      //  3. Единичный сильный provocation + высокий arousal в baseline → freeze
+      //  3. Voice flatAffect > 0.6 + recent hesitation (intermodal confirmation, #79)
+      const voiceFresh =
+        this.voiceIndicators !== null &&
+        Date.now() - this.voiceIndicators.updatedAt < 30_000;
+      const voiceFlatAffectSignal = Boolean(
+        voiceFresh &&
+          this.voiceIndicators &&
+          this.voiceIndicators.flatAffect > 0.6 &&
+          this.voiceIndicators.hesitation > 0.4,
+      );
+
       const isDissociating =
         (sustainedDrop > DISSOCIATION_DEVIATION_THRESHOLD && engagementDrop > 0.15) ||
-        (valenceVariance < 0.05 && snapshot.engagement < this.baseline.engagement * 0.5);
+        (valenceVariance < 0.05 && snapshot.engagement < this.baseline.engagement * 0.5) ||
+        voiceFlatAffectSignal;
 
       return isDissociating;
     }

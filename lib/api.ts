@@ -307,6 +307,20 @@ class ApiClient {
   async createBillingPortalSession(): Promise<{ portalUrl: string }> {
     return this.request('/billing/portal', { method: 'POST' });
   }
+
+  // Session comparison (#core-4)
+  async compareSessions(currentId: string, previousId: string): Promise<{
+    current: { id: string; sessionNumber: number; sudsFinal: number | null; vocFinal: number | null };
+    previous: { id: string; sessionNumber: number; sudsFinal: number | null; vocFinal: number | null };
+    delta: {
+      sudsDelta: number | null;
+      vocDelta: number | null;
+      avgStressDelta: number | null;
+      effectivenessScore: number | null;
+    };
+  }> {
+    return this.request(`/sessions/${currentId}/compare/${previousId}`);
+  }
 }
 
 export { ApiClient, ApiError };
