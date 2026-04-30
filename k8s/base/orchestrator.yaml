@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator
+  namespace: emdr42
+  labels:
+    app: orchestrator
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: orchestrator
+  template:
+    metadata:
+      labels:
+        app: orchestrator
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: orchestrator
+          image: ghcr.io/rivega42/emdr42-orchestrator:latest
+          ports:
+            - containerPort: 8002
+              name: ws
+          envFrom:
+            - configMapRef:
+                name: emdr42-config
+            - secretRef:
+                name: emdr42-secrets
+          env:
+            - name: PORT
+              value: "8002"
+            - name: API_URL
+              value: "http://api:8000"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchestrator
+  namespace: emdr42
+  annotations:
+    # Sticky sessions — WebSocket должен сохранять connection к конкретному pod
+    service.kubernetes.io/session-affinity: ClientIP
+spec:
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+    - port: 8002
+      targetPort: 8002
+      name: ws
+  selector:
+    app: orchestrator
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: orchestrator-hpa
+  namespace: emdr42
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: orchestrator
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: orchestrator-pdb
+  namespace: emdr42
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: orchestrator

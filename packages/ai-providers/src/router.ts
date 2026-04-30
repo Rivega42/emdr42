@@ -16,6 +16,7 @@ import type {
   TtsOptions,
   TtsProvider,
 } from './types';
+import { CircuitBreaker, CircuitOpenError, withRetry } from './circuit-breaker';
 
 // LLM providers
 import { AnthropicProvider } from './llm/anthropic-provider';
@@ -69,16 +70,55 @@ function createEmptyStats(): ProviderStats {
   };
 }
 
+export interface RouterReliabilityOptions {
+  timeoutMs?: number; // per-request timeout (default 30s)
+  maxRetries?: number; // retries internal to one provider (default 2)
+  failureThreshold?: number; // breaker opens after N failures (default 5)
+  failureWindowMs?: number; // time window (default 60s)
+  halfOpenAfterMs?: number; // OPEN→HALF_OPEN (default 30s)
+}
+
 export class AiRouter {
   private llmProviders: Map<string, LlmProvider> = new Map();
   private sttProviders: Map<string, SttProvider> = new Map();
   private ttsProviders: Map<string, TtsProvider> = new Map();
+  private breakers: Map<string, CircuitBreaker> = new Map();
   private config: AiProviderConfig;
   private emitter = new EventEmitter();
   private stats: ProviderUsageStats = { llm: {}, stt: {}, tts: {} };
+  private readonly reliability: Required<RouterReliabilityOptions>;
 
-  constructor(config: AiProviderConfig) {
+  constructor(config: AiProviderConfig, reliability: RouterReliabilityOptions = {}) {
     this.config = structuredClone(config);
+    this.reliability = {
+      timeoutMs: reliability.timeoutMs ?? 30_000,
+      maxRetries: reliability.maxRetries ?? 2,
+      failureThreshold: reliability.failureThreshold ?? 5,
+      failureWindowMs: reliability.failureWindowMs ?? 60_000,
+      halfOpenAfterMs: reliability.halfOpenAfterMs ?? 30_000,
+    };
+  }
+
+  private getBreaker(kind: 'llm' | 'stt' | 'tts', name: string): CircuitBreaker {
+    const key = `${kind}:${name}`;
+    let breaker = this.breakers.get(key);
+    if (!breaker) {
+      breaker = new CircuitBreaker({
+        name: key,
+        failureThreshold: this.reliability.failureThreshold,
+        failureWindowMs: this.reliability.failureWindowMs,
+        halfOpenAfterMs: this.reliability.halfOpenAfterMs,
+        timeoutMs: this.reliability.timeoutMs,
+      });
+      this.breakers.set(key, breaker);
+    }
+    return breaker;
+  }
+
+  getBreakerStates(): Record<string, string> {
+    const states: Record<string, string> = {};
+    for (const [key, b] of this.breakers) states[key] = b.getState();
+    return states;
   }
 
   /** Initialize all providers from config */
@@ -328,7 +368,26 @@ export class AiRouter {
     return provider;
   }
 
-  private async withFallback<TProvider, TResult>(
+  private async runOne<TProvider extends { name: string }, TResult>(
+    kind: 'llm' | 'stt' | 'tts',
+    provider: TProvider,
+    fn: (provider: TProvider) => Promise<TResult>,
+  ): Promise<TResult> {
+    const breaker = this.getBreaker(kind, provider.name);
+    return breaker.execute(() =>
+      withRetry(() => fn(provider), {
+        maxRetries: this.reliability.maxRetries,
+        retryable: (err) => {
+          // Не ретраим circuit open и AbortError; остальное — ретраим
+          if (err instanceof CircuitOpenError) return false;
+          if (err instanceof Error && err.name === 'AbortError') return false;
+          return true;
+        },
+      }),
+    );
+  }
+
+  private async withFallback<TProvider extends { name: string }, TResult>(
     kind: 'llm' | 'stt' | 'tts',
     providers: Map<string, TProvider>,
     layerConfig: { primary: string; fallback?: string },
@@ -338,7 +397,7 @@ export class AiRouter {
 
     if (primary) {
       try {
-        return await fn(primary);
+        return await this.runOne(kind, primary, fn);
       } catch (error) {
         this.recordError(kind, layerConfig.primary);
         this.emit(`${kind}:error` as AiRouterEvent, {
@@ -353,7 +412,7 @@ export class AiRouter {
               from: layerConfig.primary,
               to: layerConfig.fallback,
             });
-            return fn(fallback);
+            return this.runOne(kind, fallback, fn);
           }
         }
         throw error;
@@ -363,7 +422,7 @@ export class AiRouter {
     // Primary not found — try fallback directly
     if (layerConfig.fallback) {
       const fallback = providers.get(layerConfig.fallback);
-      if (fallback) return fn(fallback);
+      if (fallback) return this.runOne(kind, fallback, fn);
     }
 
     throw new Error(

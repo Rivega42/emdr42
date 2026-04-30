@@ -17,6 +17,8 @@ import { loadConfig } from './config';
 import { SessionHandler } from './session-handler';
 import { BackendClient } from './backend-client';
 import { VoiceHandler } from './voice-handler';
+import { SessionRegistry } from './session-registry';
+import { metrics, metricsHandler } from './metrics';
 
 // -- JWT payload type --
 
@@ -26,10 +28,9 @@ interface JwtPayload {
   role?: string;
 }
 
-// -- Active sessions map --
+// -- Registry (replaces naked Maps to prevent leaks, #117) --
 
-const activeSessions = new Map<string, SessionHandler>();
-const activeVoiceHandlers = new Map<string, VoiceHandler>();
+const registry = new SessionRegistry();
 
 // -- Bootstrap --
 
@@ -40,14 +41,43 @@ const main = async (): Promise<void> => {
   const aiRouter = new AiRouter(config.ai as AiProviderConfig);
   await aiRouter.initialize();
 
-  // Create HTTP + Socket.io server
-  const httpServer = createServer();
+  // Start idle sweeper
+  registry.startSweeper();
+
+  // Create HTTP + Socket.io server with /metrics + /health routes
+  const httpServer = createServer(async (req, res): Promise<void> => {
+    if (!req.url) {
+      res.end();
+      return;
+    }
+    if (req.url.startsWith('/metrics')) {
+      const { contentType, body } = await metricsHandler();
+      res.writeHead(200, { 'Content-Type': contentType });
+      res.end(body);
+      return;
+    }
+    if (req.url.startsWith('/health') || req.url.startsWith('/healthz')) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', uptime: process.uptime() }));
+      return;
+    }
+    res.writeHead(404);
+    res.end('Not Found');
+  });
+
   const io = new Server(httpServer, {
     cors: {
       origin: config.corsOrigin,
       methods: ['GET', 'POST'],
     },
   });
+
+  // Обновляем Gauge метрики периодически
+  setInterval(() => {
+    const { sessions, voice } = registry.size();
+    metrics.activeSessions.set(sessions);
+    metrics.activeVoice.set(voice);
+  }, 5000).unref();
 
   // -- /session namespace --
   const sessionNs = io.of('/session');
@@ -78,6 +108,7 @@ const main = async (): Promise<void> => {
     const userToken = (socket as any).userToken as string;
 
     console.log(`[ws] Client connected: userId=${userId} socketId=${socket.id}`);
+    metrics.wsConnections.inc();
 
     // ---- session:start ----
     socket.on(
@@ -85,7 +116,7 @@ const main = async (): Promise<void> => {
       async (data: { sessionId: string }) => {
         const { sessionId } = data;
 
-        if (activeSessions.has(sessionId)) {
+        if (registry.hasSession(sessionId)) {
           socket.emit('session:error', {
             message: 'Session already active',
           });
@@ -103,7 +134,11 @@ const main = async (): Promise<void> => {
           aiRouter,
           backendClient
         );
-        activeSessions.set(sessionId, handler);
+        registry.addSession(sessionId, {
+          handler,
+          socketId: socket.id,
+          userId,
+        });
 
         try {
           await handler.start();
@@ -112,7 +147,7 @@ const main = async (): Promise<void> => {
           socket.emit('session:error', {
             message: 'Failed to start session',
           });
-          activeSessions.delete(sessionId);
+          registry.removeSession(sessionId);
         }
       }
     );
@@ -121,7 +156,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:message',
       async (data: { sessionId: string; text: string }) => {
-        const handler = activeSessions.get(data.sessionId);
+        const handler = registry.getSession(data.sessionId);
         if (!handler) {
           socket.emit('session:error', { message: 'Session not found' });
           return;
@@ -138,7 +173,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:emotion',
       (data: { sessionId: string; emotion: EmotionSnapshot }) => {
-        const handler = activeSessions.get(data.sessionId);
+        const handler = registry.getSession(data.sessionId);
         if (!handler) return;
         handler.handleEmotionUpdate(data.emotion);
       }
@@ -148,7 +183,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:suds',
       (data: { sessionId: string; value: number; context: string }) => {
-        const handler = activeSessions.get(data.sessionId);
+        const handler = registry.getSession(data.sessionId);
         if (!handler) return;
         handler.handleSudsRating(data.value, data.context);
       }
@@ -158,7 +193,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:voc',
       (data: { sessionId: string; value: number; context: string }) => {
-        const handler = activeSessions.get(data.sessionId);
+        const handler = registry.getSession(data.sessionId);
         if (!handler) return;
         handler.handleVocRating(data.value, data.context);
       }
@@ -168,7 +203,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:stop_signal',
       (data: { sessionId: string }) => {
-        const handler = activeSessions.get(data.sessionId);
+        const handler = registry.getSession(data.sessionId);
         if (!handler) return;
         handler.handleStopSignal();
       }
@@ -178,7 +213,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:pause',
       (data: { sessionId: string }) => {
-        const handler = activeSessions.get(data.sessionId);
+        const handler = registry.getSession(data.sessionId);
         if (!handler) return;
         handler.handlePause();
       }
@@ -188,7 +223,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:resume',
       (data: { sessionId: string }) => {
-        const handler = activeSessions.get(data.sessionId);
+        const handler = registry.getSession(data.sessionId);
         if (!handler) return;
         handler.handleResume();
       }
@@ -198,7 +233,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:end',
       async (data: { sessionId: string }) => {
-        const handler = activeSessions.get(data.sessionId);
+        const handler = registry.getSession(data.sessionId);
         if (!handler) return;
 
         try {
@@ -206,7 +241,7 @@ const main = async (): Promise<void> => {
         } catch (err) {
           console.error(`[session:${data.sessionId}] End error:`, err);
         } finally {
-          activeSessions.delete(data.sessionId);
+          registry.removeSession(data.sessionId);
         }
       }
     );
@@ -215,14 +250,13 @@ const main = async (): Promise<void> => {
     socket.on(
       'voice:start',
       async (data: { sessionId: string }) => {
-        const handler = activeSessions.get(data.sessionId);
+        const handler = registry.getSession(data.sessionId);
         if (!handler) {
           socket.emit('voice:error', { message: 'Session not found' });
           return;
         }
 
-        // Create voice handler if not exists
-        if (!activeVoiceHandlers.has(data.sessionId)) {
+        if (!registry.getVoice(data.sessionId)) {
           const voiceHandler = new VoiceHandler(
             socket,
             data.sessionId,
@@ -232,11 +266,14 @@ const main = async (): Promise<void> => {
             },
             handler
           );
-          activeVoiceHandlers.set(data.sessionId, voiceHandler);
+          registry.addVoice(data.sessionId, {
+            handler: voiceHandler,
+            socketId: socket.id,
+          });
         }
 
         try {
-          await activeVoiceHandlers.get(data.sessionId)!.start();
+          await registry.getVoice(data.sessionId)!.start();
         } catch (err) {
           console.error(`[voice:${data.sessionId}] Start failed:`, err);
         }
@@ -247,7 +284,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'voice:audio',
       (data: { sessionId: string; audio: ArrayBuffer; timestamp: number }) => {
-        const voiceHandler = activeVoiceHandlers.get(data.sessionId);
+        const voiceHandler = registry.getVoice(data.sessionId);
         if (!voiceHandler) return;
         voiceHandler.handleAudioChunk(data.audio);
       }
@@ -257,23 +294,51 @@ const main = async (): Promise<void> => {
     socket.on(
       'voice:stop',
       (data: { sessionId: string }) => {
-        const voiceHandler = activeVoiceHandlers.get(data.sessionId);
+        const voiceHandler = registry.getVoice(data.sessionId);
         if (voiceHandler) {
-          voiceHandler.stop();
-          activeVoiceHandlers.delete(data.sessionId);
+          try {
+            voiceHandler.stop();
+          } catch (err) {
+            console.warn(`[voice:${data.sessionId}] stop error:`, err);
+          }
+          registry.removeVoice(data.sessionId);
         }
       }
     );
 
+    // ---- error ----
+    socket.on('error', (err) => {
+      console.error(`[ws] socket error userId=${userId} socketId=${socket.id}:`, err);
+    });
+
     // ---- disconnect ----
-    socket.on('disconnect', (reason) => {
+    socket.on('disconnect', async (reason) => {
       console.log(
-        `[ws] Client disconnected: userId=${userId} reason=${reason}`
+        `[ws] Client disconnected: userId=${userId} socketId=${socket.id} reason=${reason}`
       );
-      // Cleanup voice handlers for disconnected client
-      for (const [sessionId, voiceHandler] of activeVoiceHandlers) {
-        voiceHandler.stop();
-        activeVoiceHandlers.delete(sessionId);
+      metrics.wsConnections.dec();
+
+      // Cleanup только сессий ЭТОГО socket (ранее чистились все сессии всех клиентов).
+      const voiceIds = registry.voiceBySocket(socket.id);
+      for (const sid of voiceIds) {
+        const voice = registry.getVoice(sid);
+        if (voice) {
+          try { voice.stop(); } catch (err) { console.warn(`[voice:${sid}] stop error`, err); }
+          registry.removeVoice(sid);
+        }
+      }
+
+      const sessionIds = registry.sessionsBySocket(socket.id);
+      for (const sid of sessionIds) {
+        const handler = registry.getSession(sid);
+        if (handler) {
+          try {
+            await handler.endSession();
+          } catch (err) {
+            console.warn(`[session:${sid}] endSession on disconnect failed:`, err);
+          }
+          registry.removeSession(sid);
+        }
       }
     });
   });
@@ -284,6 +349,25 @@ const main = async (): Promise<void> => {
       `[orchestrator] Listening on port ${config.port} (${config.nodeEnv})`
     );
   });
+
+  // -- Graceful shutdown (см. #124) --
+  const shutdown = async (signal: string) => {
+    console.log(`[orchestrator] Received ${signal}, shutting down...`);
+    registry.stopSweeper();
+    io.close(() => console.log('[orchestrator] Socket.io closed'));
+    httpServer.close(() => {
+      console.log('[orchestrator] HTTP server closed');
+      process.exit(0);
+    });
+    // Hard timeout — если open connections не закрылись за 15с, force exit
+    setTimeout(() => {
+      console.warn('[orchestrator] Forced exit after shutdown timeout');
+      process.exit(1);
+    }, 15000).unref();
+  };
+
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
 };
 
 main().catch((err) => {

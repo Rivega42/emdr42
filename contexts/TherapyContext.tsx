@@ -1,15 +1,26 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { z } from 'zod';
 
-interface SessionData {
-  id: string;
-  date: Date;
-  duration: number;
-  pattern: string;
-  emotionalData?: any;
-  notes?: string;
-}
+const STORAGE_KEY = 'therapy_sessions';
+const STORAGE_VERSION = 1;
+
+const sessionSchema = z.object({
+  id: z.string(),
+  date: z.coerce.date(),
+  duration: z.number().nonnegative(),
+  pattern: z.string(),
+  emotionalData: z.unknown().optional(),
+  notes: z.string().optional(),
+});
+
+const storedShapeSchema = z.object({
+  version: z.number(),
+  sessions: z.array(sessionSchema),
+});
+
+type SessionData = z.infer<typeof sessionSchema>;
 
 interface TherapyContextType {
   currentSession: SessionData | null;
@@ -40,11 +51,41 @@ export const TherapyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
 
   useEffect(() => {
-    const storedSessions = localStorage.getItem('therapy_sessions');
-    if (storedSessions) {
-      setSessions(JSON.parse(storedSessions));
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+
+    try {
+      const parsed = JSON.parse(raw);
+      // Backward compat: ранее хранился голый массив sessions
+      const candidate = Array.isArray(parsed)
+        ? { version: 0, sessions: parsed }
+        : parsed;
+      const result = storedShapeSchema.safeParse(candidate);
+      if (result.success) {
+        setSessions(result.data.sessions);
+        if (result.data.version !== STORAGE_VERSION) {
+          persist(result.data.sessions);
+        }
+      } else {
+        console.warn('[TherapyContext] Invalid stored sessions, clearing', result.error);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch (err) {
+      console.warn('[TherapyContext] Failed to parse stored sessions, clearing', err);
+      localStorage.removeItem(STORAGE_KEY);
     }
   }, []);
+
+  const persist = (list: SessionData[]) => {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ version: STORAGE_VERSION, sessions: list }),
+      );
+    } catch (err) {
+      console.warn('[TherapyContext] Failed to persist sessions', err);
+    }
+  };
 
   const startSession = (pattern: string) => {
     const newSession: SessionData = {
@@ -68,7 +109,7 @@ export const TherapyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       const updatedSessions = [...sessions, completedSession];
       setSessions(updatedSessions);
-      localStorage.setItem('therapy_sessions', JSON.stringify(updatedSessions));
+      persist(updatedSessions);
 
       setCurrentSession(null);
       setIsSessionActive(false);

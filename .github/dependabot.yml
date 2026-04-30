@@ -1,8 +1,8 @@
 version: 2
 updates:
-  # Frontend dependencies
+  # Root (Next.js frontend + shared tooling)
   - package-ecosystem: "npm"
-    directory: "/apps/web"
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -18,6 +18,9 @@ updates:
           - "three"
           - "@react-three/*"
           - "@types/three"
+      trpc:
+        patterns:
+          - "@trpc/*"
       dev-dependencies:
         patterns:
           - "*"
@@ -28,48 +31,89 @@ updates:
     labels:
       - "dependencies"
       - "frontend"
-    reviewers:
-      - "Rivega42"
-    
-  # Root dependencies
+
+  # API service
   - package-ecosystem: "npm"
-    directory: "/"
+    directory: "/services/api"
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "04:00"
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: "deps"
-      include: "scope"
+    groups:
+      nestjs:
+        patterns:
+          - "@nestjs/*"
+      prisma:
+        patterns:
+          - "prisma"
+          - "@prisma/*"
     labels:
       - "dependencies"
-      - "root"
-    
+      - "backend"
+
+  # Orchestrator service
+  - package-ecosystem: "npm"
+    directory: "/services/orchestrator"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "backend"
+
+  # Shared packages
+  - package-ecosystem: "npm"
+    directory: "/packages/core"
+    schedule: { interval: "weekly" }
+    labels: ["dependencies", "package"]
+
+  - package-ecosystem: "npm"
+    directory: "/packages/emdr-engine"
+    schedule: { interval: "weekly" }
+    labels: ["dependencies", "package"]
+
+  - package-ecosystem: "npm"
+    directory: "/packages/ai-providers"
+    schedule: { interval: "weekly" }
+    labels: ["dependencies", "package"]
+
+  - package-ecosystem: "npm"
+    directory: "/packages/events"
+    schedule: { interval: "weekly" }
+    labels: ["dependencies", "package"]
+
+  - package-ecosystem: "npm"
+    directory: "/packages/livekit-integration"
+    schedule: { interval: "weekly" }
+    labels: ["dependencies", "package"]
+
+  # Docker images
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
+
+  - package-ecosystem: "docker"
+    directory: "/services/api"
+    schedule: { interval: "weekly" }
+    labels: ["dependencies", "docker"]
+
+  - package-ecosystem: "docker"
+    directory: "/services/orchestrator"
+    schedule: { interval: "weekly" }
+    labels: ["dependencies", "docker"]
+
+  - package-ecosystem: "docker"
+    directory: "/services/gateway"
+    schedule: { interval: "weekly" }
+    labels: ["dependencies", "docker"]
+
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
-      time: "04:00"
-    commit-message:
-      prefix: "ci"
-      include: "scope"
     labels:
-      - "ci/cd"
-      - "github-actions"
-    
-  # Docker
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "04:00"
-    commit-message:
-      prefix: "docker"
-      include: "scope"
-    labels:
-      - "docker"
-      - "infrastructure"
+      - "dependencies"
+      - "ci"

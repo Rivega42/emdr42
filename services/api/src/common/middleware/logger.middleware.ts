@@ -8,11 +8,13 @@ export class LoggerMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction): void {
     const start = Date.now();
     const { method, originalUrl } = req;
+    const cid = (req as Request & { correlationId?: string }).correlationId;
 
     res.on('finish', () => {
       const duration = Date.now() - start;
       const { statusCode } = res;
-      this.logger.log(`${method} ${originalUrl} ${statusCode} ${duration}ms`);
+      const cidSuffix = cid ? ` [cid=${cid}]` : '';
+      this.logger.log(`${method} ${originalUrl} ${statusCode} ${duration}ms${cidSuffix}`);
     });
 
     next();

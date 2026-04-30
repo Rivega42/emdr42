@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { EmotionRecognitionService, EmotionData } from '@emdr42/core';
-
-declare const faceapi: any;
+import { EmotionRecognitionService, type EmotionData } from '@emdr42/core';
+import type { FaceDetection } from '@/lib/types/face-api';
 
 type Status = 'idle' | 'loading' | 'ready' | 'running' | 'error';
 
@@ -30,7 +29,7 @@ export default function EmotionTestPage() {
     setFps(frameTimesRef.current.length);
   }, []);
 
-  const handleDetections = useCallback((detections: any[]) => {
+  const handleDetections = useCallback((detections: FaceDetection[]) => {
     if (!canvasRef.current || !videoRef.current) return;
 
     const canvas = canvasRef.current;
@@ -42,7 +41,8 @@ export default function EmotionTestPage() {
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (detections.length > 0 && typeof faceapi !== 'undefined') {
+    const faceapi = typeof window !== 'undefined' ? window.faceapi : undefined;
+    if (detections.length > 0 && faceapi) {
       const resized = faceapi.resizeResults(detections, {
         width: canvas.width,
         height: canvas.height,
@@ -69,10 +69,11 @@ export default function EmotionTestPage() {
       await service.initialize(videoRef.current);
       service.startTracking();
       setStatus('running');
-    } catch (err: any) {
+    } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('Failed to start emotion test', err);
       setStatus('error');
-      setErrorMsg(err?.message ?? 'Unknown error');
+      setErrorMsg(err instanceof Error ? err.message : 'Unknown error');
     }
   }, [handleEmotionUpdate, handleDetections]);
 

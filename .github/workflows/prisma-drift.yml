@@ -1,0 +1,67 @@
+name: Prisma Schema Drift Check
+
+on:
+  pull_request:
+    paths:
+      - 'services/api/prisma/**'
+      - '.github/workflows/prisma-drift.yml'
+
+jobs:
+  drift-check:
+    name: Check migration drift
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: emdr42_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: services/api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Apply migrations
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/emdr42_test
+        run: npx prisma migrate deploy
+
+      - name: Check for schema drift
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/emdr42_test
+        run: |
+          # Сравнивает applied migrations с текущим schema.prisma
+          # Если schema.prisma изменён, а миграция не создана — fail
+          npx prisma migrate diff \
+            --from-schema-datamodel prisma/schema.prisma \
+            --to-schema-datasource prisma/schema.prisma \
+            --exit-code || (
+              echo "::error::Schema drift detected. Run 'prisma migrate dev' to create a migration." && exit 1
+            )
+
+      - name: Validate schema
+        run: npx prisma validate
+
+      - name: Verify generate is current
+        run: npx prisma generate && git diff --exit-code || (
+          echo "::error::Prisma client not up to date. Run 'prisma generate'." && exit 1
+        )

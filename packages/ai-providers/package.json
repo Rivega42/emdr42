@@ -12,10 +12,12 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
-    "openai": "^4.77.0"
+    "openai": "^4.77.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
+    "@types/ws": "^8.5.13",
     "jest": "^30.3.0",
     "ts-jest": "^29.4.9",
     "typescript": "^5.1.0"

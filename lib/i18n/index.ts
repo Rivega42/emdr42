@@ -35,19 +35,25 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (typeof window !== 'undefined') localStorage.setItem('locale', l);
   }, []);
 
-  const t = useCallback((key: string, params?: Record<string, string>) => {
-    const keys = key.split('.');
-    let value: any = translations[locale];
-    for (const k of keys) {
-      value = value?.[k];
-      if (value === undefined) return key;
-    }
-    if (typeof value !== 'string') return key;
-    if (params) {
-      return value.replace(/\{(\w+)\}/g, (_, k) => params[k] || `{${k}}`);
-    }
-    return value;
-  }, [locale]);
+  const t = useCallback(
+    (key: string, params?: Record<string, string>) => {
+      const keys = key.split('.');
+      let value: unknown = translations[locale];
+      for (const k of keys) {
+        if (value && typeof value === 'object' && k in (value as object)) {
+          value = (value as Record<string, unknown>)[k];
+        } else {
+          return key;
+        }
+      }
+      if (typeof value !== 'string') return key;
+      if (params) {
+        return value.replace(/\{(\w+)\}/g, (_, k) => params[k] ?? `{${k}}`);
+      }
+      return value;
+    },
+    [locale],
+  );
 
   return React.createElement(
     I18nContext.Provider,

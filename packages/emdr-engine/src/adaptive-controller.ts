@@ -25,9 +25,15 @@ interface PhaseBlsPreset {
 }
 
 const PHASE_PRESETS: Partial<Record<EmdrPhase, PhaseBlsPreset>> = {
+  // #131 RDI — короткие сеты, медленно, calming patterns для установки resource
+  resource_development: {
+    speedRange: [0.5, 0.7],
+    setLengthRange: [8, 14],
+    preferredPatterns: ['horizontal', 'wave', 'circular'],
+  },
   desensitization: {
     speedRange: [0.8, 1.2],
-    setLengthRange: [24, 40],
+    setLengthRange: [20, 40], // #131 нижняя граница снижена для адаптации
     preferredPatterns: ['horizontal', 'diagonal', 'infinity'],
   },
   installation: {
@@ -35,6 +41,33 @@ const PHASE_PRESETS: Partial<Record<EmdrPhase, PhaseBlsPreset>> = {
     setLengthRange: [10, 15],
     preferredPatterns: ['horizontal', 'wave'],
   },
+};
+
+/**
+ * #131 adaptive set length — предотвращает habituation (привыкание к фиксированной длине).
+ * Возвращает длину сета в диапазоне preset.setLengthRange, adjusted по SUDS:
+ *   - высокий SUDS (7+) → длинные сеты ближе к max
+ *   - низкий SUDS (3-) → короткие сеты ближе к min
+ *   - добавляется jitter ±15% (предотвращение паттернов)
+ */
+const adaptiveSetLength = (
+  preset: PhaseBlsPreset,
+  latestSuds: number | null,
+): number => {
+  const [min, max] = preset.setLengthRange;
+  const range = max - min;
+
+  // Нормализуем SUDS (0-10) в фактор 0-1. Если SUDS нет — центр.
+  const sudsFactor = latestSuds != null ? Math.min(latestSuds, 10) / 10 : 0.5;
+
+  // Base: чем выше SUDS, тем длиннее сет
+  const base = min + range * sudsFactor;
+
+  // Jitter ±15% в пределах range
+  const jitter = (Math.random() - 0.5) * range * 0.3;
+  const result = Math.round(base + jitter);
+
+  return Math.max(min, Math.min(max, result));
 };
 
 const CALMING_PATTERNS = ['circular', 'wave', 'pendulum'];
@@ -55,12 +88,13 @@ export class AdaptiveController {
     sudsHistory: ScaleRecord[]
   ): BlsConfig {
     const preset = PHASE_PRESETS[currentPhase];
+    const latestSuds =
+      sudsHistory.length > 0 ? sudsHistory[sudsHistory.length - 1].value : null;
 
     // Base values — fall back to desensitization defaults
     let speed = preset ? (preset.speedRange[0] + preset.speedRange[1]) / 2 : 1.0;
-    let setLength = preset
-      ? Math.round((preset.setLengthRange[0] + preset.setLengthRange[1]) / 2)
-      : 24;
+    // #131 adaptive set length вместо захардкоженной середины диапазона
+    let setLength = preset ? adaptiveSetLength(preset, latestSuds) : 24;
     let pattern = preset ? preset.preferredPatterns[0] : 'horizontal';
 
     // --- High stress: reduce speed 20%, use calming pattern ---

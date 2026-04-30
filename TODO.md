@@ -1,239 +1,211 @@
-# 📋 TODO - Список задач проекта EMDR-AI Therapy Assistant
+# 📋 TODO — EMDR-AI Therapy Assistant
 
-> Этот документ содержит полный перечень задач по проекту с отслеживанием прогресса.
+> Актуальное состояние проекта и дорожная карта. Детальные задачи — в GitHub Issues.
 
-## 📊 Общий прогресс: 25% завершено
-
----
-
-## 🏁 ФАЗА 1: Инфраструктура и документация (ЗАВЕРШЕНО ✅)
-
-### ✅ Завершенные задачи
-- **[2025-09-06]** ✅ Создание GitHub репозитория `emdr42`
-- **[2025-09-06]** ✅ Базовая структура проекта
-- **[2025-09-06]** ✅ README.md с описанием проекта
-- **[2025-09-06]** ✅ TODO.md для трекинга задач
-- **[2025-09-06]** ✅ ROADMAP.md с планом развития
-- **[2025-09-06]** ✅ ARCHITECTURE.md с технической архитектурой
-- **[2025-09-06]** ✅ WHITEPAPER.md с бизнес-планом
-- **[2025-09-06]** ✅ GitHub Pages (index.html) для сайта проекта
-- **[2025-09-06]** ✅ Docker configuration (docker-compose.yml)
-- **[2025-09-06]** ✅ Package.json с зависимостями
-- **[2025-09-06]** ✅ .gitignore файл
-- **[2025-09-06]** ✅ Структура папок для исходного кода
+**Последнее обновление**: 2026-04-17
+**Прогресс до MVP**: ~55%
+**Прогресс до production**: ~30%
 
 ---
 
-## 🚧 ФАЗА 2: MVP Разработка (В ПРОЦЕССЕ - 0%)
+## ✅ Сделано
 
-### 🔄 Frontend (React PWA)
-- **[ ]** Начать: ___ | Базовая настройка Next.js проекта
-- **[ ]** Начать: ___ | Интеграция MorphCast SDK
-- **[ ]** Начать: ___ | Базовый UI/UX дизайн
-- **[ ]** Начать: ___ | Компонент EMDR визуализации
-- **[ ]** Начать: ___ | Система эмоционального мониторинга
-- **[ ]** Начать: ___ | Базовая система аватаров
-- **[ ]** Начать: ___ | PWA конфигурация
-- **[ ]** Начать: ___ | Responsive дизайн
-- **[ ]** Начать: ___ | Accessibility (a11y) compliance
+### Фаза 1: Инфраструктура и документация (100%)
+- Репозиторий `emdr42`, структура, README, ROADMAP, ARCHITECTURE, WHITEPAPER
+- Docker Compose, package.json, .gitignore, CI/CD pipelines
+- GitHub Pages, LICENSE (MIT), CONTRIBUTING.md
 
-### 🔄 Backend (Node.js API)
-- **[ ]** Начать: ___ | Настройка NestJS проекта
-- **[ ]** Начать: ___ | PostgreSQL схема данных
-- **[ ]** Начать: ___ | JWT аутентификация
-- **[ ]** Начать: ___ | REST API endpoints
-- **[ ]** Начать: ___ | WebSocket для real-time обновлений
-- **[ ]** Начать: ___ | Интеграция с Redis для кеширования
-- **[ ]** Начать: ___ | Базовые security middleware
-- **[ ]** Начать: ___ | API документация (Swagger)
-- **[ ]** Начать: ___ | Unit тесты
+### Фаза 2: MVP разработка (частично — ~60%)
 
-### 🔄 ML Service (Python)
-- **[ ]** Начать: ___ | FastAPI сервис setup
-- **[ ]** Начать: ___ | Интеграция с MorphCast данными
-- **[ ]** Начать: ___ | Базовые ML модели персонализации
-- **[ ]** Начать: ___ | Эмоциональная аналитика
-- **[ ]** Начать: ___ | Safety protocol алгоритмы
-- **[ ]** Начать: ___ | Model serving инфраструктура
+**Frontend (Next.js 13 App Router):**
+- ✅ Next.js + TypeScript + Tailwind setup
+- ✅ Pages: home, about, login, register, forgot/reset password, session, (protected)/dashboard/patients/progress/settings/admin
+- ✅ EMDR Canvas с 11 BLS-паттернами (Three.js + R3F)
+- ✅ PWA (manifest, service worker, #56 offline-first)
+- ✅ Responsive / mobile (#46)
+- ✅ Realtime voice dialogue (#66, #67, Vosk STT)
+- ✅ Audio BLS (Tone.js)
+- ✅ Emotion camera компонент (face-api.js)
+- ✅ Contexts: Auth / Emotion / Therapy
+- ✅ tRPC client / Socket.io client / LiveKit client
 
-### 🔄 DevOps & Infrastructure
-- **[ ]** Начать: ___ | Dockerfile для всех сервисов
-- **[ ]** Начать: ___ | Kubernetes manifests
-- **[ ]** Начать: ___ | CI/CD pipeline (GitHub Actions)
-- **[ ]** Начать: ___ | Monitoring setup (Prometheus + Grafana)
-- **[ ]** Начать: ___ | Logging инфраструктура (ELK)
-- **[ ]** Начать: ___ | Security scanning
-- **[ ]** Начать: ___ | Environment configurations
+**Backend (NestJS):**
+- ✅ Структура модулей: auth, users, sessions, admin, audit, email, health, livekit, trpc
+- ✅ Prisma schema + PostgreSQL
+- ✅ JWT + bcrypt auth (#69, #70, #71), register/login (#103)
+- ✅ Swagger/OpenAPI документация (#64)
+- ✅ EmailService (#76), Password reset (#77)
+- ✅ Seed данных (#75)
+- ✅ RBAC guards (частично)
 
----
+**Session Orchestrator:**
+- ✅ WebSocket сервер (Socket.io)
+- ✅ Session handler, AI dialogue, voice handler
+- ✅ Backend client для взаимодействия с API
 
-## 📋 ФАЗА 3: Core Features (Планируется)
+**Packages (pnpm workspaces + Turborepo, #54):**
+- ✅ `@emdr42/core` — shared types и business logic
+- ✅ `@emdr42/emdr-engine` — EMDR 8-phase protocol (incomplete, нужен RDI — #131)
+- ✅ `@emdr42/ai-providers` — LLM/TTS/STT router (streaming не завершён — #129)
+- ✅ `@emdr42/livekit-integration` — client/server utils
+- ✅ `@emdr42/events` — Redis pub/sub + BullMQ (#62)
+- ✅ `@emdr42/common` — shared utilities
 
-### 🎯 EMDR Engine
-- **[ ]** Начать: ___ | Adaptive pattern generation
-- **[ ]** Начать: ___ | Multi-modal stimulation
-- **[ ]** Начать: ___ | Session state management
-- **[ ]** Начать: ___ | Progress tracking
-- **[ ]** Начать: ___ | Safety interruption system
-
-### 🤖 AI Therapist
-- **[ ]** Начать: ___ | Avatar system с 3D моделями
-- **[ ]** Начать: ___ | Voice synthesis интеграция
-- **[ ]** Начать: ___ | Conversational AI (OpenAI/Claude)
-- **[ ]** Начать: ___ | Emotional mirroring
-- **[ ]** Начать: ___ | Therapy phase management
-
-### 📊 Analytics & Personalization
-- **[ ]** Начать: ___ | User emotion profiling
-- **[ ]** Начать: ___ | ML-based recommendations
-- **[ ]** Начать: ___ | Progress analytics
-- **[ ]** Начать: ___ | Pattern effectiveness tracking
-- **[ ]** Начать: ___ | Export functionality
+**DevOps / Quality:**
+- ✅ Docker Compose (dev)
+- ✅ CI: build, lint, test, CodeQL, docker, release
+- ✅ PM2 ecosystem
+- ✅ Playwright E2E (базовый набор — #65)
+- ✅ Storybook (#63)
+- ✅ HIPAA/GDPR groundwork (#58)
+- ✅ Edge inference WebGPU + ONNX (#59)
+- ✅ WebRTC P2P через LiveKit (#57)
+- ✅ E2E encryption заготовка (#61)
+- ✅ Микросервисная архитектура (#60)
 
 ---
 
-## 🧪 ФАЗА 4: Testing & Validation (Планируется)
+## 🚧 В работе — P0 (блокеры до production)
 
-### 🔬 Clinical Testing
-- **[ ]** Начать: ___ | IRB approval для исследований
-- **[ ]** Начать: ___ | Pilot study design
-- **[ ]** Начать: ___ | Recruiting participants
-- **[ ]** Начать: ___ | Efficacy measurements
-- **[ ]** Начать: ___ | Safety validation
-- **[ ]** Начать: ___ | Peer review publication
+Актуальный список — в GitHub Issues с меткой `P0`. Ключевые:
 
-### 🛡️ Security & Compliance
-- **[ ]** Начать: ___ | GDPR compliance audit
-- **[ ]** Начать: ___ | HIPAA assessment
-- **[ ]** Начать: ___ | Penetration testing
-- **[ ]** Начать: ___ | Data encryption validation
-- **[ ]** Начать: ___ | Privacy impact assessment
+**Safety & Clinical:**
+- #131 RDI phase + адаптивная длина BLS-сета
+- #132 Улучшить детекцию диссоциации
+- #147 Crisis hotline + C-SSRS screening + emergency contact
+- #146 Legal: ToS, Privacy, Informed Consent, BAA
 
-### 🎮 User Testing
-- **[ ]** Начать: ___ | Beta user recruitment
-- **[ ]** Начать: ___ | UX research sessions
-- **[ ]** Начать: ___ | A/B testing setup
-- **[ ]** Начать: ___ | Feedback collection system
-- **[ ]** Начать: ___ | Usability optimization
+**Security:**
+- #114 Refresh token rotation + MFA + account lockout
+- #115 CSRF + Helmet + CSP + SameSite cookies
+- #119 WebSocket JWT revalidation + revocation list
+- #128 PII redaction + prompt injection guards
+- #133 LiveKit token expiry + encrypted recording
 
----
+**Reliability:**
+- #116 LLM timeouts + retry + circuit breaker
+- #117 Fix orchestrator memory leaks
+- #113 Prisma migrations + CI migration drift check
+- #137 PostgreSQL backups + PITR + DR drill
+- #135 Docker resource limits + healthchecks
 
-## 🚀 ФАЗА 5: Launch Preparation (Планируется)
-
-### 📱 Product Polish
-- **[ ]** Начать: ___ | Performance optimization
-- **[ ]** Начать: ___ | UI/UX refinements
-- **[ ]** Начать: ___ | Bug fixes и stabilization
-- **[ ]** Начать: ___ | Cross-platform testing
-- **[ ]** Начать: ___ | Accessibility improvements
-
-### 📢 Marketing & Launch
-- **[ ]** Начать: ___ | Landing page optimization
-- **[ ]** Начать: ___ | Content marketing strategy
-- **[ ]** Начать: ___ | Social media presence
-- **[ ]** Начать: ___ | Press kit подготовка
-- **[ ]** Начать: ___ | Influencer partnerships
-- **[ ]** Начать: ___ | Beta launch campaign
-
-### 💼 Business Operations
-- **[ ]** Начать: ___ | Payment system integration
-- **[ ]** Начать: ___ | Customer support setup
-- **[ ]** Начать: ___ | Legal documentation
-- **[ ]** Начать: ___ | Terms of service
-- **[ ]** Начать: ___ | Privacy policy
-- **[ ]** Начать: ___ | Subscription management
+**Compliance:**
+- #121 GDPR export / delete / retention policy
+- #120 Audit log coverage + pagination
+- #122 Session recording + transcript storage (encrypted)
+- #112 Therapist ↔ patient Prisma relationship
 
 ---
 
-## 🔄 ФАЗА 6: Post-Launch Optimization (Будущее)
+## 📅 P1 (до beta-launch)
 
-### 📈 Growth & Scaling
-- **[ ]** Начать: ___ | User acquisition optimization
-- **[ ]** Начать: ___ | Retention improvement
-- **[ ]** Начать: ___ | Feature usage analytics
-- **[ ]** Начать: ___ | Performance monitoring
-- **[ ]** Начать: ___ | Infrastructure scaling
+**Features:**
+- #90 Therapist cabinet (зависит от #112)
+- #145 Billing / Stripe subscriptions
+- #149 Email + phone verification
+- #148 Notification system
+- #151 RBAC roles + admin portal
+- #96 Admin pages с реальными данными
+- #95 Settings с реальными данными
+- #94 Dashboard с реальными данными
+- #93 Progress page с графиками
+- #92 Убрать mock emotion sender из session
+- #129 STT streaming (Deepgram + faster-whisper)
+- #130 LLM cost tracking
+- #80 Emotion timeline visualization
+- #79 Voice pattern analysis
 
-### 🌟 Advanced Features
-- **[ ]** Начать: ___ | VR/AR интеграция
-- **[ ]** Начать: ___ | Community features
-- **[ ]** Начать: ___ | Therapist collaboration tools
-- **[ ]** Начать: ___ | Advanced ML features
-- **[ ]** Начать: ___ | Multi-language support
+**Infra:**
+- #136 Kubernetes manifests / Helm
+- #138 Loki logging + Prometheus exporters
+- #139 Trivy + SBOM + secrets scanning
+- #142 Runbook / Incident Response / DR docs
+- #124 Healthz/readyz + graceful shutdown
+- #134 DLQ + idempotency keys
+- #118 Redis-backed rate limiting
 
-### 🌍 Global Expansion
-- **[ ]** Начать: ___ | Internationalization (i18n)
-- **[ ]** Начать: ___ | Regional compliance
-- **[ ]** Начать: ___ | Local partnerships
-- **[ ]** Начать: ___ | Cultural adaptations
-- **[ ]** Начать: ___ | Multi-currency support
+**Frontend:**
+- #104 Error pages + offline + auth middleware
+- #105 Split session/page.tsx
+- #106 zod + react-hook-form для auth форм
+- #107 Убрать any types
+- #109 A11y (aria-value, focus-trap)
+- #85 MediaPipe вместо face-api
+- #84 Полный i18n (3 языка)
+
+**Backend:**
+- #123 Input sanitization + pagination limits + Prisma pooling
+- #126 Safe seed with faker
+- #125 Analytics API
+- #81 Cross-session AI context
+- #82 Prometheus метрики в API
+- #83 Voice pipeline latency метрики
+- #87 Sentry error tracking
+- #86 Rate limiting / Helmet / sanitization
+- #88 Pino JSON logs + correlation IDs
 
 ---
 
-## 🎯 Приоритетные задачи на следующую неделю
+## 📅 P2 (nice-to-have)
 
-### Высокий приоритет
-1. **[ ]** Создать базовую структуру Next.js приложения
-2. **[ ]** Настроить интеграцию с MorphCast SDK
-3. **[ ]** Создать первый прототип EMDR визуализации
-4. **[ ]** Настроить PostgreSQL схему данных
+- #97 React Native / Expo мобильное приложение
+- #89 Gamification (XP, уровни)
+- #98 Расширить Playwright E2E
+- #99 Расширить Storybook
+- #100 Обновить ROADMAP.md
+- #101 Расширенные health checks
+- #102 Production docker-compose + SSL
+- #91 Playwright в CI + Docker build + Dependabot
+- #78 tRPC роутеры к реальным NestJS сервисам
+- #73/#74 Users controller/spec
+- #127 ml-service decision
+- #140 husky + commitlint + semantic-release
+- #141 CODEOWNERS + PR template
+- #143 k6 load testing
+- #144 Cleanup legacy files
+- #150 Test coverage 70%
+- #108 Metadata + next/font
+- #110 TherapyContext safe parse
+- #111 useVoice hook refactor
 
-### Средний приоритет
-1. **[ ]** Создать базовые React компоненты
-2. **[ ]** Настроить TypeScript конфигурацию
-3. **[ ]** Создать первые API endpoints
-4. **[ ]** Настроить тестовую среду
+---
 
-### Низкий приоритет
-1. **[ ]** Улучшить документацию API
-2. **[ ]** Создать demo видео
-3. **[ ]** Настроить automated deployment
-4. **[ ]** Создать contribution guidelines
+## 🧪 Фаза 3 — Clinical validation (перед launch)
+
+- IRB approval для pilot study
+- Efficacy trial с контрольной группой
+- HIPAA risk assessment + BAA с облачными провайдерами (Anthropic, Deepgram, LiveKit)
+- SOC 2 Type II audit
+- Penetration test
+- Clinical Advisory Board (сертифицированные EMDR-терапевты)
+- C-SSRS validation
+- Multilingual clinical protocol review
 
 ---
 
 ## 📊 Метрики прогресса
 
-### Завершенные модули
-- ✅ **Документация**: 100% (8/8 документов)
-- ✅ **Инфраструктура**: 100% (основная настройка)
-- 🔄 **Frontend**: 0% (0/9 задач)
-- 🔄 **Backend**: 0% (0/9 задач)
-- 🔄 **ML Service**: 0% (0/6 задач)
-- 🔄 **DevOps**: 0% (0/7 задач)
-
-### Временные рамки
-- **Фаза 1** (Документация): ✅ Завершена (06.09.2025)
-- **Фаза 2** (MVP): 🎯 Цель - 06.12.2025 (3 месяца)
-- **Фаза 3** (Core Features): 🎯 Цель - 06.03.2026 (6 месяцев)
-- **Фаза 4** (Testing): 🎯 Цель - 06.06.2026 (9 месяцев)
-- **Фаза 5** (Launch): 🎯 Цель - 06.09.2026 (12 месяцев)
-
----
-
-## 📝 Примечания к задачам
-
-### Формат записи времени
-- **Начать**: YYYY-MM-DD | Описание задачи
-- **Завершить**: YYYY-MM-DD | Описание задачи
-
-### Статусы задач
-- **[ ]** - Не начата
-- **🔄** - В процессе  
-- **✅** - Завершена
-- **⚠️** - Заблокирована
-- **❌** - Отменена
-
-### Критерии завершения
-Каждая задача считается завершенной только после:
-1. Выполнения технических требований
-2. Code review (если применимо)
-3. Тестирования
-4. Документирования
-5. Merge в main branch
+| Область | Готовность | Issues до готовности |
+|---------|-----------|---------------------|
+| Frontend pages | 85% | #104, #105, #106, #108 |
+| Frontend data integration | 20% | #92, #93, #94, #95, #96 |
+| Backend API | 65% | #112, #121, #122, #125, #151 |
+| Auth & Security | 40% | #114, #115, #118, #119, #128 |
+| Orchestrator | 60% | #116, #117, #119 |
+| EMDR engine | 50% | #131, #132 |
+| AI providers | 55% | #128, #129, #130 |
+| Compliance | 25% | #120, #121, #122, #146, #147 |
+| DevOps | 45% | #113, #135, #136, #137, #138, #139 |
+| Testing | 35% | #98, #143, #150 |
+| Documentation | 70% | #100, #142 |
 
 ---
 
-**Последнее обновление**: 2025-09-06  
-**Следующий review**: 2025-09-13  
-**Ответственный за обновления**: [Development Team]
+## Ссылки
+
+- Все issues: https://github.com/Rivega42/emdr42/issues
+- P0 блокеры: issue filter по label `P0`
+- Рабочий журнал текущей итерации: `docs/WORK_LOG.md`
+- ROADMAP: `docs/ROADMAP.md`
+- ARCHITECTURE: `docs/ARCHITECTURE.md`
+- WHITEPAPER: `docs/WHITEPAPER.md`

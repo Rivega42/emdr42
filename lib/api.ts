@@ -81,6 +81,23 @@ class ApiClient {
     return this.request('/auth/profile');
   }
 
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    return this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(
+    token: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    });
+  }
+
   // Sessions
   async getSessions(
     params?: { page?: number; limit?: number },
@@ -147,6 +164,162 @@ class ApiClient {
       method: 'PATCH',
       body: JSON.stringify({ notes }),
     });
+  }
+
+  // Analytics (#125)
+  async getMyAnalytics(params?: { from?: string; to?: string }): Promise<{
+    totalSessions: number;
+    completed: number;
+    aborted: number;
+    completionRate: number;
+    avgSudsReduction: number;
+    avgVocGain: number;
+    avgDurationSec: number;
+    sessions: Array<{
+      id: string;
+      startedAt: string | null;
+      durationSec: number | null;
+      sudsBaseline: number | null;
+      sudsFinal: number | null;
+      vocBaseline: number | null;
+      vocFinal: number | null;
+    }>;
+  }> {
+    const qs = new URLSearchParams();
+    if (params?.from) qs.set('from', params.from);
+    if (params?.to) qs.set('to', params.to);
+    return this.request(`/analytics/me/sessions${qs.toString() ? `?${qs}` : ''}`);
+  }
+
+  async getPatientAnalyticsSummary(patientId: string) {
+    return this.request(`/analytics/patients/${patientId}/summary`);
+  }
+
+  // Gamification (#89)
+  async getMyProgress(): Promise<{
+    xp: number;
+    level: number;
+    currentStreak: number;
+    longestStreak: number;
+    xpToNextLevel: number;
+    achievements: Array<{
+      key: string;
+      title: string;
+      description: string;
+      icon: string;
+      unlockedAt: string;
+    }>;
+    locked: Array<{ key: string; title: string; description: string; icon: string }>;
+  }> {
+    return this.request('/gamification/me');
+  }
+
+  // Usage / billing (#130, #145)
+  async getMyUsage(days = 30): Promise<{
+    totalCostUsd: number;
+    byProvider: Record<string, { totalCost: number; count: number }>;
+    totalEvents: number;
+  }> {
+    return this.request(`/usage/me?days=${days}`);
+  }
+
+  async getMySubscription(): Promise<{
+    plan: string;
+    status: string;
+    currentPeriodEnd?: string | null;
+    cancelAtPeriodEnd?: boolean;
+    invoices?: Array<{
+      id: string;
+      amountCents: number;
+      currency: string;
+      status: string;
+      hostedInvoiceUrl?: string | null;
+      paidAt?: string | null;
+      createdAt: string;
+    }>;
+  }> {
+    return this.request('/billing/subscription');
+  }
+
+  async getBillingPlans(): Promise<Array<{
+    id: string;
+    name: string;
+    priceCentsMonthly: number;
+    features: string[];
+    role: string;
+  }>> {
+    return this.request('/billing/plans');
+  }
+
+  async createCheckout(planId: string): Promise<{ checkoutUrl: string }> {
+    return this.request(`/billing/checkout/${planId}`, { method: 'POST' });
+  }
+
+  // Crisis
+  async getCrisisHotlines(): Promise<{
+    country: string;
+    emergencyNumber: string;
+    hotlines: Array<{
+      name: string;
+      phone: string;
+      sms?: string;
+      online?: string;
+      languages: string[];
+      available247: boolean;
+    }>;
+  }> {
+    return this.request('/crisis/hotlines');
+  }
+
+  // User profile + GDPR (#121)
+  async updateProfile(data: { name?: string; settings?: unknown }): Promise<unknown> {
+    return this.request('/users/me', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async requestAccountDeletion(): Promise<{ status: string; hardDeleteAt: string }> {
+    return this.request('/users/me', { method: 'DELETE' });
+  }
+
+  async exportMyData(): Promise<Blob> {
+    const headers: Record<string, string> = {};
+    if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
+    const res = await fetch(`${this.baseUrl}/users/me/export`, { headers });
+    if (!res.ok) throw new ApiError(res.status, 'Export failed');
+    return res.blob();
+  }
+
+  // Therapist (#112)
+  async getAssignedPatients(): Promise<{
+    items: Array<{
+      id: string;
+      status: string;
+      patient: { id: string; email: string; name: string; createdAt: string };
+    }>;
+    total: number;
+  }> {
+    return this.request('/therapist-patient/patients?pageSize=100');
+  }
+
+  // Billing portal (#145)
+  async createBillingPortalSession(): Promise<{ portalUrl: string }> {
+    return this.request('/billing/portal', { method: 'POST' });
+  }
+
+  // Session comparison (#core-4)
+  async compareSessions(currentId: string, previousId: string): Promise<{
+    current: { id: string; sessionNumber: number; sudsFinal: number | null; vocFinal: number | null };
+    previous: { id: string; sessionNumber: number; sudsFinal: number | null; vocFinal: number | null };
+    delta: {
+      sudsDelta: number | null;
+      vocDelta: number | null;
+      avgStressDelta: number | null;
+      effectivenessScore: number | null;
+    };
+  }> {
+    return this.request(`/sessions/${currentId}/compare/${previousId}`);
   }
 }
 
