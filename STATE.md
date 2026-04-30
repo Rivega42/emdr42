@@ -8,7 +8,7 @@
 
 ## В работе сейчас
 
-- **`chore/repo-setup`** (ветка) — выполнение `REPO_SETUP_PROMPT.md`: AUDIT.md, STATE.md, структура каталогов, правила AI, лейблы, CI, автоматизация, дашборд.
+- **`chore/repo-setup`** (ветка) — ✅ выполнены 10 шагов `REPO_SETUP_PROMPT.md`. Готова к PR в `main`.
 - **`claude/project-review-issues-En09l`** — основные продуктовые правки последних 60+ коммитов (core EMDR loop, security hardening, E2E smoke, billing/MFA/crisis интеграции). Готова к review/merge в `main`.
 
 ## Заблокировано
@@ -25,15 +25,30 @@
 ## Следующие шаги (по `REPO_SETUP_PROMPT.md`)
 
 1. ✅ ШАГ 1 — `AUDIT.md`
-2. 🔄 ШАГ 2 — `STATE.md` (этот), `DECISIONS.md`, `CHANGELOG.md`, `.gitattributes`
-3. ⏸ ШАГ 3 — структура `docs/{adr,architecture,api,runbooks,guides,ai,prompts,context}`, `infra/`, `tools/dashboard/`, `_archive/`
-4. ⏸ ШАГ 4 — `docs/ai/{CLAUDE_CODE_RULES,CLAUDE_DESIGN_RULES,VIKA_RULES,DEVOPS_RULES,EXTERNAL_TASKS,AUTOMATION}.md`
-5. ⏸ ШАГ 5 — `docs/context/{PRODUCT_CONTEXT,DOMAIN}.md`, `docs/GLOSSARY.md`, `docs/prompts/`
-6. ⏸ ШАГ 6 — лейблы + 6 YAML issue-форм + PR-template
-7. ⏸ ШАГ 7 — `ci-pr / deploy-staging / deploy-prod / release-please / labeler / dependabot` (существующие workflow сохраняются)
-8. ⏸ ШАГ 8 — 8 automation-workflow + 9 mjs-скриптов; Vika-issue на Project v2 + branch-protection
-9. ⏸ ШАГ 9 — `tools/dashboard/` + `dashboard-fetch.mjs`; Vika-issue на GitHub Pages
-10. ⏸ ШАГ 10 — gitleaks history scan + финальные META-issues + большой PR
+2. ✅ ШАГ 2 — `STATE.md`, `DECISIONS.md`, `CHANGELOG.md`, `.gitattributes`
+3. ✅ ШАГ 3 — структура `docs/{adr,architecture,api,runbooks,guides,ai,prompts,context}`, `infra/`, `tools/dashboard/`, `_archive/`
+4. ✅ ШАГ 4 — `docs/ai/{CLAUDE_CODE_RULES,CLAUDE_DESIGN_RULES,VIKA_RULES,DEVOPS_RULES,EXTERNAL_TASKS,AUTOMATION}.md`
+5. ✅ ШАГ 5 — `docs/context/{PRODUCT_CONTEXT,DOMAIN}.md`, `docs/GLOSSARY.md`, `docs/prompts/`
+6. ✅ ШАГ 6 — лейблы (`scripts/setup-labels.sh`) + 6 YAML issue-форм + PR-template
+7. ✅ ШАГ 7 — `labeler.yml` + `deploy-staging.yml` + `deploy-prod.yml` (адаптированы под pnpm)
+8. ✅ ШАГ 8 — 8 automation-workflow + 9 mjs-скриптов + `setup-project.sh`
+9. ✅ ШАГ 9 — `tools/dashboard/` (Vite+React+Tailwind) + `dashboard-fetch.mjs` + `dashboard-sync.yml`
+10. ✅ ШАГ 10 — Vika-issues + META-issues + push + PR (см. ниже)
+
+## Созданные issues (ШАГ 10)
+
+| # | Тип | Тема |
+|---|---|---|
+| #152 | `[devops:vika]` | Применить лейблы из setup-labels.sh |
+| #153 | `[devops:vika]` | Создать GitHub Project v2 + поля |
+| #154 | `[devops:vika]` | Branch protection для main |
+| #155 | `[devops:vika]` | GitHub Environments staging + production |
+| #156 | `[devops:vika]` | Включить GitHub Pages для дашборда |
+| #157 | `[devops:vika]` | Включить GitHub Security Features |
+| #158 | `[devops:vika]` | Полный gitleaks scan истории |
+| #159 | `[META]` | Финальный обход — вопросы founders (license, branches, CODEOWNERS, Telegram, URLs, team) |
+| #160 | `feature` | Приглашение пациента по ссылке (запрос пользователя) |
+| #161 | `feature` | Приём заявок с маркетинг-сайта → воронка лид→клиент (запрос пользователя) |
 
 ## Метрики MVP-готовности (на 2026-04-30)
 
