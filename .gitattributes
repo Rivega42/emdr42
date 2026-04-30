@@ -1,0 +1,39 @@
+# Нормализация переносов строк
+* text=auto eol=lf
+
+# Скрипты — всегда LF
+*.sh    text eol=lf
+*.mjs   text eol=lf
+*.js    text eol=lf
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.json  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.md    text eol=lf
+
+# Бинарники
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.tar   binary
+*.gz    binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+
+# Не показывать diff для lock-файлов и сгенерированных
+pnpm-lock.yaml      -diff linguist-generated
+package-lock.json   -diff linguist-generated
+yarn.lock           -diff linguist-generated
+*.tsbuildinfo       -diff linguist-generated
+
+# Исключить из подсчёта строк
+docs/*              linguist-documentation
+*.md                linguist-documentation
