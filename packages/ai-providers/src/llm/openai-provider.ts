@@ -5,6 +5,7 @@ import type {
   ChatResponse,
   LlmOptions,
 } from '../types';
+import { applyArmor } from '../armor-helper';
 
 export interface OpenAiLlmProviderConfig {
   apiKey: string;
@@ -86,13 +87,15 @@ export class OpenAiLlmProvider implements LlmProvider {
     messages: ChatMessage[],
     options?: LlmOptions
   ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+    const armored = applyArmor(messages, options);
     const result: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
 
-    if (options?.systemPrompt) {
-      result.push({ role: 'system', content: options.systemPrompt });
+    if (armored.systemPrompt) {
+      result.push({ role: 'system', content: armored.systemPrompt });
     }
 
-    for (const msg of messages) {
+    for (const msg of armored.messages) {
+      if (msg.role === 'system') continue; // уже в armored.systemPrompt
       result.push({ role: msg.role, content: msg.content });
     }
 

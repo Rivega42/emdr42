@@ -1,0 +1,105 @@
+# Daily PostgreSQL backup CronJob (#137)
+# Требует: emdr42-backup-secret с AWS credentials (если S3 enabled)
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-scripts
+  namespace: emdr42
+data:
+  backup-postgres.sh: |-
+    # Скрипт копируется из scripts/backup-postgres.sh при deploy.
+    # Для простоты использовать volume mount или custom image.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: emdr42
+spec:
+  schedule: "0 3 * * *"  # 03:00 UTC ежедневно
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 14
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: postgres:15-alpine
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -e
+                  apk add --no-cache aws-cli gnupg bash
+                  bash /scripts/backup-postgres.sh
+              env:
+                - name: POSTGRES_HOST
+                  value: "postgres"
+                - name: POSTGRES_USER
+                  value: "emdr42"
+                - name: POSTGRES_DB
+                  value: "emdr42"
+                - name: POSTGRES_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: emdr42-secrets
+                      key: POSTGRES_PASSWORD
+                - name: S3_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: emdr42-backup-secret
+                      key: S3_BUCKET
+                      optional: true
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: emdr42-backup-secret
+                      key: AWS_ACCESS_KEY_ID
+                      optional: true
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: emdr42-backup-secret
+                      key: AWS_SECRET_ACCESS_KEY
+                      optional: true
+                - name: AWS_DEFAULT_REGION
+                  value: "eu-central-1"
+                - name: RETENTION_DAYS
+                  value: "30"
+                - name: BACKUP_DIR
+                  value: "/backups"
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backups
+                - name: scripts
+                  mountPath: /scripts
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+          volumes:
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: backup-pvc
+            - name: scripts
+              configMap:
+                name: backup-scripts
+                defaultMode: 0755
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backup-pvc
+  namespace: emdr42
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 50Gi

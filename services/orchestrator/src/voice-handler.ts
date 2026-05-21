@@ -187,6 +187,22 @@ export class VoiceHandler {
         if (text) {
           this.accumulatedText += (this.accumulatedText ? ' ' : '') + text;
           this.socket.emit('voice:transcript_final', { text });
+
+          // Voice pattern analysis (#79) — передать indicators в SessionHandler
+          if (result.result && result.result.length > 0) {
+            const words = result.result.map((w) => ({
+              word: w.word,
+              start: w.start,
+              end: w.end,
+              confidence: w.conf,
+            }));
+            const durationSec =
+              words[words.length - 1].end - words[0].start;
+            this.sessionHandler.handleVoiceMetrics({
+              words,
+              durationSec,
+            });
+          }
         }
       }
     } catch (err) {

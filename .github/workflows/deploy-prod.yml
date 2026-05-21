@@ -1,0 +1,73 @@
+name: Deploy to production
+
+on:
+  push:
+    tags: ['v*']
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.PROD_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: 'pnpm' }
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm -r build
+
+      - name: Push image
+        if: hashFiles('Dockerfile') != ''
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          TAG=${GITHUB_REF#refs/tags/}
+          docker build -t ghcr.io/${{ github.repository }}:$TAG .
+          docker push ghcr.io/${{ github.repository }}:$TAG
+          docker tag ghcr.io/${{ github.repository }}:$TAG ghcr.io/${{ github.repository }}:latest
+          docker push ghcr.io/${{ github.repository }}:latest
+
+      - name: Deploy (placeholder — Vika settings)
+        run: |
+          echo "TODO[devops:vika]: kubectl apply -k k8s/overlays/prod"
+          echo "См. issue #136"
+
+      - name: Run migrations (placeholder — Vika settings)
+        run: |
+          echo "TODO[devops:vika]: backup → pnpm --filter @emdr42/api prisma migrate deploy → verify"
+          echo "См. issue #113 + RUNBOOK.md"
+        continue-on-error: true
+
+      - name: E2E smoke tests
+        run: |
+          if [ -n "${{ vars.PROD_URL }}" ]; then
+            curl -fsS "${{ vars.PROD_URL }}/health" || curl -fsS "${{ vars.PROD_URL }}/healthz"
+          fi
+
+      - name: Notify
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          ICON="✅"
+          if [ "$STATUS" != "success" ]; then ICON="❌"; fi
+          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
+            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -H "Content-Type: application/json" \
+              -d "{\"chat_id\":\"${{ secrets.TELEGRAM_CHAT_ID }}\",\"text\":\"$ICON *PROD deploy* ${{ github.ref_name }}\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"parse_mode\":\"Markdown\"}"
+          fi

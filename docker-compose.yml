@@ -1,20 +1,53 @@
 version: '3.8'
 
+# Общие anchors для DRY
+x-restart-policy: &restart
+  restart: unless-stopped
+
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
 services:
-  # API Gateway (nginx reverse proxy)
+  # ------------------------------------------------------------------
+  # Gateway (nginx reverse proxy)
+  # ------------------------------------------------------------------
   gateway:
+    <<: *restart
     build:
       context: ./services/gateway
       dockerfile: Dockerfile
     ports:
       - "80:80"
     depends_on:
-      - frontend
-      - api
-      - orchestrator
+      frontend:
+        condition: service_started
+      api:
+        condition: service_started
+      orchestrator:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    mem_limit: 256m
+    cpus: 0.5
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 256M }
+        reservations: { cpus: '0.1', memory: 64M }
+    <<: *default-logging
 
+  # ------------------------------------------------------------------
   # Frontend (Next.js)
+  # ------------------------------------------------------------------
   frontend:
+    <<: *restart
     build:
       context: .
       dockerfile: Dockerfile
@@ -23,31 +56,67 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_WS_URL=http://localhost:8002
+      - NODE_ENV=${NODE_ENV:-development}
     depends_on:
-      - api
-      - orchestrator
+      api:
+        condition: service_healthy
+      orchestrator:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    mem_limit: 1g
+    cpus: 1.0
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 1G }
+        reservations: { cpus: '0.25', memory: 256M }
+    <<: *default-logging
 
-  # Backend API (NestJS)
+  # ------------------------------------------------------------------
+  # API (NestJS)
+  # ------------------------------------------------------------------
   api:
+    <<: *restart
     build:
       context: ./services/api
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://emdr42:emdr42_secret@postgres:5432/emdr42
+      - DATABASE_URL=postgresql://emdr42:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/emdr42
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=your-jwt-secret-change-in-production
-      - PHI_ENCRYPTION_KEY=${PHI_ENCRYPTION_KEY:-dev-only-change-in-production}
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET in .env (min 32 chars)}
+      - PHI_ENCRYPTION_KEY=${PHI_ENCRYPTION_KEY:?set PHI_ENCRYPTION_KEY in .env}
+      - NODE_ENV=${NODE_ENV:-development}
       - PORT=8000
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8000/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    mem_limit: 512m
+    cpus: 1.0
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 512M }
+        reservations: { cpus: '0.25', memory: 128M }
+    <<: *default-logging
 
-  # Session Orchestrator (WebSocket)
+  # ------------------------------------------------------------------
+  # Orchestrator (WebSocket + AI)
+  # ------------------------------------------------------------------
   orchestrator:
+    <<: *restart
     build:
       context: ./services/orchestrator
       dockerfile: Dockerfile
@@ -56,7 +125,8 @@ services:
     environment:
       - API_URL=http://api:8000
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-change-in-production}
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET in .env (min 32 chars)}
+      - NODE_ENV=${NODE_ENV:-development}
       - PORT=8002
       # Cloud providers (optional fallback)
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
@@ -72,80 +142,153 @@ services:
       - PIPER_URL=http://piper:5000
       # LiveKit
       - LIVEKIT_URL=ws://livekit:7880
-      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
-      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY in .env}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET in .env}
     depends_on:
-      - api
-      - redis
-      - ollama
-      - whisper
-      - vosk
-      - piper
-      - livekit
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+      whisper:
+        condition: service_started
+      vosk:
+        condition: service_started
+      piper:
+        condition: service_started
+      livekit:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8002/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    mem_limit: 512m
+    cpus: 1.0
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 512M }
+        reservations: { cpus: '0.25', memory: 128M }
+    <<: *default-logging
 
-  # PostgreSQL
+  # ------------------------------------------------------------------
+  # PostgreSQL 15
+  # ------------------------------------------------------------------
   postgres:
+    <<: *restart
     image: postgres:15-alpine
     ports:
       - "5432:5432"
     environment:
       - POSTGRES_USER=emdr42
-      - POSTGRES_PASSWORD=emdr42_secret
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       - POSTGRES_DB=emdr42
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U emdr42"]
+      test: ["CMD-SHELL", "pg_isready -U emdr42 -d emdr42"]
       interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    mem_limit: 1g
+    cpus: 1.0
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 1G }
+        reservations: { cpus: '0.25', memory: 256M }
+    <<: *default-logging
 
-  # Redis
+  # ------------------------------------------------------------------
+  # Redis 7
+  # ------------------------------------------------------------------
   redis:
+    <<: *restart
     image: redis:7-alpine
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/var/lib/redis/data
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
-    command: redis-server --appendonly yes
+    mem_limit: 640m
+    cpus: 0.5
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 640M }
+        reservations: { cpus: '0.1', memory: 128M }
+    <<: *default-logging
 
-  # LiveKit (WebRTC media server) - Self-hosted
+  # ------------------------------------------------------------------
+  # LiveKit (WebRTC)
+  # ------------------------------------------------------------------
   livekit:
+    <<: *restart
     image: livekit/livekit-server:latest
     ports:
-      - "7880:7880"   # HTTP API
-      - "7881:7881"   # WebRTC TCP
-      - "7882:7882/udp" # WebRTC UDP
-      - "50000-50100:50000-50100/udp" # RTP ports
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+      - "50000-50100:50000-50100/udp"
     environment:
-      - LIVEKIT_KEYS=${LIVEKIT_API_KEY:-devkey}:${LIVEKIT_API_SECRET:-secret}
+      - LIVEKIT_KEYS=${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY in .env}:${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET in .env}
     volumes:
       - ./livekit.yaml:/livekit.yaml
     command: --config /livekit.yaml
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:7880/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    mem_limit: 512m
+    cpus: 1.0
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 512M }
+        reservations: { cpus: '0.25', memory: 128M }
+    <<: *default-logging
 
-  # Ollama (Local LLM) - для AI диалогов
+  # ------------------------------------------------------------------
+  # Ollama (Local LLM)
+  # Требует GPU. Для CPU: закомментировать deploy.reservations.devices
+  # ------------------------------------------------------------------
   ollama:
+    <<: *restart
     image: ollama/ollama:latest
     ports:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    mem_limit: 8g
+    cpus: 4.0
     deploy:
       resources:
+        limits: { cpus: '4.0', memory: 8G }
         reservations:
           devices:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-    # Если нет GPU, закомментировать deploy секцию выше
+    <<: *default-logging
 
-  # Faster-Whisper (Local STT) - для голоса
+  # ------------------------------------------------------------------
+  # faster-whisper (Local STT)
+  # ------------------------------------------------------------------
   whisper:
+    <<: *restart
     image: fedirz/faster-whisper-server:latest-cuda
     ports:
       - "8001:8000"
@@ -155,27 +298,54 @@ services:
       - WHISPER__COMPUTE_TYPE=float16
     volumes:
       - whisper_data:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    mem_limit: 4g
+    cpus: 2.0
     deploy:
       resources:
+        limits: { cpus: '2.0', memory: 4G }
         reservations:
           devices:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    # Для CPU: использовать image: fedirz/faster-whisper-server:latest
-    # и WHISPER__DEVICE=cpu, WHISPER__COMPUTE_TYPE=int8
+    <<: *default-logging
 
-  # Piper TTS (Local TTS) - для озвучки
+  # ------------------------------------------------------------------
+  # Piper TTS
+  # ------------------------------------------------------------------
   piper:
+    <<: *restart
     image: rhasspy/piper:latest
     ports:
       - "5000:5000"
     volumes:
       - piper_data:/data
     command: --voice en_US-lessac-medium
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:5000/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 1g
+    cpus: 1.0
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 1G }
+        reservations: { cpus: '0.1', memory: 128M }
+    <<: *default-logging
 
-  # Vosk STT (Realtime Speech-to-Text) - для голосового ввода
+  # ------------------------------------------------------------------
+  # Vosk STT
+  # ------------------------------------------------------------------
   vosk:
+    <<: *restart
     image: alphacep/kaldi-vosk-server:latest
     ports:
       - "2700:2700"
@@ -183,51 +353,98 @@ services:
       - VOSK_MODEL_PATH=/opt/vosk-model-ru
     volumes:
       - vosk_model:/opt/vosk-model-ru
-    # Модель скачается при первом запуске или вручную:
-    # docker exec vosk wget -qO- https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.zip | unzip -d /opt/
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 2700 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    mem_limit: 1g
+    cpus: 1.0
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 1G }
+        reservations: { cpus: '0.1', memory: 128M }
+    <<: *default-logging
 
-  # Prometheus (Metrics)
+  # ------------------------------------------------------------------
+  # Prometheus
+  # ------------------------------------------------------------------
   prometheus:
+    <<: *restart
     image: prom/prometheus:latest
     ports:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
     depends_on:
-      - api
+      api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 512m
+    cpus: 0.5
+    <<: *default-logging
 
-  # Grafana (Dashboards)
+  # ------------------------------------------------------------------
+  # Grafana
+  # ------------------------------------------------------------------
   grafana:
+    <<: *restart
     image: grafana/grafana:latest
     ports:
       - "3001:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
     volumes:
       - grafana_data:/var/lib/grafana
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 256m
+    cpus: 0.5
+    <<: *default-logging
 
-  # MinIO (Object Storage for recordings)
+  # ------------------------------------------------------------------
+  # MinIO (Object storage)
+  # ------------------------------------------------------------------
   minio:
+    <<: *restart
     image: minio/minio
     ports:
       - "9000:9000"
       - "9001:9001"
     environment:
-      - MINIO_ROOT_USER=emdr42
-      - MINIO_ROOT_PASSWORD=emdr42_secret
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-emdr42}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 512m
+    cpus: 0.5
+    <<: *default-logging
 
 volumes:
   postgres_data:
   redis_data:
   minio_data:
   grafana_data:
+  prometheus_data:
   ollama_data:
   whisper_data:
   piper_data:
-  livekit_data:
   vosk_model:

@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { EmotionRecognitionService, EmotionData } from '@emdr42/core';
-
-declare const faceapi: any;
+import { EmotionRecognitionService, type EmotionData } from '@emdr42/core';
+import type { FaceDetection } from '@/lib/types/face-api';
 
 interface EmotionCameraProps {
   onEmotionUpdate?: (data: EmotionData) => void;
-  onFaceDetections?: (detections: any[]) => void;
+  onFaceDetections?: (detections: FaceDetection[]) => void;
   showPreview?: boolean;
   enabled?: boolean;
 }
@@ -35,11 +34,13 @@ export const EmotionCamera: React.FC<EmotionCameraProps> = ({
     setCurrentEmotion(dominant[0]);
   }, [onEmotionUpdate]);
 
-  const handleFaceDetections = useCallback((detections: any[]) => {
-    onFaceDetections?.(detections);
+  const handleFaceDetections = useCallback(
+    (detections: FaceDetection[]) => {
+      onFaceDetections?.(detections);
 
-    // Draw face detection overlay on canvas
-    if (canvasRef.current && videoRef.current && typeof faceapi !== 'undefined') {
+      const faceapi = typeof window !== 'undefined' ? window.faceapi : undefined;
+      if (!canvasRef.current || !videoRef.current || !faceapi) return;
+
       const canvas = canvasRef.current;
       const video = videoRef.current;
 
@@ -59,8 +60,9 @@ export const EmotionCamera: React.FC<EmotionCameraProps> = ({
         faceapi.draw.drawDetections(canvas, resized);
         faceapi.draw.drawFaceLandmarks(canvas, resized);
       }
-    }
-  }, [onFaceDetections]);
+    },
+    [onFaceDetections],
+  );
 
   useEffect(() => {
     if (!enabled || !videoRef.current) return;

@@ -112,7 +112,10 @@ describe('AuthService', () => {
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
       mockJwtService.sign.mockReturnValue('jwt-token-456');
 
-      const result = await service.login(dto);
+      const result = (await service.login(dto)) as {
+        accessToken: string;
+        user: { id: string; email: string };
+      };
 
       expect(result.accessToken).toBe('jwt-token-456');
       expect(result.user.id).toBe('user-1');

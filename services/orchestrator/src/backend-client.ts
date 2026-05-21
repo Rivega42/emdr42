@@ -125,7 +125,66 @@ export class BackendClient {
     });
   }
 
+  // -- Usage tracking (#130) --
+  async recordUsage(payload: {
+    userId?: string;
+    sessionId?: string;
+    provider: string;
+    providerType: 'LLM' | 'TTS' | 'STT';
+    model?: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    durationMs?: number;
+  }): Promise<void> {
+    try {
+      await this.post('/usage/record', payload);
+    } catch {
+      // usage logging — best effort, не ломаем flow
+    }
+  }
+
+  // -- Crisis event (#147) --
+  async recordCrisisEvent(payload: {
+    sessionId?: string;
+    severity: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+    type: 'SUICIDE_IDEATION' | 'SELF_HARM' | 'DISSOCIATION' | 'PANIC' | 'OTHER';
+    triggerText?: string;
+  }): Promise<unknown> {
+    return this.post('/crisis/report', payload);
+  }
+
+  // -- Patient context (#81) --
+  async getPatientContext(): Promise<{
+    prompt: string;
+  }> {
+    return this.get<{ prompt: string }>('/patient-context/me/prompt');
+  }
+
+  // -- Gamification events (#89) --
+  async notifyGamificationEvent(event: {
+    type: 'session_completed' | 'stop_signal' | 'crisis_resources';
+    finalSuds?: number | null;
+    finalVoc?: number | null;
+    phasesCompleted?: number;
+  }): Promise<void> {
+    try {
+      await this.post('/gamification/events', event);
+    } catch {
+      // best effort
+    }
+  }
+
   // -- HTTP helpers --
+
+  private async get<T>(path: string): Promise<T> {
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      headers: { Authorization: `Bearer ${this.token}` },
+    });
+    if (!res.ok) {
+      throw new Error(`Backend GET ${path} failed (${res.status})`);
+    }
+    return res.json() as Promise<T>;
+  }
 
   private async post<T>(path: string, body: unknown): Promise<T> {
     const res = await fetch(`${this.baseUrl}${path}`, {

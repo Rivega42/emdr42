@@ -60,6 +60,19 @@ Goals:
 
 Ensure the client feels ready before moving to assessment. Ask: "Do you feel prepared to continue?"`,
 
+  resource_development: `Phase 2.5 — Resource Development & Installation (RDI)
+
+Применяется опционально, если клиент недостаточно stabilized или имеет complex trauma history.
+
+Goals:
+- Выявить positive resource memory (реальный или воображаемый) — момент safety, confidence, calm
+- Enhance через короткий BLS-сет (8-14 проходов) — усиление positive emotion
+- Установить cue word/image для быстрого access к ресурсу вне сессии
+- Повторить с 2-3 разными ресурсами (safe place / nurturer / protector / wise self)
+
+RDI не переработка травмы — только strengthening внутренних ресурсов.
+После RDI возврат к preparation или assessment.`,
+
   assessment: `Phase 3 — Assessment
 
 Collect the target memory components one at a time:
