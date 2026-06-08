@@ -170,21 +170,56 @@ interface SessionCanvasProps {
   emotionArousal?: number;
 }
 
+/**
+ * Hook: возвращает `true` если пользователь установил `prefers-reduced-motion: reduce`
+ * в системе. Используем для BLS чтобы избежать риска фотосенситивного приступа
+ * (быстрая ритмичная анимация + flashing — основной триггер).
+ */
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+  return reduced;
+}
+
 export default function SessionCanvas({
   pattern, speed, size = 1.0, color = '#4CAF50', isActive,
   trailEnabled = true, particlesEnabled = true, emotionArousal = 0
 }: SessionCanvasProps) {
+  const reducedMotion = usePrefersReducedMotion();
+
+  // При prefers-reduced-motion:
+  //  - убираем Stars (большой контраст flicker)
+  //  - отключаем Sparkles/Trail (fast flashing)
+  //  - снижаем скорость до 0.5 (визуальный BLS превращается в плавное колыхание,
+  //    но клиент всё ещё слышит audio-BLS через Tone.js, который уже adaptive).
+  const safeSpeed = reducedMotion ? Math.min(speed, 0.5) : speed;
+  const safeTrail = reducedMotion ? false : trailEnabled;
+  const safeParticles = reducedMotion ? false : particlesEnabled;
+
   return (
-    <Canvas camera={{ position: [0, 0, 6], fov: 60 }}>
-      <Stars radius={100} depth={50} count={3000} factor={4} saturation={0} fade speed={0.5} />
+    <Canvas
+      camera={{ position: [0, 0, 6], fov: 60 }}
+      gl={{ antialias: !reducedMotion, powerPreference: 'high-performance' }}
+      dpr={[1, reducedMotion ? 1.5 : 2]}
+    >
+      {!reducedMotion && (
+        <Stars radius={100} depth={50} count={3000} factor={4} saturation={0} fade speed={0.5} />
+      )}
       <BlsObject
         pattern={pattern}
-        speed={speed}
+        speed={safeSpeed}
         size={size}
         color={color}
         isActive={isActive}
-        trailEnabled={trailEnabled}
-        particlesEnabled={particlesEnabled}
+        trailEnabled={safeTrail}
+        particlesEnabled={safeParticles}
         emotionArousal={emotionArousal}
       />
       <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} />
