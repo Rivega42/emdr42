@@ -34,6 +34,8 @@ export class VoiceHandler {
   private isActive = false;
   private accumulatedText = '';
   private silenceTimeout: ReturnType<typeof setTimeout> | null = null;
+  private reconnectAttempts = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Silence threshold in ms before processing accumulated text */
   private readonly SILENCE_THRESHOLD_MS = 800;
@@ -78,9 +80,21 @@ export class VoiceHandler {
     this.isActive = false;
     this.clearSilenceTimeout();
 
+    // Отменяем reconnect, если он был запланирован — иначе после stop
+    // через несколько секунд оживает старая сессия Vosk.
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.reconnectAttempts = 0;
+
     if (this.voskWs) {
-      // Send EOF to Vosk
-      this.voskWs.send(JSON.stringify({ eof: 1 }));
+      try {
+        this.voskWs.removeAllListeners();
+        this.voskWs.send(JSON.stringify({ eof: 1 }));
+      } catch {
+        /* ignore */
+      }
       this.voskWs.close();
       this.voskWs = null;
     }
@@ -115,7 +129,37 @@ export class VoiceHandler {
       const wsUrl = this.config.voskUrl;
       console.log(`[voice:${this.sessionId}] Connecting to Vosk at ${wsUrl}`);
 
+      // Очищаем предыдущий socket если есть. Без этого reconnect создавал
+      // листенеры на старом WS, утечка событий + потенциальный race на
+      // одновременно открытые соединения.
+      if (this.voskWs) {
+        try {
+          this.voskWs.removeAllListeners();
+          this.voskWs.close();
+        } catch {
+          /* ignore */
+        }
+      }
+
       this.voskWs = new WebSocket(wsUrl);
+      let settled = false;
+
+      // Timeout для initial connection. Если успешно — clearTimeout, иначе
+      // raceся с open/error. ВАЖНО: clearTimeout в open/error чтобы fake
+      // timeout не reject-ил уже подключённый сокет.
+      const connectTimeout = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        if (this.voskWs?.readyState !== WebSocket.OPEN) {
+          try {
+            this.voskWs?.removeAllListeners();
+            this.voskWs?.close();
+          } catch {
+            /* ignore */
+          }
+          reject(new Error('Vosk connection timeout'));
+        }
+      }, 5000);
 
       this.voskWs.on('open', () => {
         // Configure Vosk
@@ -129,7 +173,11 @@ export class VoiceHandler {
           })
         );
         console.log(`[voice:${this.sessionId}] Connected to Vosk`);
-        resolve();
+        if (!settled) {
+          settled = true;
+          clearTimeout(connectTimeout);
+          resolve();
+        }
       });
 
       this.voskWs.on('message', (data: Buffer) => {
@@ -138,9 +186,11 @@ export class VoiceHandler {
 
       this.voskWs.on('error', (err) => {
         console.error(`[voice:${this.sessionId}] Vosk error:`, err);
-        if (!this.isActive) {
+        if (!settled) {
+          settled = true;
+          clearTimeout(connectTimeout);
           reject(err);
-        } else {
+        } else if (this.isActive) {
           this.socket.emit('voice:error', {
             message: 'Speech recognition error',
           });
@@ -149,24 +199,29 @@ export class VoiceHandler {
 
       this.voskWs.on('close', () => {
         console.log(`[voice:${this.sessionId}] Vosk connection closed`);
+        // Exponential backoff с jitter — иначе при упавшем Vosk-сервере
+        // мы spammим reconnect раз в секунду. Cap 30 сек.
         if (this.isActive) {
-          // Attempt to reconnect
-          setTimeout(() => {
+          const delay = Math.min(
+            30_000,
+            1000 * 2 ** Math.min(this.reconnectAttempts, 5),
+          ) + Math.floor(Math.random() * 500);
+          this.reconnectAttempts += 1;
+          this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = null;
             if (this.isActive) {
-              this.connectToVosk().catch((err) => {
-                console.error(`[voice:${this.sessionId}] Reconnect failed:`, err);
-              });
+              this.connectToVosk()
+                .then(() => {
+                  this.reconnectAttempts = 0;
+                })
+                .catch((err) => {
+                  console.error(`[voice:${this.sessionId}] Reconnect failed:`, err);
+                });
             }
-          }, 1000);
+          }, delay);
+          this.reconnectTimer.unref?.();
         }
       });
-
-      // Timeout for initial connection
-      setTimeout(() => {
-        if (this.voskWs?.readyState !== WebSocket.OPEN) {
-          reject(new Error('Vosk connection timeout'));
-        }
-      }, 5000);
     });
   }
 

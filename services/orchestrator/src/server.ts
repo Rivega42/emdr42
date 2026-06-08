@@ -9,8 +9,12 @@
 import { createServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
-import { AiRouter } from '@emdr42/ai-providers';
-import type { AiProviderConfig } from '@emdr42/ai-providers';
+import Redis from 'ioredis';
+import { AiRouter, RedisCircuitStateStore } from '@emdr42/ai-providers';
+import type {
+  AiProviderConfig,
+  CircuitStateStore,
+} from '@emdr42/ai-providers';
 import type { EmotionSnapshot } from '@emdr42/emdr-engine';
 
 import { loadConfig } from './config';
@@ -37,8 +41,42 @@ const registry = new SessionRegistry();
 const main = async (): Promise<void> => {
   const config = loadConfig();
 
+  // Shared CircuitBreaker state в Redis (#C4) — без него при N репликах
+  // каждый pod независимо открывает circuit, итого N×failureThreshold ошибок
+  // успевают улететь к провайдеру до cutoff. ORCHESTRATOR_CIRCUIT_BACKEND=memory
+  // отключает (для dev / тестов).
+  let circuitStore: CircuitStateStore | undefined;
+  let redisCb: Redis | null = null;
+  if (
+    config.redisUrl &&
+    process.env.ORCHESTRATOR_CIRCUIT_BACKEND !== 'memory'
+  ) {
+    try {
+      redisCb = new Redis(config.redisUrl, {
+        maxRetriesPerRequest: 1,
+        lazyConnect: false,
+      });
+      redisCb.on('error', (err) =>
+        console.warn('[circuit-store] redis error:', err.message),
+      );
+      circuitStore = new RedisCircuitStateStore(redisCb, {
+        keyPrefix: `orchestrator:cb:${config.nodeEnv}:`,
+        ttlSec: 600,
+      });
+      console.log('[circuit-store] Redis-backed circuit-breaker enabled');
+    } catch (err) {
+      console.warn(
+        '[circuit-store] Failed to init Redis, falling back to in-memory:',
+        err,
+      );
+    }
+  }
+
   // Initialize AI Router
-  const aiRouter = new AiRouter(config.ai as AiProviderConfig);
+  const aiRouter = new AiRouter({
+    ...(config.ai as AiProviderConfig),
+    circuitStore,
+  } as AiProviderConfig & { circuitStore?: CircuitStateStore });
   await aiRouter.initialize();
 
   // Start idle sweeper
@@ -354,33 +392,64 @@ const main = async (): Promise<void> => {
     });
 
     // ---- disconnect ----
+    // Grace period 30s — даём клиенту шанс переподключиться (5-секундный обрыв
+    // Wi-Fi не должен убивать часовую EMDR-сессию). При reconnect от того
+    // же userId с тем же sessionId — handler уже жив, voice-handler тоже,
+    // клиент просто продолжает.
+    //
+    // Если за grace-period нового подключения с этим sessionId не пришло —
+    // тогда полный teardown.
     socket.on('disconnect', async (reason) => {
       console.log(
         `[ws] Client disconnected: userId=${userId} socketId=${socket.id} reason=${reason}`
       );
       metrics.wsConnections.dec();
 
-      // Cleanup только сессий ЭТОГО socket (ранее чистились все сессии всех клиентов).
-      const voiceIds = registry.voiceBySocket(socket.id);
-      for (const sid of voiceIds) {
-        const voice = registry.getVoice(sid);
-        if (voice) {
-          try { voice.stop(); } catch (err) { console.warn(`[voice:${sid}] stop error`, err); }
-          registry.removeVoice(sid);
-        }
-      }
-
+      const graceMs = Number(process.env.SESSION_RECONNECT_GRACE_MS) || 30_000;
       const sessionIds = registry.sessionsBySocket(socket.id);
-      for (const sid of sessionIds) {
-        const handler = registry.getSession(sid);
-        if (handler) {
-          try {
-            await handler.endSession();
-          } catch (err) {
-            console.warn(`[session:${sid}] endSession on disconnect failed:`, err);
+      const voiceIds = registry.voiceBySocket(socket.id);
+
+      // Помечаем сессии как "ожидают reconnect". Sweeper не тронет их пока
+      // grace не истёк (мы используем lastActivity как proxy).
+      registry.markDetached(socket.id, Date.now());
+
+      setTimeout(() => {
+        // Если клиент за это время переподключился — sessionsBySocket(old)
+        // уже не вернёт эти sessionIds (registry перенесёт их на новый socket).
+        // Проверяем по userId владельца — если ту же сессию теперь держит
+        // другой socket, оставляем её жить.
+        const stillDetached = sessionIds.filter(
+          (sid) => registry.sessionDetachedAt(sid) !== null,
+        );
+        for (const sid of voiceIds) {
+          if (!stillDetached.includes(sid)) continue;
+          const voice = registry.getVoice(sid);
+          if (voice) {
+            try { voice.stop(); } catch (err) { console.warn(`[voice:${sid}] stop error`, err); }
+            registry.removeVoice(sid);
           }
-          registry.removeSession(sid);
         }
+        for (const sid of stillDetached) {
+          const handler = registry.getSession(sid);
+          if (handler) {
+            handler.endSession().catch((err) =>
+              console.warn(`[session:${sid}] endSession on disconnect failed:`, err),
+            );
+            registry.removeSession(sid);
+          }
+        }
+      }, graceMs).unref?.();
+    });
+
+    // При новом подключении того же userId — если есть detached сессии,
+    // перепривязываем их к этому socket. Клиент должен слать `session:reattach`
+    // с тем же sessionId; до этого сессия в "detached" статусе.
+    socket.on('session:reattach', (data: { sessionId: string }) => {
+      const ok = registry.reattach(data.sessionId, userId, socket.id);
+      if (ok) {
+        socket.emit('session:reattached', { sessionId: data.sessionId });
+      } else {
+        socket.emit('session:error', { message: 'Session unavailable for reattach' });
       }
     });
   });

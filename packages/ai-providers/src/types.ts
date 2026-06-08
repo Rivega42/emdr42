@@ -172,6 +172,7 @@ export type AiRouterEvent =
   | 'llm:response'
   | 'llm:error'
   | 'llm:fallback'
+  | 'llm:fallback_restart'
   | 'stt:request'
   | 'stt:response'
   | 'stt:error'

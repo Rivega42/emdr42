@@ -34,6 +34,7 @@ export class SessionHandler {
   private safetyMonitor: SafetyMonitor;
   private adaptiveController: AdaptiveController;
   private aiDialogue: AiDialogue;
+  private aiRouter: AiRouter;
   private backendClient: BackendClient;
   private socket: Socket;
   private sessionId: string;
@@ -63,6 +64,7 @@ export class SessionHandler {
     this.sessionId = sessionId;
     this.userId = userId;
     this.backendClient = backendClient;
+    this.aiRouter = aiRouter;
 
     this.engine = new EmdrSessionEngine(sessionId, userId);
     this.safetyMonitor = new SafetyMonitor();
@@ -187,6 +189,12 @@ export class SessionHandler {
     try {
       const stream = this.aiDialogue.sendMessage(text, context);
       for await (const chunk of stream) {
+        // STREAM_RESTART sentinel из AiRouter — primary провайдер упал
+        // после частичного ответа, fallback стартует с чистого листа.
+        if (chunk === '\x00__STREAM_RESTART__\x00') {
+          fullResponse = '';
+          continue;
+        }
         fullResponse += chunk;
       }
 
@@ -566,6 +574,14 @@ export class SessionHandler {
       });
 
       for await (const chunk of stream) {
+        // STREAM_RESTART sentinel — primary упал mid-stream, fallback стартует
+        // с пустого контекста. Сбрасываем buffer и сигналим клиенту очистить
+        // отображённые chunks (иначе склейка двух разных монологов).
+        if (chunk === '\x00__STREAM_RESTART__\x00') {
+          fullResponse = '';
+          this.socket.emit('session:ai_response', { type: 'restart' });
+          continue;
+        }
         fullResponse += chunk;
         this.socket.emit('session:ai_response', {
           type: 'chunk',
@@ -573,10 +589,14 @@ export class SessionHandler {
         });
       }
 
-      // Usage tracking (#130) — best-effort
+      // Usage tracking (#130) — best-effort. Используем реального провайдера
+      // (после возможного fallback), а не захардкоженного `anthropic` — иначе
+      // billing неверный при failover.
+      const usedProvider =
+        this.aiRouter.getLastUsedLlmProvider?.() ?? 'unknown';
       this.backendClient.recordUsage({
         sessionId: this.sessionId,
-        provider: 'anthropic', // TODO: router should report actual provider
+        provider: usedProvider,
         providerType: 'LLM',
         inputTokens: userMessage.length / 4, // rough estimate
         outputTokens: fullResponse.length / 4,

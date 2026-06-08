@@ -143,6 +143,20 @@ class ApiClient {
     return this.request('/admin/users');
   }
 
+  async setUserRole(userId: string, role: 'PATIENT' | 'THERAPIST' | 'ADMIN'): Promise<AdminUser> {
+    return this.request(`/users/${userId}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  async setUserActive(userId: string, isActive: boolean): Promise<AdminUser> {
+    return this.request(`/users/${userId}/active`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive }),
+    });
+  }
+
   // Therapist
   async getMyPatients(): Promise<PatientSummary[]> {
     return this.request('/users?role=PATIENT');

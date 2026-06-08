@@ -170,6 +170,59 @@ export class UsersService {
     return updated;
   }
 
+  async setRole(
+    id: string,
+    role: 'PATIENT' | 'THERAPIST' | 'ADMIN',
+    actorId: string,
+    meta?: AuditMeta,
+  ) {
+    const existing = await this.prisma.user.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`User ${id} not found`);
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { role },
+      select: { id: true, email: true, name: true, role: true, isActive: true },
+    });
+    await this.audit.log({
+      userId: id,
+      actorId,
+      action: 'USER_ROLE_CHANGE',
+      resourceType: 'User',
+      resourceId: id,
+      details: { from: existing.role, to: role },
+      ipAddress: meta?.ipAddress,
+      userAgent: meta?.userAgent,
+      correlationId: meta?.correlationId,
+    });
+    return updated;
+  }
+
+  async setActive(
+    id: string,
+    isActive: boolean,
+    actorId: string,
+    meta?: AuditMeta,
+  ) {
+    const existing = await this.prisma.user.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`User ${id} not found`);
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { isActive },
+      select: { id: true, email: true, name: true, role: true, isActive: true },
+    });
+    await this.audit.log({
+      userId: id,
+      actorId,
+      action: isActive ? 'USER_ACTIVATE' : 'USER_DEACTIVATE',
+      resourceType: 'User',
+      resourceId: id,
+      ipAddress: meta?.ipAddress,
+      userAgent: meta?.userAgent,
+      correlationId: meta?.correlationId,
+    });
+    return updated;
+  }
+
   async getUserSessions(
     userId: string,
     currentUserId: string,

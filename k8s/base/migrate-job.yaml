@@ -1,0 +1,68 @@
+# Prisma migrate deploy — отдельный pre-deploy Job (E7).
+# Раньше каждый api-pod выполнял migrate при старте, что давало race на
+# многорепликной инсталляции и усложняло диагностику.
+#
+# Запуск:
+#   kubectl apply -f migrate-job.yaml   (или через kustomize)
+#   kubectl wait --for=condition=complete --timeout=10m job/api-migrate -n emdr42
+# CI деплой (deploy-prod.yml) должен делать это до rollout api Deployment.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: api-migrate
+  namespace: emdr42
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: api-migrate
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: ghcr.io/rivega42/emdr42-api:latest
+          # Override entrypoint — нам нужно ТОЛЬКО migrate, без старта API.
+          command: ["sh", "-c"]
+          args:
+            - "npx prisma migrate deploy"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          envFrom:
+            - configMapRef:
+                name: emdr42-config
+            - secretRef:
+                name: emdr42-secrets
+          env:
+            - name: NODE_ENV
+              value: "production"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /app/.cache
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}

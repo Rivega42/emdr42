@@ -15,6 +15,12 @@ resources:
   - ingress.yaml
   - network-policy.yaml
   - backup-cronjob.yaml
+  # migrate-job — отдельный prе-deploy hook. См. deploy-prod.yml — Job
+  # запускается ПЕРЕД apply api.yaml.
+  - migrate-job.yaml
+  - cluster-issuer.yaml
+  - livekit.yaml
+  - minio.yaml
 
 # Скрипт бэкапа монтируется CronJob-ом из этого ConfigMap. Раньше
 # ConfigMap был пустым stub в backup-cronjob.yaml, и `bash /scripts/backup-postgres.sh`

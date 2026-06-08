@@ -114,7 +114,9 @@ function BlsObject({
             <meshStandardMaterial
               color={color}
               emissive={color}
-              emissiveIntensity={0.6}
+              // emissiveIntensity снижена с 0.6 до 0.3 — уменьшает
+              // контраст вспышки при движении объекта (WCAG 2.3.1).
+              emissiveIntensity={0.3}
               metalness={0.8}
               roughness={0.2}
             />
@@ -139,14 +141,16 @@ function BlsObject({
         <meshBasicMaterial color={color} transparent opacity={0.15} />
       </mesh>
 
-      {/* Particles */}
+      {/* Particles. Низкая opacity + slow speed чтобы flash rate был <3Hz
+          (photosensitive epilepsy, WCAG 2.3.1). При prefers-reduced-motion
+          родительский SessionCanvas передаст particlesEnabled=false. */}
       {particlesEnabled && (
         <Sparkles
-          count={40}
+          count={24}
           scale={size * 5}
-          size={2}
-          speed={0.4}
-          opacity={0.3}
+          size={1.5}
+          speed={0.25}
+          opacity={0.2}
           color={color}
         />
       )}

@@ -222,6 +222,19 @@ export class TherapistPatientService {
       this.prisma.therapistNote.count({ where: { therapistId, patientId } }),
     ]);
 
+    // HIPAA audit на чтение PHI (заметки терапевта содержат содержательный
+    // контент о пациенте).
+    this.audit
+      .log({
+        userId: patientId,
+        actorId: therapistId,
+        action: 'NOTE_LIST',
+        resourceType: 'TherapistNote',
+        details: { count: items.length, page, pageSize: take },
+        success: true,
+      })
+      .catch(() => void 0);
+
     return { items, total, page, pageSize: take };
   }
 }

@@ -49,6 +49,7 @@ describe('VoiceHandler', () => {
       }),
       send: jest.fn(),
       close: jest.fn(),
+      removeAllListeners: jest.fn(),
       readyState: WebSocket.OPEN,
     };
     (WebSocket as unknown as jest.Mock).mockImplementation(() => mockWs);
@@ -84,6 +85,7 @@ describe('VoiceHandler', () => {
         }),
         send: jest.fn(),
         close: jest.fn(),
+        removeAllListeners: jest.fn(),
         readyState: WebSocket.OPEN,
       };
       (WebSocket as unknown as jest.Mock).mockImplementation(() => mockWs);
@@ -108,6 +110,7 @@ describe('VoiceHandler', () => {
         }),
         send: jest.fn(),
         close: jest.fn(),
+        removeAllListeners: jest.fn(),
         readyState: WebSocket.OPEN,
       };
       (WebSocket as unknown as jest.Mock).mockImplementation(() => mockWs);
@@ -135,6 +138,7 @@ describe('VoiceHandler', () => {
         }),
         send: jest.fn(),
         close: jest.fn(),
+        removeAllListeners: jest.fn(),
         readyState: WebSocket.OPEN,
       };
       (WebSocket as unknown as jest.Mock).mockImplementation(() => mockWs);
@@ -152,6 +156,7 @@ describe('VoiceHandler', () => {
         on: jest.fn(),
         send: jest.fn(),
         close: jest.fn(),
+        removeAllListeners: jest.fn(),
         readyState: WebSocket.OPEN,
       };
       (WebSocket as unknown as jest.Mock).mockImplementation(() => mockWs);
