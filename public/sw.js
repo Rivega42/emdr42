@@ -1,5 +1,8 @@
 // EMDR-AI Service Worker — офлайн-кэширование для непрерывности терапии
-const CACHE_NAME = 'emdr42-v1';
+// v2 (2026-05-27): не кэшируем /api/* (PHI) и /trpc/* (PHI); fallback
+// сужен до /offline вместо /session (на /dashboard fallback в /session
+// показывает невалидный контент и дезориентирует пациента).
+const CACHE_NAME = 'emdr42-v2';
 
 // Критические ресурсы для работы офлайн-BLS
 const PRECACHE_URLS = [
@@ -16,7 +19,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Активация: чистим старые кэши
+// Активация: чистим старые кэши (включая v1 c PHI)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -30,7 +33,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Стратегия: Network-first для API, Cache-first для статики
+// Стратегия: Network-first для API без кэша, Cache-first для статики
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -39,21 +42,15 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   if (url.origin !== self.location.origin) return;
 
-  // API-запросы — network-first
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
+  // API/tRPC-запросы — network-only БЕЗ кэширования.
+  // Ответы содержат PHI пациентов (sessions, transcripts, notes) — кэшировать
+  // их в Cache Storage браузера = HIPAA/GDPR violation.
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/trpc/')) {
+    event.respondWith(fetch(request));
     return;
   }
 
-  // Next.js статика — cache-first
+  // Next.js статика — cache-first (immutable assets)
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
       caches.match(request).then((cached) => cached || fetch(request))
@@ -61,16 +58,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Остальные страницы — network-first с fallback
+  // Остальные страницы — network-first с fallback на /offline.
+  // Раньше fallback был /session — это приводило к показу EMDR-канваса
+  // на любой странице при потере сети, что дезориентирует пациента
+  // (особенно если он на /dashboard или /settings/billing).
   event.respondWith(
     fetch(request)
       .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        // Кэшируем только HTML страниц приложения, без PHI.
+        const isHtml = response.headers.get('content-type')?.includes('text/html');
+        if (isHtml) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
         return response;
       })
       .catch(() =>
-        caches.match(request).then((cached) => cached || caches.match('/session'))
+        caches.match(request).then((cached) => cached || caches.match('/offline'))
       )
   );
 });

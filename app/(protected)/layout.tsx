@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -41,17 +41,20 @@ export default function ProtectedLayout({
   const router = useRouter();
   const { user, isAuthenticated, loading, logout, hasRole } = useAuth();
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      const next = pathname ? `?next=${encodeURIComponent(pathname)}` : '';
+      router.replace(`/login${next}`);
+    }
+  }, [loading, isAuthenticated, pathname, router]);
+
+  if (loading || !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center" role="status" aria-live="polite">
         <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+        <span className="sr-only">Загрузка…</span>
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    if (typeof window !== 'undefined') router.push('/login');
-    return null;
   }
 
   const isAdmin = hasRole('ADMIN');

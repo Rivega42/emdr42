@@ -45,15 +45,30 @@ export class AiDialogue {
    */
   async *sendMessage(
     userMessage: string,
-    context: string
+    context: string,
+    opts?: {
+      enableArmor?: boolean;
+      personalNames?: string[];
+      patientContext?: string;
+      /**
+       * Tighter cap для voice path (синтез ~6-8 tokens/сек → 150 токенов ≈
+       * 18-20 секунд аудио, что комфортно для пациента в фазе десенсибилизации).
+       * По умолчанию 600 — для текстового UI.
+       */
+      maxTokens?: number;
+      onInjection?: (analysis: { suspicious: boolean; score: number; matched: string[] }) => void;
+    },
   ): AsyncGenerator<string> {
     // Add user message to history
     this.history.push({ role: 'user', content: userMessage });
 
-    // Build messages array: system prompt (with context prepended), then history
-    const systemContent = context
-      ? `${this.systemPrompt}\n\n--- Current Session Context ---\n${context}`
-      : this.systemPrompt;
+    const systemContent = [
+      this.systemPrompt,
+      context && `--- Current Session Context ---\n${context}`,
+      opts?.patientContext && `--- Patient History (cross-session) ---\n${opts.patientContext}`,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
 
     const messages: ChatMessage[] = [
       { role: 'system', content: systemContent },
@@ -62,7 +77,12 @@ export class AiDialogue {
 
     let fullResponse = '';
 
-    const stream = this.aiRouter.chatStream(messages);
+    const stream = this.aiRouter.chatStream(messages, {
+      maxTokens: opts?.maxTokens ?? 600,
+      enableArmor: opts?.enableArmor ?? true,
+      redactPersonalNames: opts?.personalNames,
+      onInjection: opts?.onInjection,
+    });
     for await (const chunk of stream) {
       fullResponse += chunk;
       yield chunk;

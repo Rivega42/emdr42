@@ -4,6 +4,21 @@ Please provide a brief description of the changes in this PR.
 ## 🎯 Related Issue
 Fixes #(issue number)
 
+<!-- Если PR закрывает несколько sub-issues — перечислить:
+Closes #
+Closes #
+-->
+
+## 🧬 Epic
+EPIC-<номер> (если относится к эпику)
+
+## 📚 Затронутые документы
+- [ ] README.md / CLAUDE.md
+- [ ] STATE.md / DECISIONS.md
+- [ ] CHANGELOG.md
+- [ ] docs/...
+- [ ] Не затронуты — почему: ___
+
 ## 🔄 Type of Change
 - [ ] 🐛 Bug fix (non-breaking change which fixes an issue)
 - [ ] ✨ New feature (non-breaking change which adds functionality)

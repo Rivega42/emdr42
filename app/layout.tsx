@@ -1,13 +1,32 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
 import Providers from './providers';
 
+const inter = Inter({
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
-  title: 'EMDR-AI Therapy Assistant',
-  description: 'Revolutionary virtual therapy platform combining EMDR techniques with AI-powered emotion recognition',
+  title: {
+    default: 'EMDR-AI Therapy Assistant',
+    template: '%s | EMDR-AI',
+  },
+  description:
+    'Платформа виртуальной EMDR-терапии с ИИ-ассистентом и распознаванием эмоций.',
   manifest: '/manifest.json',
+  applicationName: 'EMDR-AI',
+  authors: [{ name: 'EMDR-AI Team' }],
+  keywords: ['EMDR', 'therapy', 'PTSD', 'AI therapy', 'trauma', 'mental health'],
   themeColor: '#111827',
+  viewport: 'width=device-width, initial-scale=1',
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
@@ -16,17 +35,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="ru" className={inter.variable}>
       <body className="font-sans bg-white text-gray-900">
         <Script
           src="https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/dist/face-api.min.js"
           strategy="afterInteractive"
         />
-        <Script id="sw-register" strategy="afterInteractive">{`
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(() => {});
-          }
-        `}</Script>
+        {/* Inline скрипт вынесен в /register-sw.js чтобы prod CSP не требовал
+            'unsafe-inline' в script-src (XSS hardening). */}
+        <Script src="/register-sw.js" strategy="afterInteractive" />
         <Providers>{children}</Providers>
       </body>
     </html>

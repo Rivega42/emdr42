@@ -1,0 +1,69 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "panels": [
+    {
+      "title": "Request rate (per sec)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"api\"}[1m]))",
+          "legendFormat": "rps"
+        }
+      ]
+    },
+    {
+      "title": "Error rate (5xx %)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"api\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"api\"}[1m])) * 100"
+        }
+      ]
+    },
+    {
+      "title": "p95 latency (sec)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"api\"}[5m]))"
+        }
+      ]
+    },
+    {
+      "title": "Active pods",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "count(up{job=\"api\"} == 1)"
+        }
+      ]
+    },
+    {
+      "title": "Postgres connections",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(pg_stat_activity_count{datname=\"emdr42\"})"
+        }
+      ]
+    },
+    {
+      "title": "Redis memory",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "redis_memory_used_bytes"
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["emdr42"],
+  "time": {"from": "now-1h", "to": "now"},
+  "title": "EMDR-AI — API Overview",
+  "version": 1
+}

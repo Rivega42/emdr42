@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: emdr42
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  # - secrets.example.yaml — НЕ включать в прод! Создавать через kubectl
+  - postgres.yaml
+  - redis.yaml
+  - api.yaml
+  - orchestrator.yaml
+  - frontend.yaml
+  - ingress.yaml
+  - network-policy.yaml
+  - backup-cronjob.yaml
+
+# Скрипт бэкапа монтируется CronJob-ом из этого ConfigMap. Раньше
+# ConfigMap был пустым stub в backup-cronjob.yaml, и `bash /scripts/backup-postgres.sh`
+# падал → бэкапов не было.
+configMapGenerator:
+  - name: backup-scripts
+    files:
+      - backup-postgres.sh=../../scripts/backup-postgres.sh
+    options:
+      disableNameSuffixHash: true
+
+commonLabels:
+  app.kubernetes.io/name: emdr42
+  app.kubernetes.io/part-of: emdr42

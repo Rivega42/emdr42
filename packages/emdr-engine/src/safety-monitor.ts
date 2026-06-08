@@ -32,8 +32,14 @@ const DEFAULT_THRESHOLDS: SafetyThresholds = {
   maxSetsWithoutProgress: 4,
 };
 
-// Minimum consecutive low-engagement snapshots to flag dissociation (approx 3 s)
+// Minimum consecutive low-engagement snapshots to flag dissociation (#132, approx 3 s)
 const DISSOCIATION_MIN_CONSECUTIVE = 3;
+
+// Размер окна для baseline пользователя (EWMA подход — #132)
+const BASELINE_WINDOW_SIZE = 60; // ~60 сек активности до baseline
+
+// Порог отклонения композитного score от baseline (#132)
+const DISSOCIATION_DEVIATION_THRESHOLD = 0.25;
 
 // Number of recent snapshots for abreaction detection (approx 5 s window)
 const ABREACTION_WINDOW = 5;
@@ -51,8 +57,63 @@ export class SafetyMonitor {
   /** Rolling buffer of recent snapshots for temporal analysis */
   private recentSnapshots: EmotionSnapshot[] = [];
 
+  /**
+   * Voice pattern signals (#79) — накапливаются от analyzeVoiceSegment() вызовов.
+   * Используются вместе с emotion данными для dissociation detection.
+   * Null до первого voice segment.
+   */
+  private voiceIndicators: {
+    hesitation: number;
+    emotionalActivation: number;
+    flatAffect: number;
+    rushedSpeech: number;
+    updatedAt: number;
+  } | null = null;
+
+  /**
+   * Adaptive baseline (#132) — усреднённые значения engagement/stress/valence
+   * за первые BASELINE_WINDOW_SIZE снимков сессии.
+   */
+  private baseline: {
+    engagement: number;
+    stress: number;
+    valence: number;
+    arousal: number;
+    variance: number;
+  } | null = null;
+
+  private baselineCollector: EmotionSnapshot[] = [];
+
   constructor(thresholds?: Partial<SafetyThresholds>) {
     this.thresholds = { ...DEFAULT_THRESHOLDS, ...thresholds };
+  }
+
+  /**
+   * Сбрасывает baseline (новая сессия или resource re-установка).
+   */
+  resetBaseline(): void {
+    this.baseline = null;
+    this.baselineCollector = [];
+    this.recentSnapshots = [];
+    this.voiceIndicators = null;
+  }
+
+  /**
+   * Обновить voice pattern indicators от analyzeVoiceSegment (#79).
+   * Вызывается после каждого STT-финального сегмента.
+   */
+  updateVoiceIndicators(indicators: {
+    hesitation: number;
+    emotionalActivation: number;
+    flatAffect: number;
+    rushedSpeech: number;
+  }): void {
+    this.voiceIndicators = { ...indicators, updatedAt: Date.now() };
+  }
+
+  /** Для телеметрии / отладки */
+  getVoiceIndicators() {
+    return this.voiceIndicators;
   }
 
   // -----------------------------------------------------------------------
@@ -67,6 +128,14 @@ export class SafetyMonitor {
     // Keep a rolling window of ~30 seconds
     if (this.recentSnapshots.length > 30) {
       this.recentSnapshots.shift();
+    }
+
+    // Adaptive baseline collection (#132) — первые BASELINE_WINDOW_SIZE снимков
+    if (!this.baseline) {
+      this.baselineCollector.push(snapshot);
+      if (this.baselineCollector.length >= BASELINE_WINDOW_SIZE) {
+        this.computeBaseline();
+      }
     }
 
     const events: SafetyEvent[] = [];
@@ -146,9 +215,53 @@ export class SafetyMonitor {
   // -----------------------------------------------------------------------
 
   /**
-   * Dissociation: attention AND engagement both below threshold for 3+ consecutive snapshots.
+   * Dissociation detection (#132) — composite score:
+   *   - engagement значительно ниже baseline
+   *   - valence variance низкая (эмоциональное "онемение")
+   *   - confidence (detection quality) не используется — face-api тоже может
+   *     выдать low confidence из-за отведённого лица
+   *
+   * Если baseline ещё не установлен — fallback на пороговые значения.
    */
   detectDissociation(snapshot: EmotionSnapshot): boolean {
+    // Проверяем consecutive low readings — любая версия детекции требует устойчивого паттерна
+    const tail = this.recentSnapshots.slice(-DISSOCIATION_MIN_CONSECUTIVE);
+    if (tail.length < DISSOCIATION_MIN_CONSECUTIVE) return false;
+
+    if (this.baseline) {
+      // Composite detection с baseline
+      const engagementDrop =
+        this.baseline.engagement - snapshot.engagement;
+      const valenceVariance = this.computeVariance(tail.map((s) => s.valence));
+
+      const tailEngagementAvg =
+        tail.reduce((sum, s) => sum + s.engagement, 0) / tail.length;
+      const sustainedDrop =
+        this.baseline.engagement - tailEngagementAvg;
+
+      // Критерии (any of the following):
+      //  1. Устойчивое падение engagement > DISSOCIATION_DEVIATION_THRESHOLD от baseline
+      //  2. Низкая valence variance (< 0.05) — numbing
+      //  3. Voice flatAffect > 0.6 + recent hesitation (intermodal confirmation, #79)
+      const voiceFresh =
+        this.voiceIndicators !== null &&
+        Date.now() - this.voiceIndicators.updatedAt < 30_000;
+      const voiceFlatAffectSignal = Boolean(
+        voiceFresh &&
+          this.voiceIndicators &&
+          this.voiceIndicators.flatAffect > 0.6 &&
+          this.voiceIndicators.hesitation > 0.4,
+      );
+
+      const isDissociating =
+        (sustainedDrop > DISSOCIATION_DEVIATION_THRESHOLD && engagementDrop > 0.15) ||
+        (valenceVariance < 0.05 && snapshot.engagement < this.baseline.engagement * 0.5) ||
+        voiceFlatAffectSignal;
+
+      return isDissociating;
+    }
+
+    // Fallback (no baseline yet): пороговая детекция
     if (
       snapshot.engagement >= this.thresholds.dissociationEngagementMin ||
       snapshot.stress >= this.thresholds.dissociationAttentionMin
@@ -156,15 +269,44 @@ export class SafetyMonitor {
       return false;
     }
 
-    // Check recent snapshots for consecutive low readings
-    const tail = this.recentSnapshots.slice(-DISSOCIATION_MIN_CONSECUTIVE);
-    if (tail.length < DISSOCIATION_MIN_CONSECUTIVE) return false;
-
     return tail.every(
       (s) =>
         s.engagement < this.thresholds.dissociationEngagementMin &&
         s.confidence < this.thresholds.dissociationAttentionMin
     );
+  }
+
+  /**
+   * Вычисление baseline (#132) — усреднение по первому окну активности.
+   */
+  private computeBaseline(): void {
+    if (this.baselineCollector.length === 0) return;
+
+    const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+    const avg = (arr: number[]) => sum(arr) / arr.length;
+
+    const engagement = avg(this.baselineCollector.map((s) => s.engagement));
+    const stress = avg(this.baselineCollector.map((s) => s.stress));
+    const valence = avg(this.baselineCollector.map((s) => s.valence));
+    const arousal = avg(this.baselineCollector.map((s) => s.arousal));
+    const variance = this.computeVariance(
+      this.baselineCollector.map((s) => s.valence),
+    );
+
+    this.baseline = { engagement, stress, valence, arousal, variance };
+  }
+
+  private computeVariance(values: number[]): number {
+    if (values.length < 2) return 0;
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    return (
+      values.reduce((acc, v) => acc + (v - mean) ** 2, 0) / values.length
+    );
+  }
+
+  /** Для тестов/телеметрии */
+  getBaseline() {
+    return this.baseline;
   }
 
   /**

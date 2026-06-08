@@ -39,8 +39,9 @@ describe('VoiceHandler', () => {
     } as unknown as jest.Mocked<SessionHandler>;
 
     // Mock WebSocket
-    const mockWs = {
-      on: jest.fn((event: string, callback: (...args: unknown[]) => void) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockWs: any = {
+      on: jest.fn((event: string, callback: (...args: unknown[]) => void): unknown => {
         if (event === 'open') {
           setTimeout(() => callback(), 0);
         }
@@ -73,8 +74,9 @@ describe('VoiceHandler', () => {
     });
 
     it('should configure Vosk with correct settings', async () => {
-      const mockWs = {
-        on: jest.fn((event: string, callback: (...args: unknown[]) => void) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockWs: any = {
+        on: jest.fn((event: string, callback: (...args: unknown[]) => void): unknown => {
           if (event === 'open') {
             setTimeout(() => callback(), 0);
           }
@@ -96,8 +98,9 @@ describe('VoiceHandler', () => {
 
   describe('stop()', () => {
     it('should close Vosk connection', async () => {
-      const mockWs = {
-        on: jest.fn((event: string, callback: (...args: unknown[]) => void) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockWs: any = {
+        on: jest.fn((event: string, callback: (...args: unknown[]) => void): unknown => {
           if (event === 'open') {
             setTimeout(() => callback(), 0);
           }
@@ -122,8 +125,9 @@ describe('VoiceHandler', () => {
 
   describe('handleAudioChunk()', () => {
     it('should forward audio to Vosk', async () => {
-      const mockWs = {
-        on: jest.fn((event: string, callback: (...args: unknown[]) => void) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockWs: any = {
+        on: jest.fn((event: string, callback: (...args: unknown[]) => void): unknown => {
           if (event === 'open') {
             setTimeout(() => callback(), 0);
           }

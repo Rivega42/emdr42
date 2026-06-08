@@ -14,8 +14,12 @@ RUN npm run build
 
 FROM base AS production
 ENV NODE_ENV=production
+RUN apk add --no-cache dumb-init wget
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
-EXPOSE 3001
-CMD ["node", "dist/main"]
+COPY --from=build /app/package.json ./package.json
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+EXPOSE 8000
+ENTRYPOINT ["dumb-init", "/usr/local/bin/docker-entrypoint.sh"]

@@ -12,8 +12,9 @@ export function createTrpcClient() {
       httpBatchLink({
         url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/trpc`,
         headers() {
+          // Ключ согласован с contexts/AuthContext.tsx и lib/socket.ts.
           const token = typeof window !== 'undefined'
-            ? localStorage.getItem('access_token')
+            ? localStorage.getItem('token')
             : null;
           return token ? { Authorization: `Bearer ${token}` } : {};
         },

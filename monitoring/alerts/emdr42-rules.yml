@@ -1,0 +1,128 @@
+groups:
+  - name: emdr42-api
+    interval: 30s
+    rules:
+      - alert: APIHighErrorRate
+        expr: |
+          sum(rate(http_requests_total{job="api",status=~"5.."}[5m]))
+          / sum(rate(http_requests_total{job="api"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: high
+        annotations:
+          summary: "API error rate > 5% за последние 5 минут"
+
+      - alert: APILatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{job="api"}[5m])) > 1.0
+        for: 10m
+        labels:
+          severity: medium
+        annotations:
+          summary: "API p95 latency > 1s"
+
+      - alert: APIDown
+        expr: up{job="api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API instance недоступен"
+
+  - name: emdr42-orchestrator
+    interval: 30s
+    rules:
+      - alert: OrchestratorSessionsGrowingIndefinitely
+        expr: orchestrator_active_sessions > 500
+        for: 15m
+        labels:
+          severity: high
+        annotations:
+          summary: "Orchestrator: >500 активных сессий — проверить memory leak (#117)"
+
+      - alert: OrchestratorDown
+        expr: up{job="orchestrator"} == 0
+        for: 2m
+        labels:
+          severity: critical
+
+  - name: emdr42-database
+    interval: 30s
+    rules:
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+
+      - alert: PostgresConnectionsHigh
+        expr: |
+          pg_stat_activity_count{datname="emdr42"} /
+          pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: high
+        annotations:
+          summary: "PostgreSQL: >80% connections используются"
+
+      - alert: PostgresSlowQueries
+        expr: |
+          rate(pg_stat_activity_max_tx_duration[5m]) > 60
+        for: 10m
+        labels:
+          severity: medium
+
+      - alert: PostgresDiskUsageHigh
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/var/lib/postgresql/data"} /
+          node_filesystem_size_bytes{mountpoint="/var/lib/postgresql/data"}) < 0.15
+        for: 15m
+        labels:
+          severity: high
+        annotations:
+          summary: "PostgreSQL disk <15% free"
+
+  - name: emdr42-redis
+    interval: 30s
+    rules:
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+
+      - alert: RedisMemoryHigh
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: high
+
+  - name: emdr42-business
+    interval: 1m
+    rules:
+      - alert: CrisisEventCritical
+        expr: |
+          increase(crisis_events_total{severity="CRITICAL"}[5m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical crisis event зарегистрирован — проверить oncall"
+
+      - alert: BackupStale
+        expr: |
+          time() - postgres_backup_last_success_timestamp_seconds > 32 * 3600
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL backup не запускался >32 часов"
+
+      - alert: AIProviderAllBreakersOpen
+        expr: |
+          count(ai_provider_circuit_state{state="OPEN"}) == count(ai_provider_circuit_state)
+        for: 5m
+        labels:
+          severity: high
+        annotations:
+          summary: "Все LLM/TTS/STT circuit breakers OPEN — сервис деградирует"

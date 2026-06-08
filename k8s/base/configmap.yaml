@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: emdr42-config
+  namespace: emdr42
+data:
+  NODE_ENV: "production"
+  PORT_API: "8000"
+  PORT_ORCHESTRATOR: "8002"
+  OLLAMA_BASE_URL: "http://ollama:11434/v1"
+  OLLAMA_MODEL: "llama3.1:8b"
+  WHISPER_BASE_URL: "http://whisper:8000"
+  PIPER_BASE_URL: "http://piper:5000"
+  VOSK_URL: "ws://vosk:2700"
+  LIVEKIT_URL: "ws://livekit:7880"

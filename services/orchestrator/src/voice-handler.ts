@@ -187,6 +187,22 @@ export class VoiceHandler {
         if (text) {
           this.accumulatedText += (this.accumulatedText ? ' ' : '') + text;
           this.socket.emit('voice:transcript_final', { text });
+
+          // Voice pattern analysis (#79) — передать indicators в SessionHandler
+          if (result.result && result.result.length > 0) {
+            const words = result.result.map((w) => ({
+              word: w.word,
+              start: w.start,
+              end: w.end,
+              confidence: w.conf,
+            }));
+            const durationSec =
+              words[words.length - 1].end - words[0].start;
+            this.sessionHandler.handleVoiceMetrics({
+              words,
+              durationSec,
+            });
+          }
         }
       }
     } catch (err) {
@@ -215,43 +231,62 @@ export class VoiceHandler {
   /**
    * Called when silence is detected after speech.
    * Processes accumulated text through AI and generates TTS response.
+   * End-to-end timeout = VOICE_LOOP_TIMEOUT_MS (default 12s). Без него
+   * подвисший Anthropic/Piper заблокировал бы pipeline и пациент видел бы
+   * "AI печатает..." неопределённое время.
    */
   private async processSilence(): Promise<void> {
     const text = this.accumulatedText.trim();
     this.accumulatedText = '';
 
-    if (!text || text.length < 2) return;
+    // Защита от unbounded роста accumulatedText при длинной речи пациента
+    // (силенс-детектор может не сработать в abreaction).
+    const MAX_INPUT = 2000;
+    const safeText = text.length > MAX_INPUT ? text.slice(0, MAX_INPUT) : text;
 
-    console.log(`[voice:${this.sessionId}] Processing: "${text}"`);
+    if (!safeText || safeText.length < 2) return;
+
+    console.log(`[voice:${this.sessionId}] Processing: "${safeText.slice(0, 80)}..."`);
+
+    const timeoutMs = Number(process.env.VOICE_LOOP_TIMEOUT_MS) || 12_000;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(new Error('voice loop timeout')), timeoutMs);
 
     try {
       // Notify client that AI is thinking
       this.socket.emit('voice:ai_speaking');
 
-      // Get AI response using the existing session handler
-      // This reuses the existing handlePatientMessage logic
-      const aiResponse = await this.getAiResponse(text);
+      const aiPromise = this.getAiResponse(safeText);
+      const aiResponse = await Promise.race([
+        aiPromise,
+        new Promise<string>((_, reject) =>
+          ctrl.signal.addEventListener('abort', () => reject(ctrl.signal.reason)),
+        ),
+      ]);
 
       if (aiResponse) {
-        // Generate TTS audio
-        const audioBuffer = await this.synthesizeSpeech(aiResponse);
+        const audioBuffer = await this.synthesizeSpeech(aiResponse, ctrl.signal);
 
-        if (audioBuffer) {
-          // Send audio to client
+        if (audioBuffer && !ctrl.signal.aborted) {
           this.socket.emit('voice:ai_audio', {
             audio: audioBuffer,
           });
         }
       }
 
-      // Notify client that AI is done speaking
       this.socket.emit('voice:ai_done');
     } catch (err) {
+      const isTimeout =
+        err instanceof Error && /timeout/i.test(err.message);
       console.error(`[voice:${this.sessionId}] Processing error:`, err);
       this.socket.emit('voice:error', {
-        message: 'Failed to process voice input',
+        message: isTimeout
+          ? 'Ассистент не ответил вовремя. Попробуйте сказать ещё раз.'
+          : 'Failed to process voice input',
       });
       this.socket.emit('voice:ai_done');
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -274,8 +309,13 @@ export class VoiceHandler {
   /**
    * Synthesize speech using Piper TTS.
    * Returns audio as ArrayBuffer (WAV format).
+   * ВАЖНО: ВСЕГДА POST. GET-fallback с текстом в URL раньше отправлял
+   * транскрипт пациента в access-logs → PHI leak.
    */
-  private async synthesizeSpeech(text: string): Promise<ArrayBuffer | null> {
+  private async synthesizeSpeech(
+    text: string,
+    signal?: AbortSignal,
+  ): Promise<ArrayBuffer | null> {
     if (!text.trim()) return null;
 
     try {
@@ -288,6 +328,7 @@ export class VoiceHandler {
           text,
           output_format: 'wav',
         }),
+        signal,
       });
 
       if (!response.ok) {
@@ -298,12 +339,15 @@ export class VoiceHandler {
     } catch (err) {
       console.error(`[voice:${this.sessionId}] TTS error:`, err);
 
-      // Fallback: Try alternative Piper endpoint format
+      // Fallback: POST на /synthesize (некоторые сборки Piper экспонируют
+      // только этот эндпоинт). НЕ используем GET — это утечка PHI в логи.
       try {
-        const response = await fetch(
-          `${this.config.piperUrl}/synthesize?text=${encodeURIComponent(text)}`,
-          { method: 'GET' }
-        );
+        const response = await fetch(`${this.config.piperUrl}/synthesize`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+          signal,
+        });
 
         if (response.ok) {
           return await response.arrayBuffer();

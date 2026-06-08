@@ -5,6 +5,7 @@ import {
   EmotionRecognitionService,
   EmotionData as CoreEmotionData,
 } from '@emdr42/core';
+import { CameraConsentDialog, hasCameraConsent } from '@/components/CameraConsentDialog';
 
 interface EmotionData {
   timestamp: number;
@@ -22,6 +23,7 @@ interface EmotionContextType {
   emotionHistory: EmotionData[];
   isCalibrated: boolean;
   isTracking: boolean;
+  needsConsent: boolean;
   startTracking: () => void;
   stopTracking: () => void;
   calibrate: () => Promise<void>;
@@ -55,6 +57,7 @@ export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [emotionHistory, setEmotionHistory] = useState<EmotionData[]>([]);
   const [isCalibrated, setIsCalibrated] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
+  const [needsConsent, setNeedsConsent] = useState(false);
 
   const serviceRef = useRef<EmotionRecognitionService | null>(null);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
@@ -87,6 +90,15 @@ export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const startTracking = useCallback(async () => {
     if (isTracking) return;
 
+    // HIPAA/GDPR: камера НЕ включается без явного информированного согласия.
+    // Если consent ещё не получен — пробрасываем состояние UI, который
+    // покажет CameraConsentDialog. После accept UI вызовет startTracking ещё раз.
+    if (!hasCameraConsent()) {
+      setNeedsConsent(true);
+      return;
+    }
+    setNeedsConsent(false);
+
     const videoEl = videoElementRef.current;
     if (!videoEl) {
       console.warn('EmotionProvider: no video element set, call setVideoElement first');
@@ -109,7 +121,10 @@ export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [isTracking, handleEmotionUpdate]);
 
   const stopTracking = useCallback(() => {
+    // ВАЖНО: release MediaStream треков, иначе индикатор камеры остаётся
+    // светиться даже после явного stop пользователем (PHI/приватность).
     serviceRef.current?.stopTracking();
+    serviceRef.current?.releaseCamera();
     setIsTracking(false);
   }, []);
 
@@ -147,6 +162,7 @@ export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         emotionHistory,
         isCalibrated,
         isTracking,
+        needsConsent,
         startTracking,
         stopTracking,
         calibrate,
@@ -155,6 +171,15 @@ export const EmotionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }}
     >
       {children}
+      <CameraConsentDialog
+        open={needsConsent}
+        onAccept={() => {
+          setNeedsConsent(false);
+          // Перезапускаем — теперь consent есть и startTracking пройдёт дальше.
+          void startTracking();
+        }}
+        onDecline={() => setNeedsConsent(false)}
+      />
     </EmotionContext.Provider>
   );
 };

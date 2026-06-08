@@ -73,10 +73,18 @@ html {
   outline: none;
 }
 
+/*
+ * Focus ring восстановлен для всех интерактивных элементов, иначе
+ * keyboard-навигация по ссылкам и role="button" остаётся невидимой (WCAG 2.4.7).
+ */
 button:focus-visible,
+a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
-select:focus-visible {
+select:focus-visible,
+[role="button"]:focus-visible,
+[role="link"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
   outline: 2px solid var(--cal-bg-inverted);
   outline-offset: 2px;
 }

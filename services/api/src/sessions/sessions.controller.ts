@@ -129,4 +129,49 @@ export class SessionsController {
       user.role,
     );
   }
+
+  // --- Recording / transcript (#122) ---
+
+  @Post(':id/recording-consent')
+  @ApiOperation({ summary: 'Пациент даёт consent на запись сессии' })
+  recordConsent(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: string },
+  ) {
+    return this.sessionsService.recordConsent(id, user.id, user.role);
+  }
+
+  @Post(':id/recording')
+  @ApiOperation({ summary: 'Attach recording URL + storage key (after LiveKit egress)' })
+  attachRecording(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      recordingUrl: string;
+      recordingStorageKey: string;
+      recordingEncryptionKeyId?: string;
+    },
+    @CurrentUser() user: { id: string; role: string },
+  ) {
+    return this.sessionsService.attachRecording(id, user.id, user.role, body);
+  }
+
+  @Post(':id/transcript')
+  @ApiOperation({ summary: 'Сохранить транскрипт сессии (от orchestrator)' })
+  saveTranscript(
+    @Param('id') id: string,
+    @Body() body: { transcriptText: string },
+    @CurrentUser() user: { id: string; role: string },
+  ) {
+    return this.sessionsService.saveTranscript(id, user.id, user.role, body.transcriptText);
+  }
+
+  @Get(':id/transcript')
+  @ApiOperation({ summary: 'Получить транскрипт сессии' })
+  getTranscript(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: string },
+  ) {
+    return this.sessionsService.getTranscript(id, user.id, user.role);
+  }
 }

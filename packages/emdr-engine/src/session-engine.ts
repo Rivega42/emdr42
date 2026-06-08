@@ -26,11 +26,22 @@ import type {
 // Valid phase transitions (directed graph)
 // ---------------------------------------------------------------------------
 
+/**
+ * Переходы в 8-фазном EMDRIA-протоколе с опциональной фазой 2.5 RDI (#131).
+ *
+ * history → preparation → [resource_development] → assessment → desensitization
+ *   → installation → body_scan → closure → reevaluation
+ *
+ * RDI не обязательна — можно перейти напрямую preparation → assessment для
+ * stabilized пациентов без phobia / complex trauma в anamnesis.
+ * После RDI возможен откат в preparation если ресурс не prihvacen.
+ */
 const VALID_TRANSITIONS: Record<EmdrPhase, EmdrPhase[]> = {
   history: ['preparation'],
-  preparation: ['assessment'],
-  assessment: ['desensitization'],
-  desensitization: ['installation', 'closure'],
+  preparation: ['resource_development', 'assessment'],
+  resource_development: ['assessment', 'preparation'],
+  assessment: ['desensitization', 'resource_development'],
+  desensitization: ['installation', 'closure', 'resource_development'],
   installation: ['body_scan', 'closure'],
   body_scan: ['closure'],
   closure: ['reevaluation'],

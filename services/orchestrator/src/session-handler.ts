@@ -24,6 +24,7 @@ import type {
 
 import { AiDialogue } from './ai-dialogue';
 import { BackendClient } from './backend-client';
+import { analyzeVoiceSegment } from './voice-analysis';
 
 /** Interval for batch-flushing emotion records to the backend (ms). */
 const EMOTION_FLUSH_INTERVAL_MS = 10_000;
@@ -41,6 +42,15 @@ export class SessionHandler {
   /** Buffered emotions waiting to be flushed to the backend. */
   private emotionBuffer: EmotionSnapshot[] = [];
   private emotionFlushTimer: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * Closed-loop BLS set tracking (#core-2). Когда сессия в BLS phase:
+   * таймер срабатывает после каждого "set" (setLength / speed сек),
+   * вызывает AI check-in "How does that feel now?" + просит SUDS rating.
+   */
+  private blsSetTimer: ReturnType<typeof setTimeout> | null = null;
+  private blsPhaseActive = false;
+  private lastCheckInAt = 0;
 
   constructor(
     socket: Socket,
@@ -97,6 +107,7 @@ export class SessionHandler {
     // Flush remaining emotions
     await this.flushEmotions();
     this.clearEmotionFlush();
+    this.stopBlsCheckInLoop();
 
     // End the engine
     this.engine.endSession('standard_closure', 'session_ended_by_client');
@@ -117,6 +128,14 @@ export class SessionHandler {
       phasesCompleted: exportData.phases.length,
       safetyEventsCount: exportData.safetyEvents.length,
     });
+
+    // Notify gamification (#89) — best-effort, не ломает endSession
+    this.backendClient.notifyGamificationEvent({
+      type: 'session_completed',
+      finalSuds: latestSuds,
+      finalVoc: latestVoc,
+      phasesCompleted: exportData.phases.length,
+    }).catch(() => void 0);
   }
 
   // --------------------------------------------------------------------------
@@ -203,6 +222,27 @@ export class SessionHandler {
   }
 
   // --------------------------------------------------------------------------
+  // Voice metrics (#79 — voice pattern analysis)
+  // --------------------------------------------------------------------------
+
+  /**
+   * Вызывается из VoiceHandler после каждого final transcript с word-level timing.
+   * Считает indicators и передаёт в SafetyMonitor для composite dissociation detection.
+   */
+  handleVoiceMetrics(segment: {
+    words: Array<{ word: string; start: number; end: number; confidence?: number }>;
+    durationSec: number;
+  }): void {
+    try {
+      const analysis = analyzeVoiceSegment(segment);
+      this.safetyMonitor.updateVoiceIndicators(analysis.indicators);
+    } catch (err) {
+      // best-effort — voice analysis не критичен для flow
+      console.warn(`[session:${this.sessionId}] voice analysis failed:`, err);
+    }
+  }
+
+  // --------------------------------------------------------------------------
   // Emotion data
   // --------------------------------------------------------------------------
 
@@ -258,6 +298,42 @@ export class SessionHandler {
           ...this.engine.getBlsConfig(),
           paused: true,
         });
+      }
+
+      // Эскалация в CrisisService при CRITICAL диссоциации/abreaction.
+      // Без этого терапевт не получит уведомление и пациент остаётся один
+      // на один с серьёзной деком пенсацией (HIPAA duty of care).
+      if (analysis.intervention.priority === 'critical') {
+        const criticalTypes = new Set([
+          'dissociation',
+          'abreaction',
+          'panic',
+          'suicide_ideation',
+          'self_harm',
+        ]);
+        for (const ev of analysis.events) {
+          if (!criticalTypes.has(String(ev.type ?? '').toLowerCase())) continue;
+          const mappedType = (() => {
+            const t = String(ev.type).toLowerCase();
+            if (t === 'suicide_ideation') return 'SUICIDE_IDEATION' as const;
+            if (t === 'self_harm') return 'SELF_HARM' as const;
+            if (t === 'panic') return 'PANIC' as const;
+            // abreaction → DISSOCIATION (ближайший fit в CrisisService schema)
+            return 'DISSOCIATION' as const;
+          })();
+          this.backendClient
+            .recordCrisisEvent({
+              sessionId: this.sessionId,
+              severity: 'CRITICAL',
+              type: mappedType,
+            })
+            .catch((err) =>
+              console.error(
+                `[session:${this.sessionId}] Failed to record crisis event:`,
+                err,
+              ),
+            );
+        }
       }
     }
 
@@ -422,6 +498,14 @@ export class SessionHandler {
       reason,
     });
 
+    // Start/stop closed-loop BLS check-in (#core-2)
+    const blsPhases: EmdrPhase[] = ['desensitization', 'installation', 'body_scan'];
+    if (blsPhases.includes(nextPhase)) {
+      this.startBlsCheckInLoop();
+    } else {
+      this.stopBlsCheckInLoop();
+    }
+
     // Record timeline
     this.recordTimeline('phase_start', { phase: nextPhase, reason });
 
@@ -457,9 +541,29 @@ export class SessionHandler {
     context: string
   ): Promise<string> {
     let fullResponse = '';
+    const start = Date.now();
+
+    // Load cross-session patient context (#81). Best-effort — не ломает flow.
+    let patientContext: string | undefined;
+    try {
+      const ctx = await this.backendClient.getPatientContext();
+      patientContext = ctx?.prompt;
+    } catch {
+      // Continue without patient context
+    }
 
     try {
-      const stream = this.aiDialogue.sendMessage(userMessage, context);
+      const stream = this.aiDialogue.sendMessage(userMessage, context, {
+        enableArmor: true,
+        patientContext,
+        onInjection: (analysis) => {
+          this.recordTimeline('interweave', {
+            kind: 'prompt_injection_detected',
+            score: analysis.score,
+            matched: analysis.matched.slice(0, 3),
+          });
+        },
+      });
 
       for await (const chunk of stream) {
         fullResponse += chunk;
@@ -468,6 +572,16 @@ export class SessionHandler {
           text: chunk,
         });
       }
+
+      // Usage tracking (#130) — best-effort
+      this.backendClient.recordUsage({
+        sessionId: this.sessionId,
+        provider: 'anthropic', // TODO: router should report actual provider
+        providerType: 'LLM',
+        inputTokens: userMessage.length / 4, // rough estimate
+        outputTokens: fullResponse.length / 4,
+        durationMs: Date.now() - start,
+      }).catch(() => void 0);
 
       // Emit complete response
       this.socket.emit('session:ai_response', {
@@ -584,6 +698,73 @@ export class SessionHandler {
       clearInterval(this.emotionFlushTimer);
       this.emotionFlushTimer = null;
     }
+  }
+
+  // --- Closed-loop BLS check-in (#core-2) ---
+
+  /**
+   * Во время BLS phase: после каждого "set" (длительность = setLength / speed сек)
+   * AI делает краткий check-in + просит SUDS rating. Создаёт closed loop:
+   * emotion → BLS adapt → check-in → SUDS → new adapt.
+   */
+  private startBlsCheckInLoop(): void {
+    this.stopBlsCheckInLoop();
+    this.blsPhaseActive = true;
+    this.scheduleNextCheckIn();
+  }
+
+  private stopBlsCheckInLoop(): void {
+    this.blsPhaseActive = false;
+    if (this.blsSetTimer) {
+      clearTimeout(this.blsSetTimer);
+      this.blsSetTimer = null;
+    }
+  }
+
+  private scheduleNextCheckIn(): void {
+    if (!this.blsPhaseActive) return;
+    const config = this.engine.getBlsConfig();
+    // Длительность одного BLS-сета в секундах (passes / speed Hz).
+    // Clamp в [20, 90] чтобы не вызывать check-in слишком часто/редко.
+    const setDurationSec = Math.max(20, Math.min(90, (config.setLength ?? 24) / Math.max(config.speed, 0.3)));
+    this.blsSetTimer = setTimeout(() => {
+      void this.triggerCheckIn();
+    }, setDurationSec * 1000);
+    this.blsSetTimer.unref?.();
+  }
+
+  private async triggerCheckIn(): Promise<void> {
+    if (!this.blsPhaseActive) return;
+    const now = Date.now();
+    // Дебаунс — не чаще раза в 20 сек
+    if (now - this.lastCheckInAt < 20_000) {
+      this.scheduleNextCheckIn();
+      return;
+    }
+    this.lastCheckInAt = now;
+
+    // Увеличить счётчик BLS sets
+    this.engine.endBlsSet();
+
+    // AI prompt: короткий check-in + запрос SUDS
+    try {
+      await this.streamAiResponse(
+        'Short check-in after a BLS set. Ask the client: "What comes up now? How does it feel on a scale of 0-10 (SUDS)?" Keep it under 25 words.',
+      );
+    } catch (err) {
+      console.warn(`[session:${this.sessionId}] check-in failed:`, err);
+    }
+
+    // Попросить клиента явно отправить SUDS через UI hint
+    this.socket.emit('session:check_in_prompt', {
+      setsCompleted: this.engine.getBlsSetsCompleted(),
+      message: 'Оцените текущий уровень дискомфорта (SUDS 0-10)',
+    });
+
+    this.recordTimeline('bls_stop', { reason: 'auto_check_in' });
+
+    // Планируем следующий check-in
+    this.scheduleNextCheckIn();
   }
 
   private async saveToBackend(data: FullSessionExport): Promise<void> {

@@ -1,0 +1,47 @@
+global:
+  resolve_timeout: 5m
+  # SMTP для email alerts
+  smtp_smarthost: '${SMTP_HOST:-smtp.sendgrid.net}:587'
+  smtp_from: 'alerts@emdr42.com'
+  smtp_auth_username: 'apikey'
+  smtp_auth_password: '${SMTP_PASS}'
+
+route:
+  receiver: 'default'
+  group_by: ['alertname', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - match:
+        severity: critical
+      receiver: 'pagerduty'
+      continue: true
+    - match:
+        severity: critical
+      receiver: 'email-oncall'
+    - match:
+        severity: high
+      receiver: 'email-oncall'
+
+receivers:
+  - name: 'default'
+    email_configs:
+      - to: 'ops@emdr42.com'
+
+  - name: 'email-oncall'
+    email_configs:
+      - to: '${ONCALL_EMAIL:-oncall@emdr42.com}'
+        send_resolved: true
+
+  - name: 'pagerduty'
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+        severity: '{{ .CommonLabels.severity }}'
+
+inhibit_rules:
+  - source_matchers:
+      - severity="critical"
+    target_matchers:
+      - severity="high"
+    equal: ['alertname', 'cluster']

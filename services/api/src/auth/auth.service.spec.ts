@@ -5,6 +5,20 @@ import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { RefreshTokenService } from './refresh-token.service';
+import { AuditService } from '../audit/audit.service';
+
+const mockRefreshTokens = {
+  issue: jest.fn().mockResolvedValue({ token: 'refresh-x', id: 'r1', expiresAt: new Date(Date.now() + 7 * 86400_000) }),
+  rotate: jest.fn(),
+  revoke: jest.fn().mockResolvedValue(undefined),
+  revokeAllForUser: jest.fn().mockResolvedValue(undefined),
+  cleanup: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockAudit = {
+  log: jest.fn().mockResolvedValue(undefined),
+};
 
 jest.mock('bcrypt');
 
@@ -12,6 +26,9 @@ const mockPrisma = {
   user: {
     create: jest.fn(),
     findUnique: jest.fn(),
+    // После #114 auth hardening — login инкрементит failedAttempts,
+    // lockUntil. Тесты на login требуют user.update.
+    update: jest.fn().mockResolvedValue({ failedAttempts: 1 }),
   },
 };
 
@@ -35,6 +52,8 @@ describe('AuthService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: JwtService, useValue: mockJwtService },
         { provide: EmailService, useValue: mockEmailService },
+        { provide: RefreshTokenService, useValue: mockRefreshTokens },
+        { provide: AuditService, useValue: mockAudit },
       ],
     }).compile();
 
@@ -66,7 +85,8 @@ describe('AuthService', () => {
 
       const result = await service.register(dto);
 
-      expect(bcrypt.hash).toHaveBeenCalledWith('password123', 10);
+      // BCRYPT_COST поднят с 10 до 12 (#114 auth hardening)
+      expect(bcrypt.hash).toHaveBeenCalledWith('password123', 12);
       expect(mockPrisma.user.create).toHaveBeenCalledWith({
         data: {
           email: dto.email,
@@ -112,7 +132,10 @@ describe('AuthService', () => {
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
       mockJwtService.sign.mockReturnValue('jwt-token-456');
 
-      const result = await service.login(dto);
+      const result = (await service.login(dto)) as {
+        accessToken: string;
+        user: { id: string; email: string };
+      };
 
       expect(result.accessToken).toBe('jwt-token-456');
       expect(result.user.id).toBe('user-1');
