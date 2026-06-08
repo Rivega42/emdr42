@@ -163,7 +163,11 @@ class ApiClient {
   }
 
   async getPatientSessions(patientId: string): Promise<Session[]> {
-    return this.request(`/users/${patientId}/sessions`);
+    // Бэкенд отдаёт { data, meta } (пагинировано) — извлекаем массив.
+    const res = await this.request<{ data: Session[]; meta?: unknown } | Session[]>(
+      `/users/${patientId}/sessions`,
+    );
+    return Array.isArray(res) ? res : res.data;
   }
 
   async getSessionDetail(sessionId: string): Promise<SessionDetail> {

@@ -174,4 +174,14 @@ export class SessionsController {
   ) {
     return this.sessionsService.getTranscript(id, user.id, user.role);
   }
+
+  @Patch(':id/notes')
+  @ApiOperation({ summary: 'Сохранить заметки к сессии (пациент или терапевт с доступом)' })
+  updateNotes(
+    @Param('id') id: string,
+    @Body() body: { notes: string },
+    @CurrentUser() user: { id: string; role: string },
+  ) {
+    return this.sessionsService.updateNotes(id, body.notes, user.id, user.role);
+  }
 }

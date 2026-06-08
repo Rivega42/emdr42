@@ -9,6 +9,9 @@ import { AudioBlsController } from '@/lib/audio-bls';
 import type { Socket } from 'socket.io-client';
 
 const SessionCanvas = dynamic(() => import('./SessionCanvas'), { ssr: false });
+const EmotionCamera = dynamic(() => import('@/components/EmotionCamera'), { ssr: false });
+import { CameraConsentDialog, hasCameraConsent } from '@/components/CameraConsentDialog';
+import type { EmotionData } from '@emdr42/core';
 import VoiceButton, { VoiceButtonCompact } from './VoiceButton';
 
 // ---------------------------------------------------------------------------
@@ -129,6 +132,12 @@ export default function SessionPage() {
   const [stress, setStress] = useState(0);
   const [engagement, setEngagement] = useState(0);
   const [emotionLabel, setEmotionLabel] = useState('--');
+  // Камера эмоций: включается после consent. По умолчанию выключена —
+  // пациент явно соглашается (HIPAA/GDPR).
+  const [cameraEnabled, setCameraEnabled] = useState(false);
+  const [showCameraConsent, setShowCameraConsent] = useState(false);
+  // Throttle: эмоции считаются ~5/сек, на сервер шлём не чаще 1/сек.
+  const lastEmotionEmitRef = useRef(0);
 
   // Safety
   const [safetyAlert, setSafetyAlert] = useState<SafetyAlertData | null>(null);
@@ -200,9 +209,57 @@ export default function SessionPage() {
   }, [messages]);
 
   // -------------------------------------------------------------------------
-  // Real emotion data appends to the socket via EmotionContext / EmotionCamera.
-  // Никаких симулированных данных в production-сокете — это PHI-loop.
+  // Real emotion data → socket. Face-api.js на устройстве считает эмоции
+  // локально (кадр не уходит на сервер), мы шлём только числовые показатели.
+  // Это замыкает петлю «эмоция → SafetyMonitor/AdaptiveController → BLS + LLM».
   // -------------------------------------------------------------------------
+
+  const handleEmotionUpdate = useCallback((data: EmotionData) => {
+    const stressVal = data.behavioral.stress;
+    const engagementVal = data.behavioral.engagement;
+
+    // Обновляем UI-индикаторы всегда (плавно).
+    setStress(stressVal);
+    setEngagement(engagementVal);
+    setEmotionLabel(
+      stressVal > 0.6 ? 'Elevated' : stressVal > 0.4 ? 'Moderate' : 'Calm',
+    );
+
+    // На сервер — не чаще 1/сек (throttle), только при активной сессии.
+    const now = Date.now();
+    const sock = socketRef.current;
+    const sid = sessionId;
+    if (!sock || !sid || now - lastEmotionEmitRef.current < 1000) return;
+    lastEmotionEmitRef.current = now;
+
+    // Маппинг EmotionData (core) → EmotionSnapshot (emdr-engine).
+    sock.emit('session:emotion', {
+      sessionId: sid,
+      emotion: {
+        timestamp: data.timestamp,
+        stress: stressVal,
+        engagement: engagementVal,
+        positivity: data.behavioral.positivity,
+        // arousal/valence в core: -1..1 → нормализуем в 0..1 для engine.
+        arousal: (data.dimensions.arousal + 1) / 2,
+        valence: (data.dimensions.valence + 1) / 2,
+        joy: data.emotions.joy,
+        sadness: data.emotions.sadness,
+        anger: data.emotions.anger,
+        fear: data.emotions.fear,
+        confidence: data.confidence,
+      },
+    });
+  }, [sessionId]);
+
+  // Включение камеры через consent gate.
+  const requestCamera = useCallback(() => {
+    if (hasCameraConsent()) {
+      setCameraEnabled(true);
+    } else {
+      setShowCameraConsent(true);
+    }
+  }, []);
 
   // -------------------------------------------------------------------------
   // Socket connection & events
@@ -534,8 +591,42 @@ export default function SessionPage() {
           </div>
         </div>
         <span className="text-gray-500 shrink-0">{emotionLabel}</span>
+        {/* Камера эмоций — кнопка вкл/выкл. */}
+        <button
+          onClick={() => (cameraEnabled ? setCameraEnabled(false) : requestCamera())}
+          className={`shrink-0 text-xs px-2 py-1 rounded-md border transition-colors ml-2 ${
+            cameraEnabled
+              ? 'bg-green-50 text-green-700 border-green-200'
+              : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+          }`}
+          aria-pressed={cameraEnabled}
+          aria-label={cameraEnabled ? 'Выключить камеру эмоций' : 'Включить камеру эмоций'}
+        >
+          {cameraEnabled ? '📷 Камера вкл' : '📷 Камера'}
+        </button>
         <span className="text-gray-400 ml-auto shrink-0">{formatTime(elapsed)}</span>
       </header>
+
+      {/* Эмоциональная камера (скрытое видео + локальная обработка). */}
+      {cameraEnabled && sessionId && (
+        <EmotionCamera
+          enabled={cameraEnabled}
+          onEmotionUpdate={handleEmotionUpdate}
+          onConsentNeeded={() => {
+            setCameraEnabled(false);
+            setShowCameraConsent(true);
+          }}
+        />
+      )}
+
+      <CameraConsentDialog
+        open={showCameraConsent}
+        onAccept={() => {
+          setShowCameraConsent(false);
+          setCameraEnabled(true);
+        }}
+        onDecline={() => setShowCameraConsent(false)}
+      />
 
       {/* ---- Phase stepper -- light Cal.com style ---- */}
       <div className="flex items-center px-6 py-2 bg-white border-b border-gray-200 gap-1 overflow-x-auto">
