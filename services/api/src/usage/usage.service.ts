@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { calculateCostUsd } from '@emdr42/ai-providers';
 
@@ -96,5 +96,39 @@ export class UsageService {
       totalCostUsd: +totalCost.toFixed(4),
       events: logs.length,
     };
+  }
+
+  /**
+   * Защита IDOR: только владелец сессии или ADMIN видит её стоимость.
+   * THERAPIST с активным TherapistPatient к владельцу тоже допускается.
+   */
+  async ensureSessionAccess(
+    sessionId: string,
+    currentUserId: string,
+    currentRole: string,
+  ): Promise<void> {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { userId: true, deletedAt: true },
+    });
+    if (!session || session.deletedAt) {
+      throw new NotFoundException('Session not found');
+    }
+    if (session.userId === currentUserId || currentRole === 'ADMIN') {
+      return;
+    }
+    if (currentRole === 'THERAPIST') {
+      const rel = await this.prisma.therapistPatient.findUnique({
+        where: {
+          therapistId_patientId: {
+            therapistId: currentUserId,
+            patientId: session.userId,
+          },
+        },
+        select: { status: true },
+      });
+      if (rel && rel.status !== 'DISCHARGED') return;
+    }
+    throw new ForbiddenException('No access to this session');
   }
 }

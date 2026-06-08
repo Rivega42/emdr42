@@ -6,12 +6,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
-import { loginSchema, type LoginInput } from '@/lib/schemas/auth';
+import { loginSchema, sanitizeNextPath, type LoginInput } from '@/lib/schemas/auth';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get('next') || '/dashboard';
+  const next = sanitizeNextPath(searchParams.get('next'));
   const { login } = useAuth();
   const [apiError, setApiError] = useState<string | null>(null);
 

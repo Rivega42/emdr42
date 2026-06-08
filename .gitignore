@@ -66,6 +66,7 @@ lib/*
 !lib/i18n/
 !lib/*.ts
 !lib/e2e-crypto/
+!lib/schemas/
 lib64/
 parts/
 sdist/

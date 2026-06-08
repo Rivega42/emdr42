@@ -68,7 +68,35 @@ export class UsersService {
     };
   }
 
-  async findOne(id: string, _currentUserId: string, _role: string) {
+  /**
+   * Authorisation guard: пользователь может смотреть себя; ADMIN — любого;
+   * THERAPIST — только при наличии активной связи TherapistPatient. Без этой
+   * проверки терапевт мог бы перечислить email/phone всей базы.
+   */
+  async ensureCanAccessUser(
+    targetId: string,
+    currentUserId: string,
+    currentRole: string,
+  ): Promise<void> {
+    if (targetId === currentUserId) return;
+    if (currentRole === 'ADMIN') return;
+    if (currentRole === 'THERAPIST') {
+      const rel = await this.prisma.therapistPatient.findUnique({
+        where: {
+          therapistId_patientId: {
+            therapistId: currentUserId,
+            patientId: targetId,
+          },
+        },
+        select: { status: true },
+      });
+      if (rel && rel.status !== 'DISCHARGED') return;
+    }
+    throw new ForbiddenException('No access to this user');
+  }
+
+  async findOne(id: string, currentUserId: string, role: string) {
+    await this.ensureCanAccessUser(id, currentUserId, role);
     const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
       select: {
@@ -144,10 +172,11 @@ export class UsersService {
 
   async getUserSessions(
     userId: string,
-    _currentUserId: string,
-    _role: string,
+    currentUserId: string,
+    role: string,
     pagination: PaginationDto,
   ) {
+    await this.ensureCanAccessUser(userId, currentUserId, role);
     const user = await this.prisma.user.findFirst({
       where: { id: userId, deletedAt: null },
     });

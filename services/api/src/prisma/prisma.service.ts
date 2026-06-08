@@ -57,10 +57,24 @@ export class PrismaService
       $on: (event: string, cb: (e: { message: string }) => void) => void;
     }).$on('error', (e) => this.logger.error(e.message));
 
-    // Шифрование PHI полей (HIPAA/GDPR, #58)
+    // Шифрование PHI полей (HIPAA/GDPR, #58).
+    // В production требуем явный ключ длиной >=32 байт — без него
+    // данные пациентов пошли бы в БД в открытом виде.
     const encryptionKey = process.env.PHI_ENCRYPTION_KEY;
-    if (encryptionKey) {
+    if (process.env.NODE_ENV === 'production') {
+      if (!encryptionKey || encryptionKey.length < 32) {
+        throw new Error(
+          'PHI_ENCRYPTION_KEY is missing or shorter than 32 chars. ' +
+            'Refusing to start in production — PHI would be written as plaintext.',
+        );
+      }
       this.$use(createEncryptionMiddleware(encryptionKey));
+    } else if (encryptionKey && encryptionKey.length >= 32) {
+      this.$use(createEncryptionMiddleware(encryptionKey));
+    } else {
+      this.logger.warn(
+        '[security] PHI_ENCRYPTION_KEY weak/missing — middleware disabled (dev only)',
+      );
     }
 
     await this.$connect();

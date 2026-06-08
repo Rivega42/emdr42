@@ -1,7 +1,10 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
 
-// Поля, содержащие PHI (Protected Health Information)
+// Поля, содержащие PHI (Protected Health Information) — HIPAA §164.514.
+// При расширении списка убедиться, что соответствующие поля Prisma имеют
+// тип `String?` и достаточную длину (AES-GCM + iv + tag увеличивает размер).
 const PHI_FIELDS = [
+  // Session-level
   'targetMemory',
   'targetImage',
   'negativeCognition',
@@ -10,6 +13,17 @@ const PHI_FIELDS = [
   'clientStateAtEnd',
   'betweenSessionNotes',
   'bodyLocation',
+  'transcriptText',
+  // Crisis-level
+  'triggerText',
+  // Therapist note
+  'content',
+  // User-level PII/PHI
+  'phone',
+  'emergencyContactName',
+  'emergencyContactPhone',
+  // MFA — секрет TOTP (схема комментарием обещает encrypted; теперь действительно)
+  'mfaSecret',
 ];
 
 const ALGORITHM = 'aes-256-gcm';
