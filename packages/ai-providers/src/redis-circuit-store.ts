@@ -19,12 +19,9 @@ import type { CircuitState, CircuitStateStore } from './circuit-breaker';
 
 export interface MinimalRedis {
   get(key: string): Promise<string | null>;
-  set(
-    key: string,
-    value: string,
-    mode?: string,
-    duration?: number,
-  ): Promise<unknown>;
+  // Только get + setex используются. set намеренно НЕ объявлен — его
+  // перегрузки в ioredis несовместимы с упрощённой сигнатурой и ломают
+  // структурную совместимость при передаче Redis-инстанса.
   setex(key: string, seconds: number, value: string): Promise<unknown>;
 }
 
