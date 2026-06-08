@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1.6
 # Orchestrator (Socket.io WS). Контекст билда — корень монорепо.
-# pnpm deploy → self-contained директория без symlinks в .pnpm.
+# esbuild bundle инлайнит workspace-пакеты @emdr42/* (которые экспортируют
+# TS-source) в единый dist/server.js. Реальные npm-deps остаются external
+# и ставятся в runner через pnpm --prod deploy.
 
 FROM node:20-alpine AS builder
 WORKDIR /repo
@@ -19,6 +21,7 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
+# esbuild bundle (@emdr42/* инлайнены) + deploy с прод-зависимостями.
 RUN pnpm --filter @emdr42/orchestrator build \
  && pnpm --filter @emdr42/orchestrator --prod deploy /app
 
