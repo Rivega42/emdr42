@@ -34,6 +34,7 @@ export class SessionHandler {
   private safetyMonitor: SafetyMonitor;
   private adaptiveController: AdaptiveController;
   private aiDialogue: AiDialogue;
+  private aiRouter: AiRouter;
   private backendClient: BackendClient;
   private socket: Socket;
   private sessionId: string;
@@ -63,6 +64,7 @@ export class SessionHandler {
     this.sessionId = sessionId;
     this.userId = userId;
     this.backendClient = backendClient;
+    this.aiRouter = aiRouter;
 
     this.engine = new EmdrSessionEngine(sessionId, userId);
     this.safetyMonitor = new SafetyMonitor();

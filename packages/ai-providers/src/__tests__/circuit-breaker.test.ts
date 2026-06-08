@@ -42,9 +42,11 @@ describe('CircuitBreaker', () => {
   });
 
   it('aborts on timeout', async () => {
-    const cb = new CircuitBreaker({ timeoutMs: 20, failureThreshold: 10 });
+    // Большой разрыв между timeoutMs (50) и длительностью fn (5000), чтобы
+    // тест не флэйкал под параллельной нагрузкой CI (event-loop jitter).
+    const cb = new CircuitBreaker({ timeoutMs: 50, failureThreshold: 10 });
     await expect(
-      cb.execute(() => new Promise((r) => setTimeout(r, 200))),
+      cb.execute(() => new Promise((r) => setTimeout(r, 5000))),
     ).rejects.toThrow(CircuitTimeoutError);
   });
 });
