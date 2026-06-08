@@ -28,7 +28,14 @@ export {
   CircuitTimeoutError,
   withRetry,
 } from './circuit-breaker';
-export type { CircuitState, CircuitBreakerOptions } from './circuit-breaker';
+export type {
+  CircuitState,
+  CircuitBreakerOptions,
+  CircuitStateStore,
+} from './circuit-breaker';
+export { InMemoryCircuitStateStore } from './circuit-breaker';
+export { RedisCircuitStateStore } from './redis-circuit-store';
+export type { MinimalRedis } from './redis-circuit-store';
 
 // Config
 export { DEFAULT_CONFIG } from './config';

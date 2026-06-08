@@ -187,6 +187,12 @@ export class SessionHandler {
     try {
       const stream = this.aiDialogue.sendMessage(text, context);
       for await (const chunk of stream) {
+        // STREAM_RESTART sentinel из AiRouter — primary провайдер упал
+        // после частичного ответа, fallback стартует с чистого листа.
+        if (chunk === '\x00__STREAM_RESTART__\x00') {
+          fullResponse = '';
+          continue;
+        }
         fullResponse += chunk;
       }
 
@@ -566,6 +572,14 @@ export class SessionHandler {
       });
 
       for await (const chunk of stream) {
+        // STREAM_RESTART sentinel — primary упал mid-stream, fallback стартует
+        // с пустого контекста. Сбрасываем buffer и сигналим клиенту очистить
+        // отображённые chunks (иначе склейка двух разных монологов).
+        if (chunk === '\x00__STREAM_RESTART__\x00') {
+          fullResponse = '';
+          this.socket.emit('session:ai_response', { type: 'restart' });
+          continue;
+        }
         fullResponse += chunk;
         this.socket.emit('session:ai_response', {
           type: 'chunk',

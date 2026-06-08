@@ -21,6 +21,46 @@ export interface CircuitBreakerOptions {
   halfOpenAfterMs: number; // default 30_000
   timeoutMs: number; // default 30_000 — per-request timeout
   name?: string;
+  /**
+   * Опциональное хранилище для shared-state между репликами.
+   * Для multi-replica orchestrator подключите Redis-backed
+   * implementation (см. ./redis-circuit-store). Без него каждая реплика
+   * имеет свой счётчик failures → суммарно N×failureThreshold запросов
+   * проходит до открытия (#C4).
+   */
+  store?: CircuitStateStore;
+}
+
+/**
+ * Интерфейс для shared circuit-state. Все методы async — Redis-friendly.
+ * Default — InMemoryCircuitStateStore (в этом файле).
+ */
+export interface CircuitStateStore {
+  loadState(name: string): Promise<{
+    state: CircuitState;
+    failures: number[];
+    openedAt: number;
+  } | null>;
+  saveState(
+    name: string,
+    s: { state: CircuitState; failures: number[]; openedAt: number },
+  ): Promise<void>;
+}
+
+export class InMemoryCircuitStateStore implements CircuitStateStore {
+  private map = new Map<
+    string,
+    { state: CircuitState; failures: number[]; openedAt: number }
+  >();
+  async loadState(name: string) {
+    return this.map.get(name) ?? null;
+  }
+  async saveState(
+    name: string,
+    s: { state: CircuitState; failures: number[]; openedAt: number },
+  ) {
+    this.map.set(name, s);
+  }
 }
 
 export class CircuitOpenError extends Error {
@@ -37,11 +77,14 @@ export class CircuitTimeoutError extends Error {
   }
 }
 
+const sharedStore = new InMemoryCircuitStateStore();
+
 export class CircuitBreaker {
   private state: CircuitState = 'CLOSED';
   private failures: number[] = [];
   private openedAt = 0;
-  private readonly opts: Required<CircuitBreakerOptions>;
+  private readonly opts: Required<Omit<CircuitBreakerOptions, 'store'>>;
+  private readonly store: CircuitStateStore;
 
   constructor(options: Partial<CircuitBreakerOptions> = {}) {
     this.opts = {
@@ -52,6 +95,7 @@ export class CircuitBreaker {
       name: 'default',
       ...options,
     };
+    this.store = options.store ?? sharedStore;
   }
 
   getState(): CircuitState {
@@ -60,6 +104,9 @@ export class CircuitBreaker {
   }
 
   async execute<T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    // Pull-and-merge state из shared store (Redis при multi-replica).
+    // Best-effort: ошибка чтения store не должна ломать запрос.
+    await this.syncFromStore().catch(() => void 0);
     this.maybeTransitionFromOpen();
 
     if (this.state === 'OPEN') {
@@ -67,21 +114,54 @@ export class CircuitBreaker {
     }
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.opts.timeoutMs);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(new CircuitTimeoutError(this.opts.name, this.opts.timeoutMs));
+      }, this.opts.timeoutMs);
+    });
 
     try {
-      const result = await fn(controller.signal);
+      // Race против таймера — если fn не уважает signal (типичный fetch без
+      // AbortController), мы всё равно отклоняем через timeoutPromise.
+      const result = await Promise.race([fn(controller.signal), timeoutPromise]);
       this.onSuccess();
-      return result;
+      await this.persist().catch(() => void 0);
+      return result as T;
     } catch (err) {
       this.onFailure();
-      if (controller.signal.aborted) {
-        throw new CircuitTimeoutError(this.opts.name, this.opts.timeoutMs);
-      }
+      await this.persist().catch(() => void 0);
       throw err;
     } finally {
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
     }
+  }
+
+  private async syncFromStore(): Promise<void> {
+    const s = await this.store.loadState(this.opts.name);
+    if (!s) return;
+    // Берём более "плохое" состояние — если store считает OPEN, мы тоже OPEN.
+    if (s.state === 'OPEN' && this.state !== 'OPEN') {
+      this.state = 'OPEN';
+      this.openedAt = s.openedAt;
+    }
+    // Merge failures: union и dedup по timestamp.
+    const merged = new Set<number>([...this.failures, ...s.failures]);
+    this.failures = Array.from(merged).sort((a, b) => a - b);
+    // Cleanup за окном
+    const now = Date.now();
+    this.failures = this.failures.filter(
+      (t) => now - t < this.opts.failureWindowMs,
+    );
+  }
+
+  private async persist(): Promise<void> {
+    await this.store.saveState(this.opts.name, {
+      state: this.state,
+      failures: this.failures,
+      openedAt: this.openedAt,
+    });
   }
 
   private onSuccess(): void {
@@ -93,7 +173,6 @@ export class CircuitBreaker {
 
   private onFailure(): void {
     const now = Date.now();
-    // Отбросить failures старше окна
     this.failures = this.failures.filter(
       (t) => now - t < this.opts.failureWindowMs,
     );

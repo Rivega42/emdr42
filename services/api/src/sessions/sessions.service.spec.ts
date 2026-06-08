@@ -2,6 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { SessionsService } from './sessions.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+
+const mockAudit = { log: jest.fn().mockResolvedValue(undefined) };
 
 const mockPrisma = {
   session: {
@@ -37,6 +40,7 @@ describe('SessionsService', () => {
       providers: [
         SessionsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: AuditService, useValue: mockAudit },
       ],
     }).compile();
 

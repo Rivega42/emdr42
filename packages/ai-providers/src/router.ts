@@ -87,6 +87,8 @@ export class AiRouter {
   private emitter = new EventEmitter();
   private stats: ProviderUsageStats = { llm: {}, stt: {}, tts: {} };
   private readonly reliability: Required<RouterReliabilityOptions>;
+  /** Shared store для CircuitBreaker (Redis при multi-replica). */
+  private readonly circuitStore: import('./circuit-breaker').CircuitStateStore | undefined;
 
   constructor(config: AiProviderConfig, reliability: RouterReliabilityOptions = {}) {
     this.config = structuredClone(config);
@@ -97,6 +99,10 @@ export class AiRouter {
       failureWindowMs: reliability.failureWindowMs ?? 60_000,
       halfOpenAfterMs: reliability.halfOpenAfterMs ?? 30_000,
     };
+    // Если caller передал shared store (Redis) — используем во всех breakers.
+    this.circuitStore = (config as AiProviderConfig & {
+      circuitStore?: import('./circuit-breaker').CircuitStateStore;
+    }).circuitStore;
   }
 
   private getBreaker(kind: 'llm' | 'stt' | 'tts', name: string): CircuitBreaker {
@@ -109,6 +115,8 @@ export class AiRouter {
         failureWindowMs: this.reliability.failureWindowMs,
         halfOpenAfterMs: this.reliability.halfOpenAfterMs,
         timeoutMs: this.reliability.timeoutMs,
+        // Может быть undefined → CircuitBreaker fall back на in-memory.
+        store: this.circuitStore,
       });
       this.breakers.set(key, breaker);
     }
@@ -241,11 +249,29 @@ export class AiRouter {
 
     this.lastUsedLlmProvider = provider.name;
 
+    let emittedAnyChunk = false;
     try {
-      yield* provider.chatStream(messages, options);
+      for await (const chunk of provider.chatStream(messages, options)) {
+        emittedAnyChunk = true;
+        yield chunk;
+      }
+      return;
     } catch (error) {
       this.recordError('llm', provider.name);
       this.emit('llm:error', { provider: provider.name, error });
+
+      // Если primary уже эмитил часть ответа, fallback нельзя просто продолжить
+      // с пустого контекста — клиент получил бы склейку двух разных монологов
+      // ("Я понимаю ваши чувства, давайте поработаем... " + "Расскажите подробнее
+      // о ситуации"). Сигналим клиенту restart и начинаем с чистой строки.
+      if (emittedAnyChunk) {
+        this.emit('llm:fallback_restart', {
+          from: provider.name,
+          to: fallback?.name ?? null,
+        });
+        // Sentinel — клиент должен очистить буфер chunk-ов в this turn.
+        yield '\x00__STREAM_RESTART__\x00';
+      }
 
       if (fallback && provider !== fallback) {
         this.emit('llm:fallback', {
