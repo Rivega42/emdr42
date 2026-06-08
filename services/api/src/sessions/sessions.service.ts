@@ -314,6 +314,59 @@ export class SessionsService {
     return session;
   }
 
+  /**
+   * Доступ владельца / ADMIN / THERAPIST с активной связью к пациенту.
+   * Используется для заметок к сессии (терапевт пишет заметки о чужой сессии).
+   */
+  private async ensureAccessWithTherapist(
+    id: string,
+    userId: string,
+    userRole: string,
+  ) {
+    const session = await this.prisma.session.findUnique({ where: { id } });
+    if (!session) throw new NotFoundException('Session not found');
+    if (userRole === 'ADMIN' || session.userId === userId) return session;
+    if (userRole === 'THERAPIST') {
+      const rel = await this.prisma.therapistPatient.findUnique({
+        where: {
+          therapistId_patientId: {
+            therapistId: userId,
+            patientId: session.userId,
+          },
+        },
+        select: { status: true },
+      });
+      if (rel && rel.status !== 'DISCHARGED') return session;
+    }
+    throw new ForbiddenException('Access denied');
+  }
+
+  async updateNotes(
+    id: string,
+    notes: string,
+    userId: string,
+    userRole: string,
+  ) {
+    await this.ensureAccessWithTherapist(id, userId, userRole);
+    // betweenSessionNotes — PHI-поле (шифруется middleware-ом).
+    const updated = await this.prisma.session.update({
+      where: { id },
+      data: { betweenSessionNotes: notes },
+      select: { id: true },
+    });
+    this.audit
+      .log({
+        userId,
+        actorId: userId,
+        action: 'SESSION_NOTES_UPDATE',
+        resourceType: 'Session',
+        resourceId: id,
+        success: true,
+      })
+      .catch(() => void 0);
+    return updated;
+  }
+
   // --- Recording metadata (#122) ---
 
   async recordConsent(
