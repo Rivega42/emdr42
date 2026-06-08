@@ -79,13 +79,35 @@ services:
       - loki
 
   # Alertmanager
+  # envsubst pre-render: Alertmanager не делает interpolation env-переменных
+  # в YAML. Без этого `${SMTP_PASS}` уходил в SMTP literal-строкой.
+  alertmanager-config:
+    image: alpine:3.20
+    command:
+      - sh
+      - -c
+      - "apk add --no-cache gettext && envsubst < /input/alertmanager.yml > /output/alertmanager.yml"
+    volumes:
+      - ./monitoring/alertmanager.yml:/input/alertmanager.yml:ro
+      - alertmanager_config:/output
+    environment:
+      - SMTP_HOST
+      - SMTP_PASS
+      - PAGERDUTY_KEY
+      - TELEGRAM_BOT_TOKEN
+      - TELEGRAM_CHAT_ID
+    restart: "no"
+
   alertmanager:
     image: prom/alertmanager:latest
     restart: unless-stopped
+    depends_on:
+      alertmanager-config:
+        condition: service_completed_successfully
     ports:
       - "9093:9093"
     volumes:
-      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_config:/etc/alertmanager:ro
       - alertmanager_data:/alertmanager
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
@@ -94,3 +116,4 @@ services:
 volumes:
   loki_data:
   alertmanager_data:
+  alertmanager_config:
