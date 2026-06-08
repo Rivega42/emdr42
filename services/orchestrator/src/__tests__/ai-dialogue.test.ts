@@ -38,6 +38,7 @@ describe('AiDialogue', () => {
       const gen = dialogue.sendMessage('Hello', 'Phase: history');
       for await (const _ of gen) { /* consume */ }
 
+      // chatStream теперь получает второй аргумент options (maxTokens, armor).
       expect(mockAiRouter.chatStream).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
@@ -46,6 +47,7 @@ describe('AiDialogue', () => {
           }),
           expect.objectContaining({ role: 'user', content: 'Hello' }),
         ]),
+        expect.objectContaining({ maxTokens: expect.any(Number) }),
       );
     });
 
@@ -123,6 +125,7 @@ describe('AiDialogue', () => {
             content: expect.stringContaining('New system prompt for desensitization.'),
           }),
         ]),
+        expect.objectContaining({ maxTokens: expect.any(Number) }),
       );
     });
   });

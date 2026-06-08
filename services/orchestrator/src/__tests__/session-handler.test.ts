@@ -109,6 +109,12 @@ const mockBackendClient = {
   addSudsRecord: jest.fn().mockResolvedValue(undefined),
   addVocRecord: jest.fn().mockResolvedValue(undefined),
   addSafetyEvent: jest.fn().mockResolvedValue(undefined),
+  // Добавлены после интеграций #130/#147/#89/#81 — без них handler падает
+  // на recordUsage/recordCrisisEvent/notifyGamificationEvent/getPatientContext.
+  recordUsage: jest.fn().mockResolvedValue(undefined),
+  recordCrisisEvent: jest.fn().mockResolvedValue(undefined),
+  notifyGamificationEvent: jest.fn().mockResolvedValue(undefined),
+  getPatientContext: jest.fn().mockResolvedValue({ prompt: '' }),
 };
 
 // Helper to create an async generator
@@ -189,6 +195,9 @@ describe('SessionHandler', () => {
       expect(mockAiDialogue.sendMessage).toHaveBeenCalledWith(
         'I feel anxious',
         expect.any(String),
+        // 3-й аргумент options (armor, patientContext, onInjection) добавлен
+        // после интеграций #128/#81.
+        expect.objectContaining({ enableArmor: true }),
       );
     });
 
