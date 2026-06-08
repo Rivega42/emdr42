@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1.6
-# Orchestrator (Socket.io WS) service. Контекст билда — корень монорепо.
+# Orchestrator (Socket.io WS). Контекст билда — корень монорепо.
+# pnpm deploy → self-contained директория без symlinks в .pnpm.
 
-FROM node:20-alpine AS deps
+FROM node:20-alpine AS builder
 WORKDIR /repo
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
@@ -16,16 +17,10 @@ COPY services/orchestrator/package.json ./services/orchestrator/
 
 RUN pnpm install --frozen-lockfile
 
-FROM node:20-alpine AS build
-WORKDIR /repo
-RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
-
-COPY --from=deps /repo/node_modules ./node_modules
-COPY --from=deps /repo/packages ./packages
-COPY --from=deps /repo/services ./services
 COPY . .
 
-RUN pnpm --filter @emdr42/orchestrator build
+RUN pnpm --filter @emdr42/orchestrator build \
+ && pnpm --filter @emdr42/orchestrator --prod deploy /app
 
 FROM node:20-alpine AS production
 WORKDIR /app
@@ -33,13 +28,7 @@ ENV NODE_ENV=production PORT=8002
 
 RUN apk add --no-cache tini wget
 
-COPY --from=build /repo/services/orchestrator/dist ./dist
-COPY --from=build /repo/services/orchestrator/package.json ./package.json
-COPY --from=build /repo/node_modules /repo/node_modules
-COPY --from=build /repo/packages /repo/packages
-COPY --from=build /repo/services/orchestrator/node_modules ./node_modules
-
-RUN chown -R node:node /app /repo
+COPY --from=builder --chown=node:node /app /app
 
 USER node
 EXPOSE 8002
