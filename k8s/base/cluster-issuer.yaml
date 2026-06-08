@@ -1,0 +1,39 @@
+# Cert-manager ClusterIssuer для автоматического выпуска TLS-сертификатов
+# через Let's Encrypt (#E8). Без него Ingress в проде не получит сертификат.
+#
+# Требования:
+#   1. Установлен cert-manager (kubectl apply -f
+#      https://github.com/cert-manager/cert-manager/releases/download/v1.14.x/cert-manager.yaml)
+#   2. Установлен ingress-nginx (или другой ingress controller) с http01-solver.
+#
+# В случае нескольких envs (staging/prod) можно создать два issuer-а:
+# letsencrypt-staging (для тестов, не лимитирован) и letsencrypt-prod.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@emdr42.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@emdr42.com
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
