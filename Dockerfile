@@ -4,7 +4,7 @@
 # ломает symlink-структуру виртуального store (.pnpm). Standalone-output
 # самодостаточен, поэтому в runner node_modules не нужен.
 
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
@@ -33,7 +33,7 @@ ENV NODE_ENV=production
 RUN pnpm build
 
 # Runner — только standalone-артефакт + non-root.
-FROM node:20-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production \
