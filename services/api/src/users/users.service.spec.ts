@@ -2,10 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 
 const mockPrisma = {
   user: {
     findMany: jest.fn(),
+    findFirst: jest.fn(),
     findUnique: jest.fn(),
     update: jest.fn(),
     count: jest.fn(),
@@ -14,7 +16,12 @@ const mockPrisma = {
     findMany: jest.fn(),
     count: jest.fn(),
   },
+  therapistPatient: {
+    findUnique: jest.fn(),
+  },
 };
+
+const mockAudit = { log: jest.fn().mockResolvedValue(undefined) };
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -24,12 +31,19 @@ describe('UsersService', () => {
       providers: [
         UsersService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: AuditService, useValue: mockAudit },
       ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
 
     jest.clearAllMocks();
+    // Шёлковая совместимость: findFirst делегирует на findUnique.
+    // После добавления `deletedAt: null` фильтра findOne использует findFirst,
+    // а старые тесты мочат только findUnique.
+    mockPrisma.user.findFirst.mockImplementation((args: any) =>
+      mockPrisma.user.findUnique(args),
+    );
   });
 
   describe('findAll', () => {
@@ -70,8 +84,12 @@ describe('UsersService', () => {
       const result = await service.findOne('user-1', 'user-1', 'PATIENT');
 
       expect(result).toEqual(user);
-      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'user-1' } }),
+      // findFirst используется с фильтром deletedAt: null. Mock делегирует
+      // на findUnique, поэтому проверяем вызов findFirst.
+      expect(mockPrisma.user.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: 'user-1' }),
+        }),
       );
     });
 
@@ -159,7 +177,7 @@ describe('UsersService', () => {
       expect(result.meta.total).toBe(2);
       expect(mockPrisma.session.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { userId: 'user-1' },
+          where: expect.objectContaining({ userId: 'user-1' }),
         }),
       );
     });

@@ -22,7 +22,9 @@ const INJECTION_PATTERNS: RegExp[] = [
   /disregard (?:all |any |the )?(?:previous|above|prior|system) (?:instructions?|prompts?)/i,
   /\b(?:DAN|dan mode|do anything now)\b/i,
   /\bjailbreak(?:ing|ed)?\b/i,
-  /\b(?:act|pretend|behave|roleplay) (?:as|like) (?:if you|you are|a)\b/i,
+  // Roleplay/identity-swap. Покрывает: "pretend you are X", "pretend to be X",
+  // "act as X", "roleplay as X", "behave like X".
+  /\b(?:act|pretend|behave|roleplay)\s+(?:as|like|to\s+be|you\s+are|you'?re)\b/i,
   /\byou are no longer\b/i,
   /\bsystem\s*[:(](?:\s|\w)/i,
   /<\/?\s*(?:system|instructions?|prompt)\s*>/i,
