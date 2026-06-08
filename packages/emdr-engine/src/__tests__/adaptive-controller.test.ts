@@ -74,9 +74,12 @@ describe('AdaptiveController', () => {
       const snap = makeSnapshot();
       const config = controller.calculateBlsParams('desensitization', snap, 0, []);
 
-      // Desensitization preset: speed [0.8, 1.2] midpoint=1.0, setLength [24,40] midpoint=32
+      // Desensitization preset (#131): speed [0.8, 1.2] midpoint=1.0.
+      // setLength базируется на SUDS=null → center 30, jitter ±15% range (±3),
+      // clamp [20,40] — итого [27..33].
       expect(config.speed).toBe(1.0);
-      expect(config.setLength).toBe(32);
+      expect(config.setLength).toBeGreaterThanOrEqual(20);
+      expect(config.setLength).toBeLessThanOrEqual(40);
       expect(config.type).toBe('eye_movement');
     });
 
@@ -84,9 +87,11 @@ describe('AdaptiveController', () => {
       const snap = makeSnapshot();
       const config = controller.calculateBlsParams('installation', snap, 0, []);
 
-      // Installation preset: speed [0.6, 0.8] midpoint=0.7, setLength [10,15] midpoint=13
+      // Installation preset: speed [0.6, 0.8] midpoint=0.7.
+      // setLength [10,15], jitter ±15% — итого [10..15].
       expect(config.speed).toBe(0.7);
-      expect(config.setLength).toBe(13);
+      expect(config.setLength).toBeGreaterThanOrEqual(10);
+      expect(config.setLength).toBeLessThanOrEqual(15);
     });
 
     it('should return default params for phases without preset', () => {
