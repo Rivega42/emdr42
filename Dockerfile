@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1.6
 # Frontend Next.js standalone build.
-# pnpm используется во всём проекте (см. packageManager в package.json),
-# раньше Dockerfile делал npm ci и игнорировал pnpm-lock.yaml — это давало
-# недетерминированную сборку.
+# Install + build в одном stage — cross-stage копирование pnpm node_modules
+# ломает symlink-структуру виртуального store (.pnpm). Standalone-output
+# самодостаточен, поэтому в runner node_modules не нужен.
 
-FROM node:20-alpine AS deps
+FROM node:20-alpine AS builder
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
-# Копируем lockfile и манифесты раньше source — кэш-дружелюбно.
+# Lockfile + манифесты раньше source — слой кэшируется при изменении только кода.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY packages/core/package.json ./packages/core/
 COPY packages/emdr-engine/package.json ./packages/emdr-engine/
@@ -20,15 +20,6 @@ COPY services/orchestrator/package.json ./services/orchestrator/
 
 RUN pnpm install --frozen-lockfile
 
-# Build stage
-FROM node:20-alpine AS builder
-WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
-
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/core/node_modules ./packages/core/node_modules
-COPY --from=deps /app/packages/emdr-engine/node_modules ./packages/emdr-engine/node_modules
-COPY --from=deps /app/packages/ai-providers/node_modules ./packages/ai-providers/node_modules
 COPY . .
 
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -41,7 +32,7 @@ ENV NODE_ENV=production
 
 RUN pnpm build
 
-# Production runtime — distroless-ish (alpine) c non-root user.
+# Runner — только standalone-артефакт + non-root.
 FROM node:20-alpine AS runner
 WORKDIR /app
 
@@ -49,9 +40,6 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0
 
-# `node` user уже существует в node:20-alpine (uid=1000). Используем его
-# чтобы pod runAsUser: 1000 в k8s manifest совпадал и readOnlyRootFilesystem
-# работал.
 COPY --from=builder --chown=node:node /app/public ./public
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static

@@ -1,9 +1,13 @@
 # syntax=docker/dockerfile:1.6
-# NestJS API service. Контекст билда — корень монорепо (pnpm workspace).
-# Сборка через pnpm + corepack. Финальный stage с non-root user (uid 1000)
-# совпадает с k8s runAsUser в pod securityContext.
+# NestJS API. Контекст билда — корень монорепо (pnpm workspace).
+#
+# ВНИМАНИЕ (#208): workspace-пакеты @emdr42/* экспортируют TS-source
+# (main: ./src/index.ts). NestJS esbuild-bundling рискован из-за
+# DI-метаданных декораторов, поэтому здесь оставлен tsc-build. Образ
+# СОБИРАЕТСЯ; runtime-импорт @emdr42/* требует решения из #208 (сборка
+# пакетов в dist или ts-node runtime). Vika валидирует при первом deploy.
 
-FROM node:20-alpine AS deps
+FROM node:20-alpine AS builder
 WORKDIR /repo
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
@@ -18,40 +22,24 @@ COPY services/orchestrator/package.json ./services/orchestrator/
 
 RUN pnpm install --frozen-lockfile
 
-FROM node:20-alpine AS build
-WORKDIR /repo
-RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
-
-COPY --from=deps /repo/node_modules ./node_modules
-COPY --from=deps /repo/packages ./packages
-COPY --from=deps /repo/services ./services
 COPY . .
 
-# Prisma generate + build API
-RUN pnpm --filter @emdr42/api exec prisma generate
-RUN pnpm --filter @emdr42/api build
+RUN pnpm --filter @emdr42/api exec prisma generate \
+ && pnpm --filter @emdr42/api build
 
 FROM node:20-alpine AS production
-WORKDIR /app
+WORKDIR /repo
 ENV NODE_ENV=production
 
-RUN apk add --no-cache dumb-init wget tini
+RUN apk add --no-cache tini openssl wget
 
-# Копируем только то что нужно runtime — node_modules + dist + prisma.
-COPY --from=build /repo/services/api/dist ./dist
-COPY --from=build /repo/services/api/prisma ./prisma
-COPY --from=build /repo/services/api/package.json ./package.json
-COPY --from=build /repo/services/api/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-# node_modules через pnpm symlinks — копируем resolved tree.
-COPY --from=build /repo/node_modules /repo/node_modules
-COPY --from=build /repo/packages /repo/packages
+# Копируем весь workspace-tree (node_modules + packages + built dist).
+# Symlinks @emdr42/* резолвятся внутри /repo. Runtime-импорт TS-source — #208.
+COPY --from=builder --chown=node:node /repo /repo
 
-# pnpm создал symlinks в services/api/node_modules → /repo/node_modules
-COPY --from=build /repo/services/api/node_modules ./node_modules
+RUN chmod +x /repo/services/api/docker-entrypoint.sh
 
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
-    chown -R node:node /app /repo
-
+WORKDIR /repo/services/api
 USER node
 EXPOSE 8000
-ENTRYPOINT ["tini", "--", "/usr/local/bin/docker-entrypoint.sh"]
+ENTRYPOINT ["tini", "--", "/repo/services/api/docker-entrypoint.sh"]

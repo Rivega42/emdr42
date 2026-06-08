@@ -5,7 +5,8 @@
   "description": "Real-time WebSocket session orchestrator for EMDR therapy",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "node esbuild.config.mjs",
+    "build:tsc": "tsc",
     "start": "node dist/server.js",
     "start:dev": "ts-node src/server.ts",
     "type-check": "tsc --noEmit",
@@ -25,6 +26,7 @@
     "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20.11.0",
     "@types/ws": "^8.5.10",
+    "esbuild": "^0.27.7",
     "jest": "^30.3.0",
     "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
