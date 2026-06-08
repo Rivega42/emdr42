@@ -207,6 +207,7 @@ export class AiRouter {
       this.config.llm,
       async (provider: LlmProvider) => {
         this.emit('llm:request', { provider: provider.name, messages });
+        this.lastUsedLlmProvider = provider.name;
         const response = await provider.chat(messages, options);
         this.recordLlmUsage(provider.name, response);
         this.emit('llm:response', {
@@ -238,6 +239,8 @@ export class AiRouter {
       streaming: true,
     });
 
+    this.lastUsedLlmProvider = provider.name;
+
     try {
       yield* provider.chatStream(messages, options);
     } catch (error) {
@@ -249,12 +252,25 @@ export class AiRouter {
           from: provider.name,
           to: fallback.name,
         });
+        this.lastUsedLlmProvider = fallback.name;
         yield* fallback.chatStream(messages, options);
       } else {
         throw error;
       }
     }
   }
+
+  /**
+   * Имя LLM-провайдера, который реально обслужил последний chat/chatStream
+   * вызов. После fallback указывает на fallback-провайдер (для корректного
+   * usage tracking — раньше захардкожено `'anthropic'` приводило к неверному
+   * billing при fallback на OpenAI).
+   */
+  getLastUsedLlmProvider(): string | null {
+    return this.lastUsedLlmProvider;
+  }
+
+  private lastUsedLlmProvider: string | null = null;
 
   async transcribe(
     audio: Buffer,

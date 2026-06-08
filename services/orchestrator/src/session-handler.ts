@@ -573,10 +573,14 @@ export class SessionHandler {
         });
       }
 
-      // Usage tracking (#130) — best-effort
+      // Usage tracking (#130) — best-effort. Используем реального провайдера
+      // (после возможного fallback), а не захардкоженного `anthropic` — иначе
+      // billing неверный при failover.
+      const usedProvider =
+        this.aiRouter.getLastUsedLlmProvider?.() ?? 'unknown';
       this.backendClient.recordUsage({
         sessionId: this.sessionId,
-        provider: 'anthropic', // TODO: router should report actual provider
+        provider: usedProvider,
         providerType: 'LLM',
         inputTokens: userMessage.length / 4, // rough estimate
         outputTokens: fullResponse.length / 4,

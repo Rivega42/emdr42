@@ -4,6 +4,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 import { CreateTimelineEventDto } from './dto/create-timeline-event.dto';
@@ -15,7 +16,10 @@ import { SessionQueryDto } from './dto/session-query.dto';
 
 @Injectable()
 export class SessionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async create(
     dto: CreateSessionDto & { therapistId?: string },
@@ -115,6 +119,19 @@ export class SessionsService {
     if (userRole !== 'ADMIN' && session.userId !== userId) {
       throw new ForbiddenException('Access denied');
     }
+
+    // HIPAA §164.312(b) — audit на access to PHI. Best-effort, не блокирует
+    // основной flow при сбое audit-канала.
+    this.audit
+      .log({
+        userId: session.userId,
+        actorId: userId,
+        action: 'SESSION_READ',
+        resourceType: 'Session',
+        resourceId: id,
+        success: true,
+      })
+      .catch(() => void 0);
 
     return session;
   }
@@ -361,6 +378,16 @@ export class SessionsService {
     userRole: string,
   ): Promise<{ transcriptText: string | null }> {
     const session = await this.ensureAccess(sessionId, userId, userRole);
+    this.audit
+      .log({
+        userId: session.userId,
+        actorId: userId,
+        action: 'SESSION_TRANSCRIPT_READ',
+        resourceType: 'Session',
+        resourceId: sessionId,
+        success: true,
+      })
+      .catch(() => void 0);
     return { transcriptText: session.transcriptText ?? null };
   }
 }

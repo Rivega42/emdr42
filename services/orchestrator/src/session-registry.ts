@@ -14,6 +14,12 @@ export interface RegistryEntry {
   socketId: string;
   userId: string;
   lastActivity: number;
+  /**
+   * Если сокет отключился — момент disconnect. Сессия в этом состоянии
+   * ждёт reattach() из нового подключения того же userId. После grace-period
+   * sweeper её закроет. При successful reattach обнуляется.
+   */
+  detachedAt: number | null;
 }
 
 export interface VoiceEntry {
@@ -49,11 +55,53 @@ export class SessionRegistry {
     }
   }
 
-  addSession(sessionId: string, entry: Omit<RegistryEntry, 'lastActivity'>): void {
-    this.sessions.set(sessionId, { ...entry, lastActivity: Date.now() });
+  addSession(sessionId: string, entry: Omit<RegistryEntry, 'lastActivity' | 'detachedAt'>): void {
+    this.sessions.set(sessionId, { ...entry, lastActivity: Date.now(), detachedAt: null });
     const set = this.socketIndex.get(entry.socketId) ?? new Set();
     set.add(sessionId);
     this.socketIndex.set(entry.socketId, set);
+  }
+
+  /** Помечает все сессии socketId как detached (ожидающие reattach). */
+  markDetached(socketId: string, at: number): void {
+    const sessionIds = this.socketIndex.get(socketId);
+    if (!sessionIds) return;
+    for (const sid of sessionIds) {
+      const entry = this.sessions.get(sid);
+      if (entry) entry.detachedAt = at;
+    }
+  }
+
+  /** Возвращает detachedAt сессии (null если активна). */
+  sessionDetachedAt(sessionId: string): number | null {
+    const entry = this.sessions.get(sessionId);
+    return entry ? entry.detachedAt : null;
+  }
+
+  /**
+   * Перепривязывает detached-сессию на новый socket того же userId.
+   * Возвращает true если успешно. Если сессии нет, или userId не совпадает,
+   * или сессия активна (не detached) — false.
+   */
+  reattach(sessionId: string, userId: string, newSocketId: string): boolean {
+    const entry = this.sessions.get(sessionId);
+    if (!entry || entry.userId !== userId) return false;
+    // Снимаем старую socketIndex-привязку.
+    const oldSet = this.socketIndex.get(entry.socketId);
+    if (oldSet) {
+      oldSet.delete(sessionId);
+      if (oldSet.size === 0) this.socketIndex.delete(entry.socketId);
+    }
+    entry.socketId = newSocketId;
+    entry.detachedAt = null;
+    entry.lastActivity = Date.now();
+    const newSet = this.socketIndex.get(newSocketId) ?? new Set();
+    newSet.add(sessionId);
+    this.socketIndex.set(newSocketId, newSet);
+    // Voice handler перепривязка — если был, обновляем socketId.
+    const v = this.voice.get(sessionId);
+    if (v) v.socketId = newSocketId;
+    return true;
   }
 
   getSession(sessionId: string): SessionHandler | undefined {

@@ -100,3 +100,4 @@ coverage/
 .claude/
 tsconfig.tsbuildinfo
 .claude/worktrees/
+!lib/types/
