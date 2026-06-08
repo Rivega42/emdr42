@@ -30,6 +30,7 @@
     "node_modules",
     "apps",
     "services",
+    "tools",
     "packages/livekit-integration",
     "packages/ai-providers",
     "packages/emdr-engine",
