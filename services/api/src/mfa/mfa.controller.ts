@@ -6,6 +6,7 @@ import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Throttle, ThrottleGuard } from '../common/guards/throttle.guard';
+import { AuthService } from '../auth/auth.service';
 import { MfaService } from './mfa.service';
 
 class CodeDto {
@@ -15,8 +16,13 @@ class CodeDto {
 }
 
 class ChallengeDto {
+  /**
+   * Short-lived signed token, выданный login step 1. Заменил raw userId,
+   * который позволял атакующему с украденным TOTP проходить за чужого
+   * пользователя без знания пароля.
+   */
   @IsString()
-  userId!: string;
+  mfaToken!: string;
 
   @IsString()
   @Length(6, 20)
@@ -33,7 +39,10 @@ class DisableDto {
 @Controller('mfa')
 @UseGuards(ThrottleGuard)
 export class MfaController {
-  constructor(private readonly service: MfaService) {}
+  constructor(
+    private readonly service: MfaService,
+    private readonly authService: AuthService,
+  ) {}
 
   @Post('setup')
   @ApiBearerAuth()
@@ -60,7 +69,9 @@ export class MfaController {
   @Throttle(10, 60)
   @ApiOperation({ summary: 'Login step 2 — предоставить TOTP или backup code' })
   async challenge(@Body() dto: ChallengeDto, @Req() req: Request) {
-    return this.service.verifyChallenge(dto.userId, dto.code, {
+    // Извлекаем userId из подписанного токена step 1, а не из body.
+    const userId = this.authService.verifyMfaChallengeToken(dto.mfaToken);
+    return this.service.verifyChallenge(userId, dto.code, {
       ip: req.ip,
       userAgent: req.headers['user-agent'],
     });

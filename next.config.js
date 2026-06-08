@@ -9,12 +9,16 @@ const liveKitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL || '';
 const isDev = process.env.NODE_ENV !== 'production';
 
 const buildCsp = () => {
+  // В production убираем 'unsafe-inline' из script-src — без этого XSS становится
+  // полноценным (любой inline-tag выполняется). Inline-скрипты вынесены в
+  // отдельные файлы (например public/register-sw.js).
+  // 'unsafe-inline' для style-src оставляем — Tailwind + framer-motion ставят
+  // inline-style runtime'ом; nonce-based замена — задача отдельного спринта.
   const parts = {
     'default-src': ["'self'"],
     'script-src': [
       "'self'",
-      "'unsafe-inline'",
-      ...(isDev ? ["'unsafe-eval'"] : []),
+      ...(isDev ? ["'unsafe-inline'", "'unsafe-eval'"] : []),
       'https://cdn.jsdelivr.net', // face-api CDN
       'blob:', // Web workers
     ],

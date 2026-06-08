@@ -152,11 +152,17 @@ const main = async (): Promise<void> => {
       }
     );
 
+    // Helper — owned-only lookup для всех session-events. Без этой проверки
+    // любой авторизованный пользователь, знающий чужой sessionId, мог бы
+    // управлять чужой EMDR-сессией. См. SessionRegistry.getOwnedSession.
+    const ownedSession = (sessionId: string) =>
+      registry.getOwnedSession(sessionId, userId);
+
     // ---- session:message ----
     socket.on(
       'session:message',
       async (data: { sessionId: string; text: string }) => {
-        const handler = registry.getSession(data.sessionId);
+        const handler = ownedSession(data.sessionId);
         if (!handler) {
           socket.emit('session:error', { message: 'Session not found' });
           return;
@@ -173,7 +179,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:emotion',
       (data: { sessionId: string; emotion: EmotionSnapshot }) => {
-        const handler = registry.getSession(data.sessionId);
+        const handler = ownedSession(data.sessionId);
         if (!handler) return;
         handler.handleEmotionUpdate(data.emotion);
       }
@@ -183,7 +189,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:suds',
       (data: { sessionId: string; value: number; context: string }) => {
-        const handler = registry.getSession(data.sessionId);
+        const handler = ownedSession(data.sessionId);
         if (!handler) return;
         handler.handleSudsRating(data.value, data.context);
       }
@@ -193,7 +199,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:voc',
       (data: { sessionId: string; value: number; context: string }) => {
-        const handler = registry.getSession(data.sessionId);
+        const handler = ownedSession(data.sessionId);
         if (!handler) return;
         handler.handleVocRating(data.value, data.context);
       }
@@ -203,7 +209,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:stop_signal',
       (data: { sessionId: string }) => {
-        const handler = registry.getSession(data.sessionId);
+        const handler = ownedSession(data.sessionId);
         if (!handler) return;
         handler.handleStopSignal();
       }
@@ -213,7 +219,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:pause',
       (data: { sessionId: string }) => {
-        const handler = registry.getSession(data.sessionId);
+        const handler = ownedSession(data.sessionId);
         if (!handler) return;
         handler.handlePause();
       }
@@ -223,7 +229,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:resume',
       (data: { sessionId: string }) => {
-        const handler = registry.getSession(data.sessionId);
+        const handler = ownedSession(data.sessionId);
         if (!handler) return;
         handler.handleResume();
       }
@@ -233,7 +239,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'session:end',
       async (data: { sessionId: string }) => {
-        const handler = registry.getSession(data.sessionId);
+        const handler = ownedSession(data.sessionId);
         if (!handler) return;
 
         try {
@@ -250,13 +256,13 @@ const main = async (): Promise<void> => {
     socket.on(
       'voice:start',
       async (data: { sessionId: string }) => {
-        const handler = registry.getSession(data.sessionId);
+        const handler = ownedSession(data.sessionId);
         if (!handler) {
           socket.emit('voice:error', { message: 'Session not found' });
           return;
         }
 
-        if (!registry.getVoice(data.sessionId)) {
+        if (!registry.getOwnedVoice(data.sessionId, userId)) {
           const voiceHandler = new VoiceHandler(
             socket,
             data.sessionId,
@@ -273,7 +279,7 @@ const main = async (): Promise<void> => {
         }
 
         try {
-          await registry.getVoice(data.sessionId)!.start();
+          await registry.getOwnedVoice(data.sessionId, userId)!.start();
         } catch (err) {
           console.error(`[voice:${data.sessionId}] Start failed:`, err);
         }
@@ -284,7 +290,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'voice:audio',
       (data: { sessionId: string; audio: ArrayBuffer; timestamp: number }) => {
-        const voiceHandler = registry.getVoice(data.sessionId);
+        const voiceHandler = registry.getOwnedVoice(data.sessionId, userId);
         if (!voiceHandler) return;
         voiceHandler.handleAudioChunk(data.audio);
       }
@@ -294,7 +300,7 @@ const main = async (): Promise<void> => {
     socket.on(
       'voice:stop',
       (data: { sessionId: string }) => {
-        const voiceHandler = registry.getVoice(data.sessionId);
+        const voiceHandler = registry.getOwnedVoice(data.sessionId, userId);
         if (voiceHandler) {
           try {
             voiceHandler.stop();

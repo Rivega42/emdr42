@@ -299,6 +299,42 @@ export class SessionHandler {
           paused: true,
         });
       }
+
+      // Эскалация в CrisisService при CRITICAL диссоциации/abreaction.
+      // Без этого терапевт не получит уведомление и пациент остаётся один
+      // на один с серьёзной деком пенсацией (HIPAA duty of care).
+      if (analysis.intervention.priority === 'critical') {
+        const criticalTypes = new Set([
+          'dissociation',
+          'abreaction',
+          'panic',
+          'suicide_ideation',
+          'self_harm',
+        ]);
+        for (const ev of analysis.events) {
+          if (!criticalTypes.has(String(ev.type ?? '').toLowerCase())) continue;
+          const mappedType = (() => {
+            const t = String(ev.type).toLowerCase();
+            if (t === 'suicide_ideation') return 'SUICIDE_IDEATION' as const;
+            if (t === 'self_harm') return 'SELF_HARM' as const;
+            if (t === 'panic') return 'PANIC' as const;
+            // abreaction → DISSOCIATION (ближайший fit в CrisisService schema)
+            return 'DISSOCIATION' as const;
+          })();
+          this.backendClient
+            .recordCrisisEvent({
+              sessionId: this.sessionId,
+              severity: 'CRITICAL',
+              type: mappedType,
+            })
+            .catch((err) =>
+              console.error(
+                `[session:${this.sessionId}] Failed to record crisis event:`,
+                err,
+              ),
+            );
+        }
+      }
     }
 
     // Feed to AdaptiveController for BLS adjustment

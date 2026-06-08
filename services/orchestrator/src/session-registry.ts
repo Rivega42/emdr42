@@ -63,6 +63,27 @@ export class SessionRegistry {
     return entry.handler;
   }
 
+  /**
+   * Возвращает handler ТОЛЬКО если sessionId принадлежит данному userId.
+   * Без этой проверки любой авторизованный пользователь, узнавший чужой
+   * sessionId, мог управлять чужой EMDR-сессией (SUDS, end, pause).
+   */
+  getOwnedSession(sessionId: string, userId: string): SessionHandler | undefined {
+    const entry = this.sessions.get(sessionId);
+    if (!entry || entry.userId !== userId) return undefined;
+    entry.lastActivity = Date.now();
+    return entry.handler;
+  }
+
+  getOwnedVoice(sessionId: string, userId: string): VoiceHandler | undefined {
+    const session = this.sessions.get(sessionId);
+    if (!session || session.userId !== userId) return undefined;
+    const v = this.voice.get(sessionId);
+    if (!v) return undefined;
+    v.lastActivity = Date.now();
+    return v.handler;
+  }
+
   hasSession(sessionId: string): boolean {
     return this.sessions.has(sessionId);
   }

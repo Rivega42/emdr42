@@ -99,12 +99,36 @@ export class AuthService {
       });
     }
 
-    // MFA challenge skeleton — полноценный TOTP flow требует отдельных endpoints
+    // MFA challenge. Раньше отдавали raw userId — атакующий, узнавший
+    // чужой TOTP-код, мог пройти challenge без знания пароля. Теперь выдаём
+    // short-lived signed mfaToken с purpose='mfa-challenge' и TTL 5мин.
     if (user.mfaEnabled) {
-      return { mfaRequired: true, userId: user.id };
+      const mfaToken = this.jwtService.sign(
+        { sub: user.id, purpose: 'mfa-challenge' },
+        { expiresIn: '5m' },
+      );
+      return { mfaRequired: true, mfaToken };
     }
 
     return this.issueTokenPair(user, meta);
+  }
+
+  /**
+   * Verify mfaToken и вернуть userId. Используется MfaService в verifyChallenge.
+   * Throws UnauthorizedException если токен невалиден / истёк / неверный purpose.
+   */
+  verifyMfaChallengeToken(mfaToken: string): string {
+    try {
+      const payload = this.jwtService.verify<{ sub: string; purpose?: string }>(
+        mfaToken,
+      );
+      if (payload.purpose !== 'mfa-challenge' || !payload.sub) {
+        throw new UnauthorizedException('Invalid MFA challenge token');
+      }
+      return payload.sub;
+    } catch {
+      throw new UnauthorizedException('Invalid or expired MFA challenge token');
+    }
   }
 
   private async handleFailedAttempt(userId: string) {

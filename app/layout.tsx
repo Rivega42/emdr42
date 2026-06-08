@@ -41,11 +41,9 @@ export default function RootLayout({
           src="https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/dist/face-api.min.js"
           strategy="afterInteractive"
         />
-        <Script id="sw-register" strategy="afterInteractive">{`
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(() => {});
-          }
-        `}</Script>
+        {/* Inline скрипт вынесен в /register-sw.js чтобы prod CSP не требовал
+            'unsafe-inline' в script-src (XSS hardening). */}
+        <Script src="/register-sw.js" strategy="afterInteractive" />
         <Providers>{children}</Providers>
       </body>
     </html>

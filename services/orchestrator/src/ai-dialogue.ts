@@ -50,6 +50,12 @@ export class AiDialogue {
       enableArmor?: boolean;
       personalNames?: string[];
       patientContext?: string;
+      /**
+       * Tighter cap для voice path (синтез ~6-8 tokens/сек → 150 токенов ≈
+       * 18-20 секунд аудио, что комфортно для пациента в фазе десенсибилизации).
+       * По умолчанию 600 — для текстового UI.
+       */
+      maxTokens?: number;
       onInjection?: (analysis: { suspicious: boolean; score: number; matched: string[] }) => void;
     },
   ): AsyncGenerator<string> {
@@ -72,7 +78,7 @@ export class AiDialogue {
     let fullResponse = '';
 
     const stream = this.aiRouter.chatStream(messages, {
-      maxTokens: 1000,
+      maxTokens: opts?.maxTokens ?? 600,
       enableArmor: opts?.enableArmor ?? true,
       redactPersonalNames: opts?.personalNames,
       onInjection: opts?.onInjection,

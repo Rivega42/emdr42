@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, randomInt } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { GamificationService } from '../gamification/gamification.service';
@@ -122,7 +122,9 @@ export class VerificationService {
   }
 
   async sendPhoneCode(userId: string, phone: string): Promise<void> {
-    const code = (Math.floor(Math.random() * 900000) + 100000).toString();
+    // Криптостойкий 6-digit code. Math.random — не CSPRNG, к brute-force
+    // 6-digit с фиксированным prefix-bias уязвим к partial-disclosure атакам.
+    const code = randomInt(100_000, 1_000_000).toString();
     const codeHash = this.hash(code);
 
     await this.prisma.verificationToken.updateMany({

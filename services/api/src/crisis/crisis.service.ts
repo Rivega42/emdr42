@@ -96,7 +96,7 @@ export class CrisisService {
 
       if (assignments.length > 0) {
         const patientName = patient?.name ?? 'Пациент';
-        await Promise.allSettled(
+        const results = await Promise.allSettled(
           assignments.map((a) =>
             this.notifications.notify({
               type: 'therapist_crisis_alert',
@@ -105,10 +105,30 @@ export class CrisisService {
             }),
           ),
         );
-        await this.prisma.crisisEvent.update({
-          where: { id: event.id },
-          data: { therapistNotified: true },
-        });
+        // Помечаем notified ТОЛЬКО при подтверждённой доставке хотя бы
+        // одного уведомления. Иначе при тотальном падении SMTP/SMS пациент
+        // оставался один с CRITICAL-событием без человеческого надзора.
+        const delivered = results.some((r) => r.status === 'fulfilled');
+        if (delivered) {
+          await this.prisma.crisisEvent.update({
+            where: { id: event.id },
+            data: { therapistNotified: true },
+          });
+        } else {
+          // Все попытки упали — оставляем therapistNotified=false и пишем
+          // дополнительный audit-log для observability/alerting.
+          const errors = results
+            .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+            .map((r) => String(r.reason));
+          await this.audit.log({
+            userId: input.userId,
+            action: 'CRISIS_NOTIFY_FAILED',
+            resourceType: 'CrisisEvent',
+            resourceId: event.id,
+            correlationId: input.correlationId,
+            details: { severity: input.severity, errors: errors.slice(0, 3) },
+          });
+        }
       }
     }
 
