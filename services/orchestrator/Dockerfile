@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.6
 # Orchestrator (Socket.io WS). Контекст билда — корень монорепо.
-# esbuild bundle инлайнит workspace-пакеты @emdr42/* (которые экспортируют
-# TS-source) в единый dist/server.js. Реальные npm-deps остаются external
-# и ставятся в runner через pnpm --prod deploy.
+# esbuild bundle инлайнит workspace-пакеты @emdr42/* в единый dist/server.js.
+# Runner ставит только внешние runtime-зависимости (через npm, без workspace) —
+# это надёжнее pnpm deploy (капризен в pnpm 10) и даёт минимальный образ.
 
 FROM node:20-alpine AS builder
 WORKDIR /repo
@@ -21,9 +21,7 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-# esbuild bundle (@emdr42/* инлайнены) + deploy с прод-зависимостями.
-RUN pnpm --filter @emdr42/orchestrator build \
- && pnpm --filter @emdr42/orchestrator --prod deploy /app
+RUN pnpm --filter @emdr42/orchestrator build
 
 FROM node:20-alpine AS production
 WORKDIR /app
@@ -31,7 +29,18 @@ ENV NODE_ENV=production PORT=8002
 
 RUN apk add --no-cache tini wget
 
-COPY --from=builder --chown=node:node /app /app
+# Bundle (self-contained кроме external npm-deps).
+COPY --from=builder --chown=node:node /repo/services/orchestrator/dist ./dist
+
+# Только внешние runtime-зависимости (esbuild оставил их external).
+# Версии синхронны с services/orchestrator/package.json.
+RUN npm install --no-save --omit=dev \
+      ioredis@^5.3.2 \
+      jsonwebtoken@^9.0.2 \
+      prom-client@^15.1.3 \
+      socket.io@^4.7.4 \
+      ws@^8.16.0 \
+ && chown -R node:node /app
 
 USER node
 EXPOSE 8002

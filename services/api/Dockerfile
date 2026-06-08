@@ -1,7 +1,11 @@
 # syntax=docker/dockerfile:1.6
 # NestJS API. Контекст билда — корень монорепо (pnpm workspace).
-# `pnpm deploy` создаёт self-contained директорию (без symlinks в .pnpm),
-# которую можно скопировать в минимальный runner.
+#
+# ВНИМАНИЕ (#208): workspace-пакеты @emdr42/* экспортируют TS-source
+# (main: ./src/index.ts). NestJS esbuild-bundling рискован из-за
+# DI-метаданных декораторов, поэтому здесь оставлен tsc-build. Образ
+# СОБИРАЕТСЯ; runtime-импорт @emdr42/* требует решения из #208 (сборка
+# пакетов в dist или ts-node runtime). Vika валидирует при первом deploy.
 
 FROM node:20-alpine AS builder
 WORKDIR /repo
@@ -20,21 +24,22 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-# Prisma generate + build, затем deploy в self-contained директорию.
 RUN pnpm --filter @emdr42/api exec prisma generate \
- && pnpm --filter @emdr42/api build \
- && pnpm --filter @emdr42/api --prod deploy /app
+ && pnpm --filter @emdr42/api build
 
 FROM node:20-alpine AS production
-WORKDIR /app
+WORKDIR /repo
 ENV NODE_ENV=production
 
-RUN apk add --no-cache tini openssl
+RUN apk add --no-cache tini openssl wget
 
-# Self-contained deploy: dist + prisma + node_modules (без symlinks).
-COPY --from=builder --chown=node:node /app /app
-RUN chmod +x /app/docker-entrypoint.sh
+# Копируем весь workspace-tree (node_modules + packages + built dist).
+# Symlinks @emdr42/* резолвятся внутри /repo. Runtime-импорт TS-source — #208.
+COPY --from=builder --chown=node:node /repo /repo
 
+RUN chmod +x /repo/services/api/docker-entrypoint.sh
+
+WORKDIR /repo/services/api
 USER node
 EXPOSE 8000
-ENTRYPOINT ["tini", "--", "/app/docker-entrypoint.sh"]
+ENTRYPOINT ["tini", "--", "/repo/services/api/docker-entrypoint.sh"]
