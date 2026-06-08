@@ -82,6 +82,12 @@ export const metrics = {
     help: 'Circuit breaker state (1=CLOSED, 0.5=HALF_OPEN, 0=OPEN)',
     labelNames: ['provider', 'state'],
   }),
+
+  wsRateLimited: new client.Counter({
+    name: 'orchestrator_ws_rate_limited_total',
+    help: 'WebSocket events dropped by per-socket rate limiter',
+    labelNames: ['event'],
+  }),
 };
 
 export const metricsHandler = async (): Promise<{

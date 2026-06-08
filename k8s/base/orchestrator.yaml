@@ -21,9 +21,21 @@ spec:
         app: orchestrator
     spec:
       terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: orchestrator
           image: ghcr.io/rivega42/emdr42-orchestrator:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 8002
               name: ws
@@ -43,6 +55,23 @@ spec:
               port: 8002
             initialDelaySeconds: 20
             periodSeconds: 15
+          # Readiness — без него Service шлёт трафик в неготовый pod
+          # и новые WebSocket-подключения рвались на rolling update.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 3
+          # Startup probe для медленного init (грузка моделей AI-providers,
+          # коннект к Redis/backend) — даёт до 60с прежде чем liveness начнёт.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            failureThreshold: 30
+            periodSeconds: 2
           resources:
             requests:
               cpu: 250m

@@ -21,9 +21,21 @@ spec:
         app: api
     spec:
       terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: api
           image: ghcr.io/rivega42/emdr42-api:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 8000
               name: http
@@ -35,6 +47,12 @@ spec:
           env:
             - name: PORT
               value: "8000"
+          volumeMounts:
+            # Под readOnlyRootFilesystem нужен writable scratch для tmp/cache.
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /app/.cache
           livenessProbe:
             httpGet:
               path: /healthz
@@ -58,6 +76,11 @@ spec:
             limits:
               cpu: 1000m
               memory: 512Mi
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

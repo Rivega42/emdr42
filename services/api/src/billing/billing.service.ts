@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   NotFoundException,
@@ -198,7 +199,24 @@ export class BillingService {
       );
     } catch (err) {
       this.logger.warn(`Webhook signature verification failed: ${err}`);
-      throw new ServiceUnavailableException('Invalid signature');
+      // 400 — Stripe прекратит retry. 5xx запускает 3 дня retry.
+      throw new BadRequestException('Invalid signature');
+    }
+
+    // Идемпотентность через event.id. Stripe retry-ит webhook при таймауте,
+    // без unique-проверки subscription/invoice upsert происходил повторно.
+    try {
+      await this.prisma.processedStripeEvent.create({
+        data: { eventId: event.id, type: event.type },
+      });
+    } catch (err: any) {
+      // P2002 — unique violation = уже обработали этот event. Возвращаем 200,
+      // чтобы Stripe прекратил retry.
+      if (err?.code === 'P2002') {
+        this.logger.debug(`Duplicate Stripe event ${event.id}, skipping`);
+        return { received: true, duplicate: true };
+      }
+      throw err;
     }
 
     switch (event.type) {

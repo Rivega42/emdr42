@@ -110,6 +110,42 @@ const main = async (): Promise<void> => {
     console.log(`[ws] Client connected: userId=${userId} socketId=${socket.id}`);
     metrics.wsConnections.inc();
 
+    // ---- per-socket rate-limit middleware ----
+    // Защищает от DoS через спам session:emotion / session:message / voice:audio.
+    // Бюджет per-event-type, sliding window 1 сек. Превышение → silent drop +
+    // metric. Без лимита одна вкладка пациента могла бы выжечь LLM-квоту
+    // суток за минуты.
+    const RATE_LIMITS: Record<string, number> = {
+      'session:emotion': 30, // 30/sec — TF.js emit-ы каждые ~33мс
+      'session:message': 5,
+      'session:suds': 3,
+      'session:voc': 3,
+      'voice:audio': 60, // ~60 audio chunks/sec при 16kHz mono
+      'voice:start': 2,
+      'voice:stop': 2,
+      'session:pause': 5,
+      'session:resume': 5,
+    };
+    const eventCounts = new Map<string, { count: number; windowStart: number }>();
+    socket.use(([event], next) => {
+      if (typeof event !== 'string') return next();
+      const limit = RATE_LIMITS[event];
+      if (!limit) return next();
+      const now = Date.now();
+      const entry = eventCounts.get(event);
+      if (!entry || now - entry.windowStart > 1000) {
+        eventCounts.set(event, { count: 1, windowStart: now });
+        return next();
+      }
+      if (entry.count >= limit) {
+        // Silent drop. Метрика для observability.
+        metrics.wsRateLimited?.inc?.({ event });
+        return; // не вызываем next → event не дойдёт до handler
+      }
+      entry.count += 1;
+      next();
+    });
+
     // ---- session:start ----
     socket.on(
       'session:start',

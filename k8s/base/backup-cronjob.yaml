@@ -1,16 +1,7 @@
 # Daily PostgreSQL backup CronJob (#137)
-# Требует: emdr42-backup-secret с AWS credentials (если S3 enabled)
-
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: backup-scripts
-  namespace: emdr42
-data:
-  backup-postgres.sh: |-
-    # Скрипт копируется из scripts/backup-postgres.sh при deploy.
-    # Для простоты использовать volume mount или custom image.
----
+# Требует: emdr42-backup-secret с AWS credentials (если S3 enabled).
+# ConfigMap backup-scripts генерируется из scripts/backup-postgres.sh через
+# configMapGenerator в k8s/base/kustomization.yaml — не определяем здесь.
 apiVersion: batch/v1
 kind: CronJob
 metadata:

@@ -59,23 +59,33 @@ export class RefreshTokenService {
     meta?: { ip?: string; userAgent?: string },
   ): Promise<{ userId: string; newToken: IssuedRefreshToken }> {
     const tokenHash = this.hash(presentedToken);
+    const now = new Date();
+
+    // Сначала смотрим, существует ли вообще такой токен — для разделения
+    // случаев "не найден" / "уже использован" / "истёк".
     const record = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
     });
-
     if (!record) {
       throw new UnauthorizedException('Refresh token not found');
     }
-
-    const now = new Date();
-
     if (record.expiresAt < now) {
       throw new UnauthorizedException('Refresh token expired');
     }
 
-    if (record.revokedAt) {
-      // Token theft detection: токен уже revoked, но его предъявляют снова.
-      // Отзываем все активные токены этого пользователя.
+    // Атомарная попытка ротации: revoke только если token всё ещё не revoked.
+    // Без этой проверки два параллельных /auth/refresh с одним токеном оба
+    // проходили проверку revokedAt=null и оба выпускали новые пары — стандартная
+    // race condition в rotation flow.
+    const updated = await this.prisma.refreshToken.updateMany({
+      where: { tokenHash, revokedAt: null },
+      data: { revokedAt: now },
+    });
+
+    if (updated.count !== 1) {
+      // Кто-то уже захватил этот токен (concurrent refresh) ИЛИ это replay
+      // ранее revoked токена. В обоих случаях считаем компрометацией —
+      // отзываем ВСЕ активные refresh пользователя.
       await this.prisma.refreshToken.updateMany({
         where: { userId: record.userId, revokedAt: null },
         data: { revokedAt: now },
@@ -84,12 +94,6 @@ export class RefreshTokenService {
         'Refresh token was already used. All sessions revoked for security.',
       );
     }
-
-    // Ротация: revoke старый, выдать новый
-    await this.prisma.refreshToken.update({
-      where: { id: record.id },
-      data: { revokedAt: now },
-    });
 
     const newToken = await this.issue(record.userId, meta);
     return { userId: record.userId, newToken };

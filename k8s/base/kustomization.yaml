@@ -14,6 +14,17 @@ resources:
   - frontend.yaml
   - ingress.yaml
   - network-policy.yaml
+  - backup-cronjob.yaml
+
+# Скрипт бэкапа монтируется CronJob-ом из этого ConfigMap. Раньше
+# ConfigMap был пустым stub в backup-cronjob.yaml, и `bash /scripts/backup-postgres.sh`
+# падал → бэкапов не было.
+configMapGenerator:
+  - name: backup-scripts
+    files:
+      - backup-postgres.sh=../../scripts/backup-postgres.sh
+    options:
+      disableNameSuffixHash: true
 
 commonLabels:
   app.kubernetes.io/name: emdr42

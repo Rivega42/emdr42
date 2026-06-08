@@ -436,3 +436,15 @@ model AuditLog {
   @@index([resourceType])
   @@index([userId, timestamp])
 }
+
+// Stripe webhook idempotency (#145).
+// Без unique-проверки event.id retry от Stripe приводил к двойному
+// списанию / двойному upsert. Заодно фиксируем processedAt для метрик
+// замедления и аудита.
+model ProcessedStripeEvent {
+  eventId     String   @id
+  type        String
+  processedAt DateTime @default(now())
+
+  @@index([processedAt])
+}

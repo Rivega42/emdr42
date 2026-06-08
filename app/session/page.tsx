@@ -785,15 +785,23 @@ export default function SessionPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="safety-alert-title"
+            aria-describedby="safety-alert-desc"
+            aria-live="assertive"
           >
             <div className="bg-white border border-red-200 rounded-lg p-8 max-w-md mx-4 shadow-lg">
-              <h2 className="text-xl font-bold text-red-600 mb-3">Safety Alert</h2>
-              <p className="text-red-500 text-sm mb-2">Risk level: {safetyAlert.riskLevel}</p>
-              {safetyAlert.events.map((evt, i) => (
-                <p key={i} className="text-gray-600 text-sm">{evt.type}: {evt.actionTaken}</p>
-              ))}
+              <h2 id="safety-alert-title" className="text-xl font-bold text-red-600 mb-3">Safety Alert</h2>
+              <div id="safety-alert-desc">
+                <p className="text-red-500 text-sm mb-2">Risk level: {safetyAlert.riskLevel}</p>
+                {safetyAlert.events.map((evt, i) => (
+                  <p key={i} className="text-gray-600 text-sm">{evt.type}: {evt.actionTaken}</p>
+                ))}
+              </div>
               <button
                 onClick={() => setSafetyAlert(null)}
+                autoFocus
                 className="mt-6 w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-md font-semibold transition-colors"
               >
                 Acknowledge
@@ -811,12 +819,18 @@ export default function SessionPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="intervention-title"
+            aria-describedby="intervention-desc"
+            aria-live="assertive"
           >
             <div className="bg-white border border-amber-200 rounded-lg p-8 max-w-md mx-4 shadow-lg">
-              <h2 className="text-xl font-bold text-amber-700 mb-3">Intervention</h2>
-              <p className="text-gray-700 text-sm mb-4 whitespace-pre-line">{intervention.instructions}</p>
+              <h2 id="intervention-title" className="text-xl font-bold text-amber-700 mb-3">Intervention</h2>
+              <p id="intervention-desc" className="text-gray-700 text-sm mb-4 whitespace-pre-line">{intervention.instructions}</p>
               <button
                 onClick={() => setIntervention(null)}
+                autoFocus
                 className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-md font-semibold transition-colors"
               >
                 I understand
@@ -834,9 +848,12 @@ export default function SessionPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="session-summary-title"
           >
             <div className="bg-white border border-gray-200 rounded-lg p-8 max-w-md mx-4 shadow-lg">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Session Complete</h2>
+              <h2 id="session-summary-title" className="text-2xl font-bold text-gray-900 mb-4">Session Complete</h2>
               <div className="space-y-2 text-sm text-gray-500 mb-6">
                 <p>Duration: {formatTime(sessionSummary.elapsedSeconds)}</p>
                 <p>BLS sets completed: {sessionSummary.blsSetsCompleted}</p>

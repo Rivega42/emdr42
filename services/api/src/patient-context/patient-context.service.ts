@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { redactPii } from '@emdr42/ai-providers';
 
 /**
  * PatientContextService (#81).
@@ -230,7 +231,12 @@ export class PatientContextService {
 
     if (ctx.sharedNotes.length > 0) {
       lines.push('Заметки терапевта (shared):');
-      ctx.sharedNotes.slice(0, 3).forEach((n) => lines.push(`- ${n.content}`));
+      // PII-redact перед попаданием в system-prompt LLM (HIPAA minimum-necessary).
+      // Терапевт может писать имя пациента / адрес / телефон — это не должно
+      // уходить в Anthropic/OpenAI.
+      ctx.sharedNotes
+        .slice(0, 3)
+        .forEach((n) => lines.push(`- ${redactPii(n.content)}`));
     }
 
     return lines.join('\n');

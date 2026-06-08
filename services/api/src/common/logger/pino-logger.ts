@@ -31,6 +31,7 @@ const baseLogger = pino({
   timestamp: pino.stdTimeFunctions.isoTime,
   redact: {
     paths: [
+      // Auth
       'req.headers.authorization',
       'req.headers.cookie',
       'req.body.password',
@@ -38,10 +39,35 @@ const baseLogger = pino({
       'req.body.newPassword',
       'req.body.token',
       'req.body.refreshToken',
+      'req.body.mfaToken',
+      'req.body.code', // TOTP / SMS / email verify
+      'req.body.mfaSecret',
+      'req.body.backupCode',
+      'req.query.token',
       '*.passwordHash',
       '*.tokenHash',
+      '*.refreshToken',
+      '*.mfaSecret',
       '*.apiKey',
       '*.stripeSecretKey',
+      // PHI / PII (HIPAA minimum-necessary)
+      '*.email',
+      '*.phone',
+      '*.emergencyContactPhone',
+      '*.emergencyContactName',
+      '*.targetMemory',
+      '*.targetImage',
+      '*.negativeCognition',
+      '*.positiveCognition',
+      '*.closureTechnique',
+      '*.clientStateAtEnd',
+      '*.betweenSessionNotes',
+      '*.bodyLocation',
+      '*.transcriptText',
+      '*.triggerText',
+      // Audit-log details часто содержат email / резюме изменений
+      'req.body.details.email',
+      'details.email',
     ],
     censor: '[REDACTED]',
   },
