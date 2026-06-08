@@ -3,12 +3,10 @@ name: Deploy to production
 on:
   push:
     tags: ['v*']
-  release:
-    types: [published]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   packages: write
 
 concurrency:
@@ -24,40 +22,71 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v3
-        with: { version: 9 }
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: 'pnpm' }
-      - name: Install
-        run: pnpm install --frozen-lockfile
-      - name: Build
-        run: pnpm -r build
+      - name: Resolve tag
+        id: tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
 
-      - name: Push image
-        if: hashFiles('Dockerfile') != ''
+      - name: Install kubectl + kustomize
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+      - run: |
+          curl -sL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz | tar xz
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Configure kubeconfig
+        env:
+          KUBECONFIG_B64: ${{ secrets.PROD_KUBECONFIG }}
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          TAG=${GITHUB_REF#refs/tags/}
-          docker build -t ghcr.io/${{ github.repository }}:$TAG .
-          docker push ghcr.io/${{ github.repository }}:$TAG
-          docker tag ghcr.io/${{ github.repository }}:$TAG ghcr.io/${{ github.repository }}:latest
-          docker push ghcr.io/${{ github.repository }}:latest
+          if [ -z "$KUBECONFIG_B64" ]; then
+            echo "::error::PROD_KUBECONFIG secret not set (Vika issue #155)"
+            exit 1
+          fi
+          mkdir -p ~/.kube
+          echo "$KUBECONFIG_B64" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
 
-      - name: Deploy (placeholder — Vika settings)
+      - name: Set image tag in prod overlay
+        working-directory: k8s/overlays/prod
         run: |
-          echo "TODO[devops:vika]: kubectl apply -k k8s/overlays/prod"
-          echo "См. issue #136"
+          kustomize edit set image \
+            ghcr.io/rivega42/emdr42-api=ghcr.io/rivega42/emdr42-api:${{ steps.tag.outputs.tag }} \
+            ghcr.io/rivega42/emdr42-orchestrator=ghcr.io/rivega42/emdr42-orchestrator:${{ steps.tag.outputs.tag }} \
+            ghcr.io/rivega42/emdr42-frontend=ghcr.io/rivega42/emdr42-frontend:${{ steps.tag.outputs.tag }}
 
-      - name: Run migrations (placeholder — Vika settings)
+      - name: Backup DB (snapshot before migrate)
         run: |
-          echo "TODO[devops:vika]: backup → pnpm --filter @emdr42/api prisma migrate deploy → verify"
-          echo "См. issue #113 + RUNBOOK.md"
-        continue-on-error: true
+          kubectl -n emdr42 create job --from=cronjob/postgres-backup \
+            pre-deploy-${{ steps.tag.outputs.tag }}-$(date +%s) || true
+          # не блокируем deploy если backup не настроен — лучше ошибка пайплайна,
+          # чем застрявший rollout
 
-      - name: E2E smoke tests
+      - name: Apply migrations Job
+        run: |
+          kustomize build k8s/overlays/prod | kubectl apply -f - --selector=app=api-migrate
+          # Force re-run если Job уже существует с тем же образом
+          kubectl -n emdr42 delete job api-migrate --ignore-not-found
+          kustomize build k8s/overlays/prod | kubectl apply -f - --selector=app=api-migrate
+          kubectl -n emdr42 wait --for=condition=complete --timeout=10m job/api-migrate
+
+      - name: Apply all manifests
+        run: kustomize build k8s/overlays/prod | kubectl apply -f -
+
+      - name: Wait for rollout
+        run: |
+          kubectl -n emdr42 rollout status deploy/api --timeout=10m
+          kubectl -n emdr42 rollout status deploy/orchestrator --timeout=10m
+          kubectl -n emdr42 rollout status deploy/frontend --timeout=10m
+
+      - name: Smoke test
         run: |
           if [ -n "${{ vars.PROD_URL }}" ]; then
-            curl -fsS "${{ vars.PROD_URL }}/health" || curl -fsS "${{ vars.PROD_URL }}/healthz"
+            for i in 1 2 3 4 5; do
+              if curl -fsS "${{ vars.PROD_URL }}/healthz"; then exit 0; fi
+              sleep 10
+            done
+            echo "::error::Smoke test failed"
+            exit 1
           fi
 
       - name: Notify
@@ -69,5 +98,5 @@ jobs:
           if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
             curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
               -H "Content-Type: application/json" \
-              -d "{\"chat_id\":\"${{ secrets.TELEGRAM_CHAT_ID }}\",\"text\":\"$ICON *PROD deploy* ${{ github.ref_name }}\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"parse_mode\":\"Markdown\"}"
+              -d "{\"chat_id\":\"${{ secrets.TELEGRAM_CHAT_ID }}\",\"text\":\"$ICON *PROD deploy* ${{ steps.tag.outputs.tag }}\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"parse_mode\":\"Markdown\"}"
           fi

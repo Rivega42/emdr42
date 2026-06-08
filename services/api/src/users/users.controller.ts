@@ -121,6 +121,30 @@ export class UsersController {
     return this.usersService.getUserSessions(id, user.id, user.role, pagination);
   }
 
+  @Patch(':id/role')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Admin: сменить роль пользователя (PATIENT/THERAPIST/ADMIN)' })
+  async setRole(
+    @Param('id') id: string,
+    @Body() body: { role: 'PATIENT' | 'THERAPIST' | 'ADMIN' },
+    @CurrentUser() actor: { id: string },
+    @Req() req: Request,
+  ) {
+    return this.usersService.setRole(id, body.role, actor.id, extractMeta(req));
+  }
+
+  @Patch(':id/active')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Admin: активировать/деактивировать пользователя' })
+  async setActive(
+    @Param('id') id: string,
+    @Body() body: { isActive: boolean },
+    @CurrentUser() actor: { id: string },
+    @Req() req: Request,
+  ) {
+    return this.usersService.setActive(id, body.isActive, actor.id, extractMeta(req));
+  }
+
   @Get(':id/export')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Admin: экспорт данных произвольного пользователя' })

@@ -28,8 +28,32 @@ export default function AdminUsersPage() {
 
   useEffect(() => { setPage(1); }, [search, roleFilter]);
 
-  const handleRoleChange = (userId: string, newRole: UserRole) => { setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))); };
-  const handleToggleActive = (userId: string) => { setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, isActive: !u.isActive } : u)); };
+  const handleRoleChange = async (userId: string, newRole: UserRole) => {
+    const prev = users.find((u) => u.id === userId);
+    if (!prev || prev.role === newRole) return;
+    // Optimistic update
+    setUsers((s) => s.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
+    try {
+      await api.setUserRole(userId, newRole);
+    } catch (err) {
+      // rollback
+      setUsers((s) => s.map((u) => (u.id === userId ? { ...u, role: prev.role } : u)));
+      setError(err instanceof Error ? err.message : 'Не удалось сменить роль');
+    }
+  };
+
+  const handleToggleActive = async (userId: string) => {
+    const prev = users.find((u) => u.id === userId);
+    if (!prev) return;
+    const newActive = !prev.isActive;
+    setUsers((s) => s.map((u) => (u.id === userId ? { ...u, isActive: newActive } : u)));
+    try {
+      await api.setUserActive(userId, newActive);
+    } catch (err) {
+      setUsers((s) => s.map((u) => (u.id === userId ? { ...u, isActive: prev.isActive } : u)));
+      setError(err instanceof Error ? err.message : 'Не удалось изменить статус');
+    }
+  };
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" /></div>;
   if (error) return <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-red-600">{error}</div>;
