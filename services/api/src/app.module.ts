@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { TherapistPatientModule } from './therapist-patient/therapist-patient.module';
+import { IntakeModule } from './intake/intake.module';
 import { AdminModule } from './admin/admin.module';
 import { HealthModule } from './health/health.module';
 import { LiveKitModule } from './livekit/livekit.module';
@@ -35,6 +36,7 @@ import { RedisModule } from './common/redis/redis.module';
     UsersModule,
     SessionsModule,
     TherapistPatientModule,
+    IntakeModule,
     AdminModule,
     HealthModule,
     LiveKitModule,
