@@ -1,6 +1,6 @@
 # 🗺️ ROADMAP — EMDR-AI Therapy Assistant
 
-Актуальная дорожная карта проекта. Обновлено: 2026-04-17.
+Актуальная дорожная карта проекта. Обновлено: 2026-06-09.
 
 ---
 
@@ -39,7 +39,7 @@
 - Account lockout (5 failed attempts → 15 min)
 - Password reset через VerificationToken в БД
 - Email + phone verification flow
-- MFA skeleton (TOTP flow endpoints — в Фазе 3)
+- MFA TOTP (RFC 6238) + backup codes (#114)
 - Helmet + CSP + Permissions-Policy + HSTS
 - nginx security headers + rate-limit zones
 - Redis-backed ThrottleGuard (distributed rate limiting)
@@ -77,6 +77,9 @@
 - Voice pattern analysis (WPM, pauses, filler words, flat affect)
 - Stripe billing skeleton (subscriptions, webhooks, invoices)
 - Notifications service (email + SMS + push)
+- Patient invite-by-link: sha256-токены, 192-bit entropy (#160)
+- Intake-воронка: лиды с сайта → convert → invite (#161)
+- Therapist read-access к сессиям назначенных пациентов (#222)
 
 ### Frontend
 - error.tsx / not-found.tsx / offline page + auth middleware
@@ -120,8 +123,13 @@
 - ✅ Prisma migrations init + CI drift check
 - ✅ DLQ + idempotency в events
 - ✅ Playwright в CI
-- ⏳ Test coverage до 70% (сейчас ~40%)
+- ✅ Полномасштабное security/correctness ревью (#221): IDOR-гарды,
+  refresh-token rotation на фронте, диссоциация-детекция fix,
+  session reattach guard, PHI createMany (#224), LiveKit token TTL (#133)
+- ✅ Ops-доки: DEPLOYMENT / DISASTER_RECOVERY / THREAT_MODEL (#142)
+- ⏳ Test coverage до 70% (сейчас ~45%)
 - ⏳ Load testing (k6 — требует staging)
+- ⏳ **#115** CSRF + HttpOnly cookies (P0 до запуска)
 
 ---
 
@@ -198,8 +206,8 @@
 | Область | Готовность | Осталось |
 |---------|-----------|----------|
 | Frontend | 90% | UI polish, i18n full |
-| Backend API | 90% | MFA TOTP, tRPC wiring |
-| Auth & Security | 90% | CSRF переход на cookies |
+| Backend API | 95% | tRPC wiring (#78) — решить нужен ли |
+| Auth & Security | 95% | CSRF переход на cookies (#115) |
 | Orchestrator | 75% | LLM integration hooks |
 | EMDR Engine | 85% | Clinical review |
 | AI providers | 85% | faster-whisper streaming |
@@ -218,5 +226,8 @@
 - Runbook: `docs/RUNBOOK.md`
 - Incident Response: `docs/INCIDENT_RESPONSE.md`
 - Data Retention: `docs/DATA_RETENTION.md`
+- Deployment: `docs/DEPLOYMENT.md`
+- Disaster Recovery: `docs/DISASTER_RECOVERY.md`
+- Threat Model: `docs/THREAT_MODEL.md`
 - Legal drafts: `docs/legal/`
 - K8s setup: `k8s/SETUP.md`
