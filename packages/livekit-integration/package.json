@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "livekit-client": "^2.0.0",
+    "livekit-client": "^2.19.2",
     "livekit-server-sdk": "^2.0.0"
   },
   "devDependencies": {
