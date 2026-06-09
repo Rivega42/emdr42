@@ -5,11 +5,15 @@ export async function generateToken(
   apiSecret: string,
   roomName: string,
   participantName: string,
-  participantIdentity: string
+  participantIdentity: string,
+  ttlSeconds = 3600
 ): Promise<string> {
   const token = new AccessToken(apiKey, apiSecret, {
     identity: participantIdentity,
     name: participantName,
+    // TTL обязателен (#133): без него компрометация токена даёт бессрочный
+    // доступ к WebRTC-комнате. 1 час покрывает EMDR-сессию (~50-60 мин).
+    ttl: ttlSeconds,
   });
 
   const grant: VideoGrant = {
