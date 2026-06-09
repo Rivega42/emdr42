@@ -2,8 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
+  "buildCommand": "pnpm run build",
+  "installCommand": "pnpm install --frozen-lockfile",
   "env": {
     "NEXT_PUBLIC_API_URL": "@emdr42-api-url",
     "NEXT_PUBLIC_WS_URL": "@emdr42-ws-url"

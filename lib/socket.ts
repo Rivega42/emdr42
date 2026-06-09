@@ -18,6 +18,9 @@ export function getSocket(): Socket {
 
 export function disconnectSocket() {
   if (socket) {
+    // Снимаем все listeners ДО disconnect: повторный mount страницы сессии
+    // регистрирует новый набор, и без очистки старые продолжали бы стрелять.
+    socket.removeAllListeners();
     socket.disconnect();
     socket = null;
   }

@@ -43,26 +43,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Персистит пару токенов (access 15 мин + refresh 7 дней с ротацией).
+  const storeTokens = useCallback(
+    (tokens: { accessToken: string; refreshToken?: string }) => {
+      localStorage.setItem('token', tokens.accessToken);
+      api.setToken(tokens.accessToken);
+      if (tokens.refreshToken) {
+        localStorage.setItem('refreshToken', tokens.refreshToken);
+        api.setRefreshToken(tokens.refreshToken);
+      }
+    },
+    [],
+  );
+
+  const clearTokens = useCallback(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    api.setToken(null);
+    api.setRefreshToken(null);
+  }, []);
+
   useEffect(() => {
+    // ApiClient ротирует пару на 401 — синхронизируем в localStorage.
+    api.onTokensUpdated = (tokens) => {
+      localStorage.setItem('token', tokens.accessToken);
+      if (tokens.refreshToken) {
+        localStorage.setItem('refreshToken', tokens.refreshToken);
+      }
+    };
+    api.onSessionExpired = () => {
+      clearTokens();
+      setUser(null);
+    };
+
     const restoreSession = async () => {
       const token = localStorage.getItem('token');
-      if (!token) {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!token && !refreshToken) {
         setLoading(false);
         return;
       }
       api.setToken(token);
+      api.setRefreshToken(refreshToken);
       try {
         const profile = await api.getProfile();
         setUser(profile);
       } catch {
-        localStorage.removeItem('token');
-        api.setToken(null);
+        clearTokens();
       } finally {
         setLoading(false);
       }
     };
     restoreSession();
-  }, []);
+  }, [clearTokens]);
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.login(email, password);
@@ -70,30 +103,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if ('mfaRequired' in res) {
       throw new MfaRequiredError(res.mfaToken);
     }
-    localStorage.setItem('token', res.accessToken);
-    api.setToken(res.accessToken);
+    storeTokens(res);
     setUser(res.user);
-  }, []);
+  }, [storeTokens]);
 
   const completeMfa = useCallback(async (mfaToken: string, code: string) => {
     const res = await api.mfaChallenge(mfaToken, code);
-    localStorage.setItem('token', res.accessToken);
-    api.setToken(res.accessToken);
+    storeTokens(res);
     setUser(res.user);
-  }, []);
+  }, [storeTokens]);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
     const res = await api.register({ name, email, password });
-    localStorage.setItem('token', res.accessToken);
-    api.setToken(res.accessToken);
+    storeTokens(res);
     setUser(res.user);
-  }, []);
+  }, [storeTokens]);
 
   const logout = useCallback(() => {
+    // Серверный revoke refresh token — best-effort, не блокируем UI.
+    void api.logout();
     setUser(null);
-    localStorage.removeItem('token');
-    api.setToken(null);
-  }, []);
+    clearTokens();
+  }, [clearTokens]);
 
   const hasRole = useCallback(
     (role: UserRole) => user?.role === role,

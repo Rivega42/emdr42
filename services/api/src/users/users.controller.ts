@@ -16,6 +16,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 
 import { UsersService, type AuditMeta } from './users.service';
+import { TherapistPatientService } from '../therapist-patient/therapist-patient.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -34,7 +35,26 @@ const extractMeta = (req: Request): AuditMeta => ({
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly therapistPatient: TherapistPatientService,
+  ) {}
+
+  /**
+   * THERAPIST имеет доступ к чужому профилю/сессиям ТОЛЬКО если пациент
+   * назначен ему (IDOR-фикс: раньше любой терапевт читал любого пользователя).
+   */
+  private async ensureCanAccessUser(
+    targetId: string,
+    user: { id: string; role: string },
+  ): Promise<void> {
+    if (targetId === user.id || user.role === 'ADMIN') return;
+    if (user.role === 'THERAPIST') {
+      await this.therapistPatient.ensureTherapistCanAccessPatient(user.id, targetId);
+      return;
+    }
+    throw new ForbiddenException('Cannot view another user');
+  }
 
   @Get('me')
   @ApiOperation({ summary: 'Get current user profile' })
@@ -102,9 +122,7 @@ export class UsersController {
     @Param('id') id: string,
     @CurrentUser() user: { id: string; role: string },
   ) {
-    if (id !== user.id && user.role !== 'ADMIN' && user.role !== 'THERAPIST') {
-      throw new ForbiddenException('Cannot view another user');
-    }
+    await this.ensureCanAccessUser(id, user);
     return this.usersService.findOne(id, user.id, user.role);
   }
 
@@ -115,9 +133,7 @@ export class UsersController {
     @CurrentUser() user: { id: string; role: string },
     @Query() pagination: PaginationDto,
   ) {
-    if (id !== user.id && user.role !== 'ADMIN' && user.role !== 'THERAPIST') {
-      throw new ForbiddenException('Cannot view another user sessions');
-    }
+    await this.ensureCanAccessUser(id, user);
     return this.usersService.getUserSessions(id, user.id, user.role, pagination);
   }
 
