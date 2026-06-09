@@ -5,7 +5,7 @@
 # (main: ./dist/index.js). NestJS читает их в runtime через require —
 # нет TS-import-ошибок. Сначала собираем packages, потом api.
 
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /repo
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
@@ -26,7 +26,7 @@ RUN pnpm --filter @emdr42/api exec prisma generate \
  && pnpm --filter "./packages/*" build \
  && pnpm --filter @emdr42/api build
 
-FROM node:20-alpine AS production
+FROM node:26-alpine AS production
 WORKDIR /repo
 ENV NODE_ENV=production
 
