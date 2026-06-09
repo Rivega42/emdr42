@@ -91,7 +91,7 @@ export class JobQueue<T = any> {
         const totalAttempts = job.opts.attempts ?? 1;
         if (attemptsMade >= totalAttempts) {
           await this.dlq.add(
-            `dlq-${job.name}`,
+            `dlq-${job.name}` as never,
             job.data,
             {
               removeOnComplete: false,
@@ -132,13 +132,13 @@ export class JobQueue<T = any> {
         priority: options.priority,
         jobId: options.idempotencyKey,
       };
-      const job = await this.queue.add(jobName, data, bullOpts);
+      const job = await this.queue.add(jobName as never, data as never, bullOpts);
       const jobId = job.id ?? '';
       await this.redis.set(redisKey, jobId, 'EX', this.idempotencyTtl);
       return jobId;
     }
 
-    const job = await this.queue.add(jobName, data, {
+    const job = await this.queue.add(jobName as never, data as never, {
       delay: options.delay,
       priority: options.priority,
     });
@@ -165,7 +165,7 @@ export class JobQueue<T = any> {
   async retryFromDlq(dlqJobId: string): Promise<void> {
     const job = await this.dlq.getJob(dlqJobId);
     if (!job) throw new Error(`DLQ job ${dlqJobId} not found`);
-    await this.queue.add(job.name.replace(/^dlq-/, ''), job.data);
+    await this.queue.add(job.name.replace(/^dlq-/, '') as never, job.data as never);
     await job.remove();
   }
 

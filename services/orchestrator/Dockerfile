@@ -21,7 +21,10 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-RUN pnpm --filter @emdr42/orchestrator build
+# Сначала собираем packages в dist/ (новый main), потом orchestrator esbuild
+# подхватывает их компилированные версии.
+RUN pnpm --filter "./packages/*" build \
+ && pnpm --filter @emdr42/orchestrator build
 
 FROM node:20-alpine AS production
 WORKDIR /app
