@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   description:
     'Платформа виртуальной EMDR-терапии с ИИ-ассистентом и распознаванием эмоций.',
   manifest: '/manifest.json',
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    apple: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+  },
   applicationName: 'EMDR-AI',
   authors: [{ name: 'EMDR-AI Team' }],
   keywords: ['EMDR', 'therapy', 'PTSD', 'AI therapy', 'trauma', 'mental health'],
