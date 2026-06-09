@@ -156,25 +156,37 @@ export function createEncryptionMiddleware(secret: string) {
     const phiFields = PHI_FIELDS_BY_MODEL[params.model ?? ''];
     if (!phiFields) return next(params);
 
+    const encryptObject = (data: any) => {
+      if (!data) return;
+      for (const field of phiFields) {
+        if (typeof data[field] === 'string' && data[field]) {
+          data[field] = encryptField(data[field], secret);
+        }
+      }
+    };
+
     // Шифруем при создании/обновлении
     if (['create', 'update', 'upsert'].includes(params.action)) {
       const dataKey = params.action === 'upsert' ? 'create' : 'data';
-      const data = params.args?.[dataKey];
-      if (data) {
-        for (const field of phiFields) {
-          if (typeof data[field] === 'string' && data[field]) {
-            data[field] = encryptField(data[field], secret);
-          }
-        }
-      }
+      encryptObject(params.args?.[dataKey]);
       // Для upsert также шифруем update-часть
-      if (params.action === 'upsert' && params.args?.update) {
-        for (const field of phiFields) {
-          if (typeof params.args.update[field] === 'string' && params.args.update[field]) {
-            params.args.update[field] = encryptField(params.args.update[field], secret);
-          }
-        }
+      if (params.action === 'upsert') {
+        encryptObject(params.args?.update);
       }
+    }
+
+    // createMany/updateMany (#224): без перехвата PHI через эти пути молча
+    // сохранялся бы плейнтекстом.
+    if (params.action === 'createMany') {
+      const rows = params.args?.data;
+      if (Array.isArray(rows)) {
+        rows.forEach(encryptObject);
+      } else {
+        encryptObject(rows);
+      }
+    }
+    if (params.action === 'updateMany') {
+      encryptObject(params.args?.data);
     }
 
     const result = await next(params);

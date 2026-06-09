@@ -143,5 +143,39 @@ describe('encryption.middleware', () => {
       expect(params.args.create.phone).not.toBe('+1234567890');
       expect(params.args.update.phone).not.toBe('+9876543210');
     });
+
+    it('encrypts PHI в createMany rows (#224)', async () => {
+      const params = {
+        model: 'User',
+        action: 'createMany',
+        args: {
+          data: [
+            { phone: '+1111111111', name: 'A' },
+            { phone: '+2222222222', name: 'B' },
+          ],
+        },
+      };
+      const next = jest.fn().mockResolvedValue({ count: 2 });
+      await middleware(params as any, next);
+      expect(params.args.data[0].phone).not.toBe('+1111111111');
+      expect(params.args.data[1].phone).not.toBe('+2222222222');
+      // name — не PHI
+      expect(params.args.data[0].name).toBe('A');
+    });
+
+    it('encrypts PHI в updateMany data (#224)', async () => {
+      const params = {
+        model: 'Session',
+        action: 'updateMany',
+        args: {
+          where: { userId: 'u1' },
+          data: { targetMemory: 'PHI memory' },
+        },
+      };
+      const next = jest.fn().mockResolvedValue({ count: 3 });
+      await middleware(params as any, next);
+      expect(params.args.data.targetMemory).not.toBe('PHI memory');
+      expect(decryptField(params.args.data.targetMemory, KEY)).toBe('PHI memory');
+    });
   });
 });
