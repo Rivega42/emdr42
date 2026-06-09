@@ -4,7 +4,7 @@
 # Runner ставит только внешние runtime-зависимости (через npm, без workspace) —
 # это надёжнее pnpm deploy (капризен в pnpm 10) и даёт минимальный образ.
 
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /repo
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
@@ -26,7 +26,7 @@ COPY . .
 RUN pnpm --filter "./packages/*" build \
  && pnpm --filter @emdr42/orchestrator build
 
-FROM node:20-alpine AS production
+FROM node:26-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production PORT=8002
 
