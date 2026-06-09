@@ -2,15 +2,29 @@
   "name": "@emdr42/core",
   "version": "0.1.0",
   "private": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./patterns/movements": "./src/patterns/movements.ts",
-    "./services/emotion-recognition": "./src/services/emotion-recognition.ts",
-    "./services/audio-asmr": "./src/services/audio-asmr.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./patterns/movements": {
+      "types": "./dist/patterns/movements.d.ts",
+      "default": "./dist/patterns/movements.js"
+    },
+    "./services/emotion-recognition": {
+      "types": "./dist/services/emotion-recognition.d.ts",
+      "default": "./dist/services/emotion-recognition.js"
+    },
+    "./services/audio-asmr": {
+      "types": "./dist/services/audio-asmr.d.ts",
+      "default": "./dist/services/audio-asmr.js"
+    }
   },
+  "files": ["dist", "src"],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {

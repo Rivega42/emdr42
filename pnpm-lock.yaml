@@ -217,6 +217,13 @@ importers:
       ioredis:
         specifier: ^5.3.2
         version: 5.10.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.4.0
+        version: 20.19.39
+      typescript:
+        specifier: ^5.1.0
+        version: 5.9.3
 
   packages/livekit-integration:
     dependencies:
@@ -226,6 +233,13 @@ importers:
       livekit-server-sdk:
         specifier: ^2.0.0
         version: 2.15.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.4.0
+        version: 20.19.39
+      typescript:
+        specifier: ^5.1.0
+        version: 5.9.3
 
   services/api:
     dependencies:

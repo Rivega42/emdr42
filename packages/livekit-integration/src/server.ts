@@ -1,12 +1,12 @@
 import { AccessToken, VideoGrant } from 'livekit-server-sdk';
 
-export function generateToken(
+export async function generateToken(
   apiKey: string,
   apiSecret: string,
   roomName: string,
   participantName: string,
   participantIdentity: string
-): string {
+): Promise<string> {
   const token = new AccessToken(apiKey, apiSecret, {
     identity: participantIdentity,
     name: participantName,
