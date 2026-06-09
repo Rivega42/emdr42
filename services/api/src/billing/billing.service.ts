@@ -203,20 +203,19 @@ export class BillingService {
       throw new BadRequestException('Invalid signature');
     }
 
-    // Идемпотентность через event.id. Stripe retry-ит webhook при таймауте,
-    // без unique-проверки subscription/invoice upsert происходил повторно.
-    try {
-      await this.prisma.processedStripeEvent.create({
-        data: { eventId: event.id, type: event.type },
-      });
-    } catch (err: any) {
-      // P2002 — unique violation = уже обработали этот event. Возвращаем 200,
-      // чтобы Stripe прекратил retry.
-      if (err?.code === 'P2002') {
-        this.logger.debug(`Duplicate Stripe event ${event.id}, skipping`);
-        return { received: true, duplicate: true };
-      }
-      throw err;
+    // Идемпотентность через event.id. ВАЖНО — порядок:
+    // 1) сначала проверяем что не обрабатывали,
+    // 2) обрабатываем (sync-методы идемпотентны через upsert),
+    // 3) фиксируем processed.
+    // Раньше INSERT был ПЕРЕД handler-ом — pod падал между ними, Stripe
+    // ретрай видел P2002 и пропускал обработку → subscription не синкалась.
+    const already = await this.prisma.processedStripeEvent.findUnique({
+      where: { eventId: event.id },
+      select: { eventId: true },
+    });
+    if (already) {
+      this.logger.debug(`Duplicate Stripe event ${event.id}, skipping`);
+      return { received: true, duplicate: true };
     }
 
     switch (event.type) {
@@ -231,6 +230,16 @@ export class BillingService {
         break;
       default:
         this.logger.debug(`Unhandled webhook event: ${event.type}`);
+    }
+
+    // Фиксируем после успешного handler. P2002 здесь = другой воркер успел
+    // отработать тот же event первым (нормальная race) — возвращаем 200.
+    try {
+      await this.prisma.processedStripeEvent.create({
+        data: { eventId: event.id, type: event.type },
+      });
+    } catch (err: any) {
+      if (err?.code !== 'P2002') throw err;
     }
 
     return { received: true };

@@ -5,15 +5,19 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, MfaRequiredError } from '@/contexts/AuthContext';
 import { loginSchema, sanitizeNextPath, type LoginInput } from '@/lib/schemas/auth';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = sanitizeNextPath(searchParams.get('next'));
-  const { login } = useAuth();
+  const { login, completeMfa } = useAuth();
   const [apiError, setApiError] = useState<string | null>(null);
+  // MFA-step 2: если backend требует TOTP — храним mfaToken и показываем форму кода.
+  const [mfaToken, setMfaToken] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaSubmitting, setMfaSubmitting] = useState(false);
 
   const {
     register,
@@ -29,9 +33,30 @@ export default function LoginPage() {
       await login(data.email, data.password);
       router.push(next);
     } catch (err) {
+      if (err instanceof MfaRequiredError) {
+        setMfaToken(err.mfaToken);
+        return;
+      }
       setApiError(
         err instanceof Error ? err.message : 'Неверный email или пароль',
       );
+    }
+  };
+
+  const onSubmitMfa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaToken || !mfaCode) return;
+    setApiError(null);
+    setMfaSubmitting(true);
+    try {
+      await completeMfa(mfaToken, mfaCode);
+      router.push(next);
+    } catch (err) {
+      setApiError(
+        err instanceof Error ? err.message : 'Неверный код MFA',
+      );
+    } finally {
+      setMfaSubmitting(false);
     }
   };
 
@@ -48,8 +73,51 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Вход</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+            {mfaToken ? 'Двухфакторная аутентификация' : 'Вход'}
+          </h2>
 
+          {mfaToken && (
+            <form onSubmit={onSubmitMfa} className="space-y-4" noValidate>
+              <div>
+                <label htmlFor="mfa-code" className="block text-gray-500 text-sm mb-2">
+                  Код из приложения (6 цифр) или backup-код
+                </label>
+                <input
+                  id="mfa-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.trim())}
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:border-gray-900 transition-colors"
+                  placeholder="000000"
+                />
+              </div>
+              {apiError && (
+                <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                  {apiError}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={mfaSubmitting || !mfaCode}
+                className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-md transition-colors disabled:opacity-50"
+              >
+                {mfaSubmitting ? 'Проверяем...' : 'Подтвердить'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMfaToken(null); setMfaCode(''); setApiError(null); }}
+                className="w-full text-sm text-gray-500 hover:text-gray-900"
+              >
+                ← Начать заново
+              </button>
+            </form>
+          )}
+
+          {!mfaToken && (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <div>
               <label htmlFor="email" className="block text-gray-500 text-sm mb-2">
@@ -117,13 +185,16 @@ export default function LoginPage() {
               {isSubmitting ? 'Входим...' : 'Войти'}
             </button>
           </form>
+          )}
 
+          {!mfaToken && (
           <p className="mt-8 text-center text-gray-400 text-sm">
             Нет аккаунта?{' '}
             <Link href="/register" className="text-gray-900 hover:underline">
               Зарегистрироваться
             </Link>
           </p>
+          )}
         </div>
       </div>
     </div>

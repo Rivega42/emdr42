@@ -57,11 +57,14 @@ class ApiClient {
     return res.json();
   }
 
-  // Auth
+  // Auth — login может вернуть либо токены, либо MFA challenge.
   async login(
     email: string,
     password: string,
-  ): Promise<{ access_token: string; user: User }> {
+  ): Promise<
+    | { accessToken: string; refreshToken?: string; user: User }
+    | { mfaRequired: true; mfaToken: string }
+  > {
     return this.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
@@ -70,10 +73,20 @@ class ApiClient {
 
   async register(
     data: RegisterDto,
-  ): Promise<{ access_token: string; user: User }> {
+  ): Promise<{ accessToken: string; refreshToken?: string; user: User }> {
     return this.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  async mfaChallenge(
+    mfaToken: string,
+    code: string,
+  ): Promise<{ accessToken: string; refreshToken?: string; user: User }> {
+    return this.request('/mfa/challenge', {
+      method: 'POST',
+      body: JSON.stringify({ mfaToken, code }),
     });
   }
 

@@ -67,15 +67,28 @@ export class AuthController {
     const meta = extractAuditMeta(req);
     try {
       const result = await this.authService.login(dto, extractMeta(req));
+      // result либо { accessToken, refreshToken, user, ... } либо
+      // { mfaRequired: true, mfaToken, userId } — userId есть в обоих.
+      const userId =
+        (result as { user?: { id?: string } }).user?.id ??
+        (result as { userId?: string }).userId;
       await this.audit.log({
-        userId: (result as any).user?.id,
+        userId,
         action: 'LOGIN',
         resourceType: 'User',
-        resourceId: (result as any).user?.id,
+        resourceId: userId,
         success: true,
         ...meta,
-        details: { email: dto.email, mfaRequired: (result as any).mfaRequired ?? false },
+        details: {
+          email: dto.email,
+          mfaRequired: (result as { mfaRequired?: boolean }).mfaRequired ?? false,
+        },
       });
+      // userId — внутреннее поле для audit, наружу его не светим.
+      if ('mfaRequired' in result) {
+        const { userId: _omit, ...publicMfa } = result as { mfaRequired: true; mfaToken: string; userId: string };
+        return publicMfa;
+      }
       return result;
     } catch (err) {
       await this.audit.log({
