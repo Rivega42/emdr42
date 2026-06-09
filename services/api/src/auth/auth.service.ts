@@ -13,6 +13,7 @@ import { EmailService } from '../email/email.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenService } from './refresh-token.service';
+import { TokenRevocationService } from './token-revocation.service';
 
 const BCRYPT_COST = 12;
 const MAX_FAILED_ATTEMPTS = 5;
@@ -31,6 +32,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly refreshTokens: RefreshTokenService,
+    private readonly tokenRevocation: TokenRevocationService,
   ) {}
 
   // ---------- Register ----------
@@ -177,6 +179,9 @@ export class AuthService {
 
   async logoutAll(userId: string) {
     await this.refreshTokens.revokeAllForUser(userId);
+    // #119: пометить выданные access-токены отозванными (WS-сессии orchestrator
+    // проверяют метку и дисконнектят).
+    await this.tokenRevocation.revokeUserTokens(userId);
     return { success: true };
   }
 
@@ -238,6 +243,8 @@ export class AuthService {
 
     // Revoke все active refresh — old sessions должны выкинуть
     await this.refreshTokens.revokeAllForUser(record.userId);
+    // #119: и access-токены тоже (WS-сессии orchestrator).
+    await this.tokenRevocation.revokeUserTokens(record.userId);
   }
 
   // ---------- Helpers ----------
