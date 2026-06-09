@@ -107,7 +107,9 @@ export class AuthService {
         { sub: user.id, purpose: 'mfa-challenge' },
         { expiresIn: '5m' },
       );
-      return { mfaRequired: true, mfaToken };
+      // userId возвращаем для audit-log в controller — фронт его не видит,
+      // потому что для клиента ответ сериализуется минимально (mfaToken + флаг).
+      return { mfaRequired: true as const, mfaToken, userId: user.id };
     }
 
     return this.issueTokenPair(user, meta);

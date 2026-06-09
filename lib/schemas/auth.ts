@@ -66,14 +66,25 @@ export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 /**
  * Whitelist для post-login redirect.
- * Принимаем только относительные пути, начинающиеся с `/` и без protocol-relative
- * префикса (`//` или `/\`), чтобы заблокировать open-redirect через `?next=//evil.com`.
+ *
+ * Атаки, которые ловим:
+ * - `//evil.com`        → protocol-relative
+ * - `/\evil.com`        → backslash-redirect (IE/старые браузеры)
+ * - `/%2F%2Fevil.com`   → URL-encoded slashes (decode-им и проверяем после)
+ * - control chars (CRLF) → header-injection в логи
+ * - не-string значения / слишком длинные
  */
 export function sanitizeNextPath(raw: string | null | undefined, fallback = '/dashboard'): string {
-  if (!raw) return fallback;
-  if (typeof raw !== 'string') return fallback;
+  if (!raw || typeof raw !== 'string') return fallback;
   if (raw.length > 512) return fallback;
-  if (!raw.startsWith('/')) return fallback;
-  if (raw.startsWith('//') || raw.startsWith('/\\')) return fallback;
-  return raw;
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    return fallback;
+  }
+  if (!decoded.startsWith('/')) return fallback;
+  if (decoded.startsWith('//') || decoded.startsWith('/\\')) return fallback;
+  if (/[\x00-\x1f\x7f]/.test(decoded)) return fallback;
+  return decoded;
 }

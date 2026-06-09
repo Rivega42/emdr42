@@ -1,30 +1,32 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
 
 // Поля, содержащие PHI (Protected Health Information) — HIPAA §164.514.
-// При расширении списка убедиться, что соответствующие поля Prisma имеют
-// тип `String?` и достаточную длину (AES-GCM + iv + tag увеличивает размер).
-const PHI_FIELDS = [
-  // Session-level
-  'targetMemory',
-  'targetImage',
-  'negativeCognition',
-  'positiveCognition',
-  'closureTechnique',
-  'clientStateAtEnd',
-  'betweenSessionNotes',
-  'bodyLocation',
-  'transcriptText',
-  // Crisis-level
-  'triggerText',
-  // Therapist note
-  'content',
-  // User-level PII/PHI
-  'phone',
-  'emergencyContactName',
-  'emergencyContactPhone',
-  // MFA — секрет TOTP (схема комментарием обещает encrypted; теперь действительно)
-  'mfaSecret',
-];
+// Allow-list per-model — без него любая будущая модель с полем
+// `content` или `phone` молча начала бы шифроваться (foot-gun).
+// При расширении: убедиться, что поля Prisma — `String?` и достаточно длинные
+// (AES-GCM + iv + tag увеличивают размер).
+const PHI_FIELDS_BY_MODEL: Record<string, ReadonlySet<string>> = {
+  Session: new Set([
+    'targetMemory',
+    'targetImage',
+    'negativeCognition',
+    'positiveCognition',
+    'closureTechnique',
+    'clientStateAtEnd',
+    'betweenSessionNotes',
+    'bodyLocation',
+    'transcriptText',
+  ]),
+  CrisisEvent: new Set(['triggerText']),
+  TherapistNote: new Set(['content']),
+  User: new Set([
+    'phone',
+    'emergencyContactName',
+    'emergencyContactPhone',
+    // MFA — TOTP secret (схема обещает encrypted в комментарии — теперь действительно)
+    'mfaSecret',
+  ]),
+};
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
@@ -151,12 +153,15 @@ export function decryptField(encryptedValue: string, secret: string): string {
  */
 export function createEncryptionMiddleware(secret: string) {
   return async (params: any, next: (params: any) => Promise<any>) => {
+    const phiFields = PHI_FIELDS_BY_MODEL[params.model ?? ''];
+    if (!phiFields) return next(params);
+
     // Шифруем при создании/обновлении
     if (['create', 'update', 'upsert'].includes(params.action)) {
       const dataKey = params.action === 'upsert' ? 'create' : 'data';
       const data = params.args?.[dataKey];
       if (data) {
-        for (const field of PHI_FIELDS) {
+        for (const field of phiFields) {
           if (typeof data[field] === 'string' && data[field]) {
             data[field] = encryptField(data[field], secret);
           }
@@ -164,7 +169,7 @@ export function createEncryptionMiddleware(secret: string) {
       }
       // Для upsert также шифруем update-часть
       if (params.action === 'upsert' && params.args?.update) {
-        for (const field of PHI_FIELDS) {
+        for (const field of phiFields) {
           if (typeof params.args.update[field] === 'string' && params.args.update[field]) {
             params.args.update[field] = encryptField(params.args.update[field], secret);
           }
@@ -178,7 +183,7 @@ export function createEncryptionMiddleware(secret: string) {
     if (result && ['findUnique', 'findFirst', 'findMany'].includes(params.action)) {
       const decryptRecord = (record: any) => {
         if (!record) return record;
-        for (const field of PHI_FIELDS) {
+        for (const field of phiFields) {
           if (typeof record[field] === 'string' && record[field]) {
             try {
               record[field] = decryptField(record[field], secret);

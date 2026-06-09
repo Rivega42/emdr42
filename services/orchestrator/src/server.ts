@@ -184,10 +184,19 @@ const main = async (): Promise<void> => {
       next();
     });
 
+    // Гард: sessionId должен быть непустой строкой. Без валидации клиент мог
+    // отправить null/undefined, и registry создавал entry с ключом null.
+    const isValidSessionId = (s: unknown): s is string =>
+      typeof s === 'string' && s.length > 0 && s.length <= 128;
+
     // ---- session:start ----
     socket.on(
       'session:start',
       async (data: { sessionId: string }) => {
+        if (!isValidSessionId(data?.sessionId)) {
+          socket.emit('session:error', { message: 'Invalid sessionId' });
+          return;
+        }
         const { sessionId } = data;
 
         if (registry.hasSession(sessionId)) {

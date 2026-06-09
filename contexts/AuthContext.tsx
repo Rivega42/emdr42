@@ -4,11 +4,26 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { api } from '@/lib/api';
 import type { User, UserRole } from '@/lib/types';
 
+/**
+ * MFA-required состояние: backend выдаёт mfaToken (5 мин TTL), фронт сохраняет
+ * и шлёт его + TOTP в /mfa/challenge. Это выбрасывается из login() как
+ * специальный класс ошибки — UI ловит и переключается на MFA-форму.
+ */
+export class MfaRequiredError extends Error {
+  public readonly mfaToken: string;
+  constructor(mfaToken: string) {
+    super('MFA required');
+    this.name = 'MfaRequiredError';
+    this.mfaToken = mfaToken;
+  }
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  completeMfa: (mfaToken: string, code: string) => Promise<void>;
   logout: () => void;
   register: (name: string, email: string, password: string) => Promise<void>;
   hasRole: (role: UserRole) => boolean;
@@ -51,15 +66,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.login(email, password);
-    localStorage.setItem('token', res.access_token);
-    api.setToken(res.access_token);
+    // MFA-ветка — фронт показывает форму challenge.
+    if ('mfaRequired' in res) {
+      throw new MfaRequiredError(res.mfaToken);
+    }
+    localStorage.setItem('token', res.accessToken);
+    api.setToken(res.accessToken);
+    setUser(res.user);
+  }, []);
+
+  const completeMfa = useCallback(async (mfaToken: string, code: string) => {
+    const res = await api.mfaChallenge(mfaToken, code);
+    localStorage.setItem('token', res.accessToken);
+    api.setToken(res.accessToken);
     setUser(res.user);
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
     const res = await api.register({ name, email, password });
-    localStorage.setItem('token', res.access_token);
-    api.setToken(res.access_token);
+    localStorage.setItem('token', res.accessToken);
+    api.setToken(res.accessToken);
     setUser(res.user);
   }, []);
 
@@ -81,6 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         loading,
         login,
+        completeMfa,
         logout,
         register,
         hasRole,
