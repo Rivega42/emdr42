@@ -18,11 +18,11 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "storybook": "storybook dev -p 6006",
-    "build:storybook": "storybook build"
+    "build:storybook": "storybook build",
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
-    "react-hook-form": "^7.53.0",
     "@react-three/drei": "^9.88.0",
     "@react-three/fiber": "^8.13.0",
     "@tanstack/react-query": "^5.99.0",
@@ -36,12 +36,15 @@
     "onnxruntime-web": "^1.24.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hook-form": "^7.53.0",
     "socket.io-client": "^4.7.0",
     "three": "^0.183.2",
     "tone": "^14.7.77",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
     "@playwright/test": "^1.59.1",
     "@storybook/addon-a11y": "^10.3.5",
     "@storybook/addon-essentials": "^8.6.14",
@@ -61,7 +64,9 @@
     "eslint": "^8.45.0",
     "eslint-config-next": "^13.4.0",
     "eslint-config-prettier": "^8.8.0",
+    "husky": "^9.1.7",
     "jest": "^29.6.0",
+    "lint-staged": "^17.0.7",
     "postcss": "^8.4.31",
     "prettier": "^3.0.0",
     "storybook": "^10.3.5",
@@ -89,6 +94,15 @@
       "@prisma/engines",
       "prisma",
       "bcrypt"
+    ]
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --fix --max-warnings=0"
+    ],
+    "*.{js,jsx,json,md,css}": [
+      "prettier --write"
     ]
   }
 }
