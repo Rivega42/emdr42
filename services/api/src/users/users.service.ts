@@ -400,6 +400,18 @@ export class UsersService {
       await (tx as any).crisisEvent.deleteMany({ where: { userId } });
       await (tx as any).refreshToken.deleteMany({ where: { userId } });
       await (tx as any).verificationToken.deleteMany({ where: { userId } });
+      // #223: модели без FK — удаляем/отвязываем явно, иначе осиротевшие
+      // строки с PII (subscription) висят после удаления пользователя.
+      await (tx as any).subscription.deleteMany({ where: { userId } });
+      await (tx as any).userProgress.deleteMany({ where: { userId } });
+      await (tx as any).lead.updateMany({
+        where: { convertedUserId: userId },
+        data: { convertedUserId: null },
+      });
+      await (tx as any).lead.updateMany({
+        where: { assignedTherapistId: userId },
+        data: { assignedTherapistId: null },
+      });
       await tx.user.delete({ where: { id: userId } });
     });
 

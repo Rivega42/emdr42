@@ -39,7 +39,8 @@ model User {
   name         String
   role         Role      @default(PATIENT)
   isActive         Boolean   @default(true)
-  resetToken       String?
+  // @unique (#223): два пользователя не должны делить один reset token
+  resetToken       String?   @unique
   resetTokenExpiry DateTime?
 
   // Crisis / emergency (#147)
@@ -219,6 +220,8 @@ model Session {
 }
 
 // #147 — Crisis events (suicide ideation, severe dissociation, etc).
+// НАМЕРЕННО без FK на User (#223): clinical record, удаляется явно
+// в hardDeleteAllData. FK с onDelete: Cascade молча уносил бы crisis-историю.
 model CrisisEvent {
   id          String   @id @default(uuid())
   userId      String
@@ -269,6 +272,8 @@ model VerificationToken {
 }
 
 // #145 — Subscription plans / Stripe integration.
+// Без FK на User (#223): billing-записи нужны для финансовой отчётности;
+// при hard-delete пользователя строка удаляется явно в hardDeleteAllData.
 model Subscription {
   id                   String   @id @default(uuid())
   userId               String   @unique
@@ -338,6 +343,8 @@ model UserAchievement {
 }
 
 // #130 — LLM/TTS/STT usage tracking.
+// НАМЕРЕННО без FK на User (#223): billing/cost-записи должны переживать
+// hard-delete пользователя (финансовая отчётность).
 model UsageLog {
   id           String   @id @default(uuid())
   userId       String?
@@ -443,6 +450,8 @@ model PlatformSettings {
 }
 
 // HIPAA/GDPR Audit Log — запись всех действий с PHI данными (#120)
+// НАМЕРЕННО без FK на User (#223): HIPAA требует 6 лет retention —
+// audit обязан переживать hard-delete пользователя. НЕ добавлять @relation.
 model AuditLog {
   id             String   @id @default(uuid())
   timestamp      DateTime @default(now())

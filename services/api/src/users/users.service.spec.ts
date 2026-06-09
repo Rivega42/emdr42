@@ -4,6 +4,24 @@ import { UsersService } from './users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 
+const makeTx = () => ({
+  safetyEvent: { deleteMany: jest.fn() },
+  emotionRecord: { deleteMany: jest.fn() },
+  sudsRecord: { deleteMany: jest.fn() },
+  vocRecord: { deleteMany: jest.fn() },
+  timelineEvent: { deleteMany: jest.fn() },
+  session: { deleteMany: jest.fn() },
+  therapistNote: { deleteMany: jest.fn() },
+  therapistPatient: { deleteMany: jest.fn() },
+  crisisEvent: { deleteMany: jest.fn() },
+  refreshToken: { deleteMany: jest.fn() },
+  verificationToken: { deleteMany: jest.fn() },
+  subscription: { deleteMany: jest.fn() },
+  userProgress: { deleteMany: jest.fn() },
+  lead: { updateMany: jest.fn() },
+  user: { delete: jest.fn() },
+});
+
 const mockPrisma = {
   user: {
     findMany: jest.fn(),
@@ -19,6 +37,7 @@ const mockPrisma = {
   therapistPatient: {
     findUnique: jest.fn(),
   },
+  $transaction: jest.fn(),
 };
 
 const mockAudit = { log: jest.fn().mockResolvedValue(undefined) };
@@ -180,6 +199,35 @@ describe('UsersService', () => {
           where: expect.objectContaining({ userId: 'user-1' }),
         }),
       );
+    });
+  });
+
+  describe('hardDeleteAllData (#223)', () => {
+    it('удаляет subscription/userProgress и отвязывает leads', async () => {
+      mockPrisma.session.findMany.mockResolvedValue([{ id: 's1' }]);
+      const tx = makeTx();
+      mockPrisma.$transaction.mockImplementation(
+        async (fn: (t: unknown) => Promise<void>) => fn(tx),
+      );
+
+      await service.hardDeleteAllData('user-1');
+
+      expect(tx.subscription.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+      });
+      expect(tx.userProgress.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+      });
+      expect(tx.lead.updateMany).toHaveBeenCalledWith({
+        where: { convertedUserId: 'user-1' },
+        data: { convertedUserId: null },
+      });
+      expect(tx.lead.updateMany).toHaveBeenCalledWith({
+        where: { assignedTherapistId: 'user-1' },
+        data: { assignedTherapistId: null },
+      });
+      // Порядок: user.delete — ПОСЛЕДНИМ (всё остальное вычищено до него)
+      expect(tx.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } });
     });
   });
 });
