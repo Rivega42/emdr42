@@ -147,7 +147,7 @@ export class BackendClient {
   async recordCrisisEvent(payload: {
     sessionId?: string;
     severity: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
-    type: 'SUICIDE_IDEATION' | 'SELF_HARM' | 'DISSOCIATION' | 'PANIC' | 'OTHER';
+    type: 'SUICIDE_IDEATION' | 'SELF_HARM' | 'DISSOCIATION' | 'ABREACTION' | 'PANIC' | 'OTHER';
     triggerText?: string;
   }): Promise<unknown> {
     return this.post('/crisis/report', payload);

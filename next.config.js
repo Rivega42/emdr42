@@ -1,5 +1,20 @@
 /** @type {import('next').NextConfig} */
 
+// Pre-build validation: в production-сборке требуем явные публичные URL.
+// Без них дефолты пойдут в build-артефакт → email-ссылки укажут на vercel.app
+// и `connect-src` CSP заблокирует prod-домен.
+if (process.env.NODE_ENV === 'production' && process.env.CI !== 'true') {
+  const required = ['NEXT_PUBLIC_APP_URL', 'NEXT_PUBLIC_API_URL', 'NEXT_PUBLIC_WS_URL'];
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[build] Missing required public env vars: ${missing.join(', ')}. ` +
+        `Defaults будут включены в build — ссылки могут указывать на vercel.app.`,
+    );
+  }
+}
+
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8002';
 const liveKitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL || '';

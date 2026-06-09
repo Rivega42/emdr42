@@ -192,4 +192,82 @@ describe('AuthService', () => {
       });
     });
   });
+
+  describe('login with MFA', () => {
+    it('returns mfaToken + userId without accessToken for MFA-enabled user', async () => {
+      const dto = { email: 'mfa@example.com', password: 'password123' };
+      const user = {
+        id: 'user-mfa',
+        email: dto.email,
+        passwordHash: 'hashed_pw',
+        name: 'MFA User',
+        role: 'PATIENT',
+        isActive: true,
+        mfaEnabled: true, // ключевая разница
+      };
+
+      mockPrisma.user.findUnique.mockResolvedValue(user);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      mockJwtService.sign.mockReturnValue('mfa-challenge-jwt');
+
+      const result = (await service.login(dto)) as {
+        mfaRequired: true;
+        mfaToken: string;
+        userId: string;
+      };
+
+      expect(result.mfaRequired).toBe(true);
+      expect(result.mfaToken).toBe('mfa-challenge-jwt');
+      expect(result.userId).toBe('user-mfa');
+      expect('accessToken' in result).toBe(false);
+      // mfaToken должен быть подписан с purpose=mfa-challenge и TTL 5m
+      expect(mockJwtService.sign).toHaveBeenCalledWith(
+        { sub: 'user-mfa', purpose: 'mfa-challenge' },
+        { expiresIn: '5m' },
+      );
+    });
+  });
+
+  describe('verifyMfaChallengeToken', () => {
+    it('returns userId for valid mfa-challenge token', () => {
+      const mockVerify = jest
+        .fn()
+        .mockReturnValue({ sub: 'user-mfa', purpose: 'mfa-challenge' });
+      (service as unknown as { jwtService: JwtService }).jwtService = {
+        verify: mockVerify,
+        sign: jest.fn(),
+      } as unknown as JwtService;
+
+      const result = service.verifyMfaChallengeToken('valid-mfa-token');
+      expect(result).toBe('user-mfa');
+    });
+
+    it('throws UnauthorizedException for wrong purpose', () => {
+      const mockVerify = jest
+        .fn()
+        .mockReturnValue({ sub: 'user-1', purpose: 'access' });
+      (service as unknown as { jwtService: JwtService }).jwtService = {
+        verify: mockVerify,
+        sign: jest.fn(),
+      } as unknown as JwtService;
+
+      expect(() => service.verifyMfaChallengeToken('wrong-purpose')).toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('throws UnauthorizedException for expired token', () => {
+      const mockVerify = jest.fn().mockImplementation(() => {
+        throw new Error('jwt expired');
+      });
+      (service as unknown as { jwtService: JwtService }).jwtService = {
+        verify: mockVerify,
+        sign: jest.fn(),
+      } as unknown as JwtService;
+
+      expect(() => service.verifyMfaChallengeToken('expired')).toThrow(
+        UnauthorizedException,
+      );
+    });
+  });
 });
