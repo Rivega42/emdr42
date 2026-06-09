@@ -116,8 +116,14 @@ export class SessionsService {
       throw new NotFoundException('Session not found');
     }
 
+    // Read-доступ (#222): владелец, ADMIN, либо назначенный THERAPIST.
     if (userRole !== 'ADMIN' && session.userId !== userId) {
-      throw new ForbiddenException('Access denied');
+      const assigned =
+        userRole === 'THERAPIST' &&
+        (await this.isAssignedTherapist(userId, session.userId));
+      if (!assigned) {
+        throw new ForbiddenException('Access denied');
+      }
     }
 
     // HIPAA §164.312(b) — audit на access to PHI. Best-effort, не блокирует
@@ -314,9 +320,23 @@ export class SessionsService {
     return session;
   }
 
+  /** Активная (не DISCHARGED) связь therapist→patient. */
+  private async isAssignedTherapist(
+    therapistId: string,
+    patientId: string,
+  ): Promise<boolean> {
+    const rel = await this.prisma.therapistPatient.findUnique({
+      where: {
+        therapistId_patientId: { therapistId, patientId },
+      },
+      select: { status: true },
+    });
+    return Boolean(rel && rel.status !== 'DISCHARGED');
+  }
+
   /**
    * Доступ владельца / ADMIN / THERAPIST с активной связью к пациенту.
-   * Используется для заметок к сессии (терапевт пишет заметки о чужой сессии).
+   * Read-пути и заметки терапевта; write-пути сессии остаются на ensureAccess.
    */
   private async ensureAccessWithTherapist(
     id: string,
@@ -326,17 +346,11 @@ export class SessionsService {
     const session = await this.prisma.session.findUnique({ where: { id } });
     if (!session) throw new NotFoundException('Session not found');
     if (userRole === 'ADMIN' || session.userId === userId) return session;
-    if (userRole === 'THERAPIST') {
-      const rel = await this.prisma.therapistPatient.findUnique({
-        where: {
-          therapistId_patientId: {
-            therapistId: userId,
-            patientId: session.userId,
-          },
-        },
-        select: { status: true },
-      });
-      if (rel && rel.status !== 'DISCHARGED') return session;
+    if (
+      userRole === 'THERAPIST' &&
+      (await this.isAssignedTherapist(userId, session.userId))
+    ) {
+      return session;
     }
     throw new ForbiddenException('Access denied');
   }
@@ -430,7 +444,8 @@ export class SessionsService {
     userId: string,
     userRole: string,
   ): Promise<{ transcriptText: string | null }> {
-    const session = await this.ensureAccess(sessionId, userId, userRole);
+    // Read-путь — назначенный терапевт тоже имеет доступ (#222).
+    const session = await this.ensureAccessWithTherapist(sessionId, userId, userRole);
     this.audit
       .log({
         userId: session.userId,

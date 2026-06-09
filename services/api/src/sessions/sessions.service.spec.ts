@@ -30,6 +30,9 @@ const mockPrisma = {
   safetyEvent: {
     create: jest.fn(),
   },
+  therapistPatient: {
+    findUnique: jest.fn(),
+  },
 };
 
 describe('SessionsService', () => {
@@ -144,6 +147,86 @@ describe('SessionsService', () => {
       await expect(
         service.findOne('nonexistent', 'user-1', 'PATIENT'),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    // --- Therapist read-access (#222) ---
+
+    it('allows ASSIGNED therapist to read patient session', async () => {
+      mockPrisma.session.findUnique.mockResolvedValue({
+        id: 'session-1',
+        userId: 'patient-1',
+      });
+      mockPrisma.therapistPatient.findUnique.mockResolvedValue({
+        status: 'ACTIVE',
+      });
+
+      const result = await service.findOne('session-1', 'therapist-1', 'THERAPIST');
+
+      expect(result.id).toBe('session-1');
+      expect(mockPrisma.therapistPatient.findUnique).toHaveBeenCalledWith({
+        where: {
+          therapistId_patientId: {
+            therapistId: 'therapist-1',
+            patientId: 'patient-1',
+          },
+        },
+        select: { status: true },
+      });
+    });
+
+    it('rejects NON-assigned therapist (IDOR guard)', async () => {
+      mockPrisma.session.findUnique.mockResolvedValue({
+        id: 'session-1',
+        userId: 'patient-1',
+      });
+      mockPrisma.therapistPatient.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.findOne('session-1', 'stranger-therapist', 'THERAPIST'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects therapist with DISCHARGED relation', async () => {
+      mockPrisma.session.findUnique.mockResolvedValue({
+        id: 'session-1',
+        userId: 'patient-1',
+      });
+      mockPrisma.therapistPatient.findUnique.mockResolvedValue({
+        status: 'DISCHARGED',
+      });
+
+      await expect(
+        service.findOne('session-1', 'ex-therapist', 'THERAPIST'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('getTranscript (therapist read-access, #222)', () => {
+    it('allows assigned therapist to read transcript', async () => {
+      mockPrisma.session.findUnique.mockResolvedValue({
+        id: 'session-1',
+        userId: 'patient-1',
+        transcriptText: 'transcript body',
+      });
+      mockPrisma.therapistPatient.findUnique.mockResolvedValue({
+        status: 'ACTIVE',
+      });
+
+      const result = await service.getTranscript('session-1', 'therapist-1', 'THERAPIST');
+      expect(result.transcriptText).toBe('transcript body');
+    });
+
+    it('rejects non-assigned therapist for transcript', async () => {
+      mockPrisma.session.findUnique.mockResolvedValue({
+        id: 'session-1',
+        userId: 'patient-1',
+        transcriptText: 'secret',
+      });
+      mockPrisma.therapistPatient.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.getTranscript('session-1', 'stranger', 'THERAPIST'),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
