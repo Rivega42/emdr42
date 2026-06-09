@@ -2,14 +2,18 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
-import { registerSchema, type RegisterInput } from '@/lib/schemas/auth';
+import { registerSchema, sanitizeNextPath, type RegisterInput } from '@/lib/schemas/auth';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Invite-flow (/invite/[token] → register?next=/invite/...) должен вернуть
+  // пользователя на принятие приглашения, а не выкидывать на dashboard.
+  const next = sanitizeNextPath(searchParams.get('next'));
   const { register: registerUser } = useAuth();
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -29,7 +33,7 @@ export default function RegisterPage() {
     setApiError(null);
     try {
       await registerUser(data.name, data.email, data.password);
-      router.push('/dashboard');
+      router.push(next);
     } catch (err) {
       setApiError(
         err instanceof Error ? err.message : 'Не удалось создать аккаунт',

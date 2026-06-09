@@ -96,6 +96,24 @@ describe('SafetyMonitor', () => {
       expect(result.events.some((e) => e.type === 'dissociation')).toBe(true);
     });
 
+    it('detects dissociation even with HIGH face confidence (fix: stress, not confidence)', () => {
+      // Регрессия: фоллбек сравнивал s.confidence вместо s.stress — пациент с
+      // хорошо распознанным лицом (confidence=0.95) но shutdown-паттерном
+      // (low engagement + low stress) проходил незамеченным.
+      const state = makeSessionState();
+      const shutdownSnap = makeSnapshot({
+        engagement: 0.05,
+        confidence: 0.95,
+        stress: 0.05,
+      });
+
+      monitor.analyzeEmotion(shutdownSnap, state);
+      monitor.analyzeEmotion(shutdownSnap, state);
+      const result = monitor.analyzeEmotion(shutdownSnap, state);
+
+      expect(result.events.some((e) => e.type === 'dissociation')).toBe(true);
+    });
+
     it('should NOT detect dissociation from a single low snapshot', () => {
       const state = makeSessionState();
       const lowSnap = makeSnapshot({

@@ -86,6 +86,9 @@ export class SessionRegistry {
   reattach(sessionId: string, userId: string, newSocketId: string): boolean {
     const entry = this.sessions.get(sessionId);
     if (!entry || entry.userId !== userId) return false;
+    // Только detached-сессии можно перепривязать. Без этой проверки второй
+    // socket того же userId мог перехватить активную сессию у первого.
+    if (entry.detachedAt === null) return false;
     // Снимаем старую socketIndex-привязку.
     const oldSet = this.socketIndex.get(entry.socketId);
     if (oldSet) {
@@ -206,11 +209,11 @@ export class SessionRegistry {
       } else {
         const entry = this.sessions.get(sessionId);
         if (entry) {
-          try {
-            void entry.handler.endSession();
-          } catch (err) {
+          // .catch() обязателен: void отбрасывает promise, и async-rejection
+          // из endSession() стал бы unhandledRejection (крэш процесса).
+          entry.handler.endSession().catch((err) => {
             console.warn(`[registry] session end failed for ${sessionId}`, err);
-          }
+          });
           this.removeSession(sessionId);
         }
       }

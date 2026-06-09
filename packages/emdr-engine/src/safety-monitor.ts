@@ -272,10 +272,12 @@ export class SafetyMonitor {
       return false;
     }
 
+    // stress (не confidence!) — confidence это качество face-детекции,
+    // его низкое значение означает плохой кадр, а не диссоциацию.
     return tail.every(
       (s) =>
         s.engagement < this.thresholds.dissociationEngagementMin &&
-        s.confidence < this.thresholds.dissociationAttentionMin
+        s.stress < this.thresholds.dissociationAttentionMin
     );
   }
 

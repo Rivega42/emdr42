@@ -47,6 +47,39 @@ describe('SessionRegistry', () => {
     reg.stopSweeper();
   });
 
+  it('reattach отказывает для активной (не detached) сессии', () => {
+    const reg = new SessionRegistry();
+    reg.addSession('s1', { handler: makeSessionHandler(), socketId: 'sock-a', userId: 'u1' });
+    // Сессия активна — второй socket того же userId НЕ должен её перехватить.
+    expect(reg.reattach('s1', 'u1', 'sock-b')).toBe(false);
+    expect(reg.sessionsBySocket('sock-a')).toEqual(['s1']);
+  });
+
+  it('reattach работает после markDetached и отказывает чужому userId', () => {
+    const reg = new SessionRegistry();
+    reg.addSession('s1', { handler: makeSessionHandler(), socketId: 'sock-a', userId: 'u1' });
+    reg.markDetached('sock-a', Date.now());
+
+    expect(reg.reattach('s1', 'u2', 'sock-evil')).toBe(false);
+    expect(reg.reattach('s1', 'u1', 'sock-b')).toBe(true);
+    expect(reg.sessionDetachedAt('s1')).toBeNull();
+    expect(reg.sessionsBySocket('sock-b')).toEqual(['s1']);
+    expect(reg.sessionsBySocket('sock-a')).toEqual([]);
+  });
+
+  it('sweep не падает unhandledRejection при async-ошибке endSession', async () => {
+    const reg = new SessionRegistry(20, 5);
+    const handler = {
+      endSession: jest.fn().mockRejectedValue(new Error('backend down')),
+    } as unknown as SessionHandler;
+    reg.addSession('s1', { handler, socketId: 'sock-a', userId: 'u1' });
+    reg.startSweeper();
+    await new Promise((r) => setTimeout(r, 40));
+    expect(handler.endSession).toHaveBeenCalled();
+    expect(reg.hasSession('s1')).toBe(false);
+    reg.stopSweeper();
+  });
+
   it('tracks voice handlers by socket', () => {
     const reg = new SessionRegistry();
     const v1 = makeVoiceHandler();

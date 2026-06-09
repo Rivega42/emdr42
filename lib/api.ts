@@ -24,6 +24,13 @@ class ApiError extends Error {
 class ApiClient {
   private baseUrl: string;
   private token: string | null = null;
+  private refreshToken: string | null = null;
+  /** Single-flight: параллельные 401 не должны дёргать /auth/refresh N раз. */
+  private refreshPromise: Promise<boolean> | null = null;
+  /** Вызывается после успешной ротации — AuthContext персистит новую пару. */
+  onTokensUpdated?: (tokens: { accessToken: string; refreshToken?: string }) => void;
+  /** Вызывается когда refresh невозможен — AuthContext делает logout. */
+  onSessionExpired?: () => void;
 
   constructor(baseUrl?: string) {
     this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -33,7 +40,52 @@ class ApiClient {
     this.token = token;
   }
 
-  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  setRefreshToken(token: string | null): void {
+    this.refreshToken = token;
+  }
+
+  /**
+   * Access token живёт 15 минут (JWT_EXPIRES_IN). На 401 пробуем ротацию
+   * refresh token и повторяем запрос один раз. Без этого пользователь молча
+   * терял авторизацию посреди EMDR-сессии.
+   */
+  private async tryRefresh(): Promise<boolean> {
+    if (!this.refreshToken) return false;
+    if (this.refreshPromise) return this.refreshPromise;
+
+    this.refreshPromise = (async () => {
+      try {
+        const res = await fetch(`${this.baseUrl}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: this.refreshToken }),
+        });
+        if (!res.ok) {
+          this.token = null;
+          this.refreshToken = null;
+          this.onSessionExpired?.();
+          return false;
+        }
+        const data: { accessToken: string; refreshToken?: string } = await res.json();
+        this.token = data.accessToken;
+        if (data.refreshToken) this.refreshToken = data.refreshToken;
+        this.onTokensUpdated?.(data);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
+  }
+
+  private async request<T>(
+    path: string,
+    options: RequestInit = {},
+    isRetry = false,
+  ): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
@@ -49,12 +101,37 @@ class ApiClient {
     });
 
     if (!res.ok) {
+      // 401 → попытка ротации + один retry. Исключаем сами auth-flow endpoints
+      // (401 там означает неверные креды/токен, не истёкший access).
+      const noRetryPaths = ['/auth/login', '/auth/refresh', '/auth/logout', '/mfa/challenge'];
+      if (
+        res.status === 401 &&
+        !isRetry &&
+        !noRetryPaths.some((p) => path.startsWith(p))
+      ) {
+        const refreshed = await this.tryRefresh();
+        if (refreshed) return this.request<T>(path, options, true);
+      }
       const body = await res.json().catch(() => ({ message: res.statusText }));
       throw new ApiError(res.status, body.message || res.statusText);
     }
 
     if (res.status === 204) return undefined as T;
     return res.json();
+  }
+
+  /** Отзывает refresh token на сервере (best-effort, не бросает). */
+  async logout(): Promise<void> {
+    if (!this.refreshToken) return;
+    try {
+      await fetch(`${this.baseUrl}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: this.refreshToken }),
+      });
+    } catch {
+      // network failure не должен блокировать локальный logout
+    }
   }
 
   // Auth — login может вернуть либо токены, либо MFA challenge.

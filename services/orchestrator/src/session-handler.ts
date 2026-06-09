@@ -709,8 +709,12 @@ export class SessionHandler {
       await this.backendClient.addEmotionRecords(this.sessionId, batch);
     } catch (err) {
       console.error(`[session:${this.sessionId}] Failed to flush emotions:`, err);
-      // Put them back for next flush attempt
+      // Put them back for next flush attempt. Cap 1800 (~30 мин при 1/сек):
+      // при многочасовом отказе backend буфер не должен расти безгранично (OOM).
       this.emotionBuffer.unshift(...batch);
+      if (this.emotionBuffer.length > 1800) {
+        this.emotionBuffer.splice(0, this.emotionBuffer.length - 1800);
+      }
     }
   }
 

@@ -49,8 +49,10 @@ export const loadConfig = (): OrchestratorConfig => {
   if (process.env.OPENAI_API_KEY) {
     llmProviders.openai = { apiKey: process.env.OPENAI_API_KEY };
   }
-  if (process.env.OLLAMA_URL) {
-    llmProviders.ollama = { baseUrl: process.env.OLLAMA_URL };
+  // docker-compose передаёт OLLAMA_BASE_URL; OLLAMA_URL — legacy алиас.
+  const ollamaUrl = process.env.OLLAMA_BASE_URL || process.env.OLLAMA_URL;
+  if (ollamaUrl) {
+    llmProviders.ollama = { baseUrl: ollamaUrl };
   }
 
   const sttProviders: Record<string, Record<string, string>> = {};

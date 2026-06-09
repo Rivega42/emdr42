@@ -54,9 +54,11 @@ export class AnalyticsController {
     return this.analytics.patientSummary(patientId);
   }
 
+  // ADMIN-only: platform-wide crisis события. THERAPIST видел бы safety events
+  // чужих (не назначенных ему) пациентов — утечка clinical data.
   @Get('safety-events')
-  @Roles('THERAPIST', 'ADMIN')
-  @ApiOperation({ summary: 'Safety events trends (admin/therapist)' })
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Safety events trends (admin only)' })
   async safetyEvents(
     @Query('severity') severity?: string,
     @Query('from') from?: string,

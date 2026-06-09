@@ -269,6 +269,10 @@ export default function SessionPage() {
     const socket = getSocket();
     socketRef.current = socket;
 
+    // getSocket() — singleton: повторный вызов connectAndStart без очистки
+    // дублировал бы все listeners (двойные сообщения в чате, двойной audio).
+    socket.removeAllListeners();
+
     socket.on('connect', async () => {
       setConnected(true);
       const id = crypto.randomUUID();

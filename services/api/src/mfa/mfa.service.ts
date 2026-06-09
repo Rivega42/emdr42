@@ -136,8 +136,10 @@ export class MfaService {
     await this.prisma.verificationToken.deleteMany({
       where: { userId, purpose: 'BACKUP_CODE' },
     });
+    // cost 12: backup-код 64 бита энтропии, cost 10 слишком дёшев для
+    // offline brute-force при утечке хэшей.
     for (const code of backupCodes) {
-      const hash = await bcrypt.hash(code, 10);
+      const hash = await bcrypt.hash(code, 12);
       await this.prisma.verificationToken.create({
         data: {
           userId,
