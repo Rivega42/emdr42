@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { RefreshTokenService } from './refresh-token.service';
+import { TokenRevocationService } from './token-revocation.service';
 import { AuditService } from '../audit/audit.service';
 
 const mockRefreshTokens = {
@@ -53,6 +54,7 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: mockJwtService },
         { provide: EmailService, useValue: mockEmailService },
         { provide: RefreshTokenService, useValue: mockRefreshTokens },
+        { provide: TokenRevocationService, useValue: { revokeUserTokens: jest.fn() } },
         { provide: AuditService, useValue: mockAudit },
       ],
     }).compile();

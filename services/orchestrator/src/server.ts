@@ -22,6 +22,7 @@ import { SessionHandler } from './session-handler';
 import { BackendClient } from './backend-client';
 import { VoiceHandler } from './voice-handler';
 import { SessionRegistry } from './session-registry';
+import { RevocationChecker } from './revocation';
 import { metrics, metricsHandler } from './metrics';
 
 // -- JWT payload type --
@@ -30,6 +31,7 @@ interface JwtPayload {
   sub: string;
   email?: string;
   role?: string;
+  iat?: number;
 }
 
 // -- Registry (replaces naked Maps to prevent leaks, #117) --
@@ -71,6 +73,21 @@ const main = async (): Promise<void> => {
       );
     }
   }
+
+  // Revocation checker (#119) — переиспользуем circuit-Redis или создаём
+  // отдельный клиент; без Redis — fail-open (dev).
+  let redisRevocation: Redis | null = redisCb;
+  if (!redisRevocation && config.redisUrl) {
+    try {
+      redisRevocation = new Redis(config.redisUrl, { maxRetriesPerRequest: 1 });
+      redisRevocation.on('error', (err) =>
+        console.warn('[revocation] redis error:', err.message),
+      );
+    } catch {
+      redisRevocation = null;
+    }
+  }
+  const revocation = new RevocationChecker(redisRevocation);
 
   // Initialize AI Router
   const aiRouter = new AiRouter({
@@ -134,6 +151,9 @@ const main = async (): Promise<void> => {
       const payload = jwt.verify(token, config.jwtSecret) as JwtPayload;
       (socket as any).userId = payload.sub;
       (socket as any).userToken = token;
+      // iat нужен для revocation-проверки (#119): токен, выданный ДО
+      // logout-all / password-reset, считается отозванным.
+      (socket as any).tokenIat = payload.iat;
       next();
     } catch {
       next(new Error('Invalid or expired token'));
@@ -182,6 +202,35 @@ const main = async (): Promise<void> => {
       }
       entry.count += 1;
       next();
+    });
+
+    // ---- revocation check (#119) ----
+    // JWT валиден 15 мин и проверяется только на handshake. После
+    // logout-all / password-reset отозванный токен не должен продолжать
+    // управлять сессией. Проверяем на критичных событиях (кэш 5с в checker).
+    const REVOCATION_CHECKED_EVENTS = new Set([
+      'session:start',
+      'session:message',
+      'session:end',
+      'voice:start',
+    ]);
+    const tokenIat = (socket as any).tokenIat as number | undefined;
+    socket.use((packet, next) => {
+      const [event] = packet;
+      if (typeof event !== 'string' || !REVOCATION_CHECKED_EVENTS.has(event)) {
+        return next();
+      }
+      revocation
+        .isRevoked(userId, tokenIat)
+        .then((revoked) => {
+          if (!revoked) return next();
+          console.warn(
+            `[ws] Revoked token used: userId=${userId} event=${event} — disconnecting`,
+          );
+          socket.emit('session:error', { message: 'Session expired, please re-login' });
+          socket.disconnect(true);
+        })
+        .catch(() => next()); // fail-open
     });
 
     // Гард: sessionId должен быть непустой строкой. Без валидации клиент мог

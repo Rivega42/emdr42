@@ -5,6 +5,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenService } from './refresh-token.service';
+import { TokenRevocationService } from './token-revocation.service';
 import { AuditModule } from '../audit/audit.module';
 
 function resolveJwtSecret(): string {
@@ -32,7 +33,7 @@ function resolveJwtSecret(): string {
     AuditModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, RefreshTokenService],
-  exports: [AuthService, RefreshTokenService],
+  providers: [AuthService, JwtStrategy, RefreshTokenService, TokenRevocationService],
+  exports: [AuthService, RefreshTokenService, TokenRevocationService],
 })
 export class AuthModule {}
