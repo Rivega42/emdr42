@@ -10,6 +10,7 @@ export type CrisisType =
   | 'SUICIDE_IDEATION'
   | 'SELF_HARM'
   | 'DISSOCIATION'
+  | 'ABREACTION' // отдельный тип (#216): семантически не равен DISSOCIATION
   | 'PANIC'
   | 'OTHER';
 

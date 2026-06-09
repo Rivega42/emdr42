@@ -326,7 +326,8 @@ export class SessionHandler {
             if (t === 'suicide_ideation') return 'SUICIDE_IDEATION' as const;
             if (t === 'self_harm') return 'SELF_HARM' as const;
             if (t === 'panic') return 'PANIC' as const;
-            // abreaction → DISSOCIATION (ближайший fit в CrisisService schema)
+            if (t === 'abreaction') return 'ABREACTION' as const;
+            // dissociation и прочее → DISSOCIATION
             return 'DISSOCIATION' as const;
           })();
           this.backendClient

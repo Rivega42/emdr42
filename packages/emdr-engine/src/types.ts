@@ -158,6 +158,13 @@ export interface SafetyThresholds {
   stressHigh: number;
   abreactionArousalThreshold: number;
   maxSetsWithoutProgress: number;
+  /**
+   * Voice-pattern thresholds (#79). Раньше захардкожены в safety-monitor;
+   * теперь конфигурируемые для clinical tuning per-patient.
+   */
+  voiceFlatAffectMin: number;     // напр. 0.6 — устойчиво плоский аффект
+  voiceHesitationMin: number;     // напр. 0.4 — паузы/заполнители
+  voiceFreshnessMs: number;       // напр. 30_000 — voice signal протухает через N мс
 }
 
 export type RiskLevel = 'none' | 'low' | 'medium' | 'high' | 'critical';

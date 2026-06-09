@@ -30,6 +30,9 @@ const DEFAULT_THRESHOLDS: SafetyThresholds = {
   stressHigh: 0.75,
   abreactionArousalThreshold: 0.85,
   maxSetsWithoutProgress: 4,
+  voiceFlatAffectMin: 0.6,
+  voiceHesitationMin: 0.4,
+  voiceFreshnessMs: 30_000,
 };
 
 // Minimum consecutive low-engagement snapshots to flag dissociation (#132, approx 3 s)
@@ -245,12 +248,12 @@ export class SafetyMonitor {
       //  3. Voice flatAffect > 0.6 + recent hesitation (intermodal confirmation, #79)
       const voiceFresh =
         this.voiceIndicators !== null &&
-        Date.now() - this.voiceIndicators.updatedAt < 30_000;
+        Date.now() - this.voiceIndicators.updatedAt < this.thresholds.voiceFreshnessMs;
       const voiceFlatAffectSignal = Boolean(
         voiceFresh &&
           this.voiceIndicators &&
-          this.voiceIndicators.flatAffect > 0.6 &&
-          this.voiceIndicators.hesitation > 0.4,
+          this.voiceIndicators.flatAffect > this.thresholds.voiceFlatAffectMin &&
+          this.voiceIndicators.hesitation > this.thresholds.voiceHesitationMin,
       );
 
       const isDissociating =
