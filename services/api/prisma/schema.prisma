@@ -476,3 +476,32 @@ model ProcessedStripeEvent {
 
   @@index([processedAt])
 }
+
+// #161 — приём заявок с маркетингового сайта (intake → lead → patient).
+// Spam protection: rate-limit, honeypot, captcha (опц.). Statuses:
+//   NEW (just submitted) → CONTACTED → QUALIFIED → BOOKED → CONVERTED
+//   ↓ REJECTED / SPAM
+model Lead {
+  id                       String   @id @default(uuid())
+  email                    String
+  name                     String?
+  phone                    String?
+  source                   String?  // landing | referral | ad | other
+  utm                      Json?
+  preferredContactChannel  String?  // email | phone | telegram | whatsapp
+  preferredTime            String?
+  message                  String?
+  status                   String   @default("NEW")
+  assignedTherapistId      String?
+  convertedUserId          String?
+  ipAddress                String?
+  userAgent                String?
+  consentAt                DateTime?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([status])
+  @@index([email])
+  @@index([assignedTherapistId])
+  @@index([createdAt])
+}

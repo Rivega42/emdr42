@@ -390,6 +390,58 @@ class ApiClient {
     });
   }
 
+  // Intake leads (#161)
+  async submitLead(input: {
+    email: string;
+    name?: string;
+    phone?: string;
+    source?: string;
+    utm?: Record<string, string>;
+    preferredContactChannel?: 'email' | 'phone' | 'telegram' | 'whatsapp';
+    preferredTime?: string;
+    message?: string;
+    consent: boolean;
+  }): Promise<{ received: true; leadId?: string }> {
+    return this.request('/intake/leads', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async listLeads(status?: string): Promise<{
+    items: Array<{
+      id: string;
+      email: string;
+      name: string | null;
+      phone: string | null;
+      status: string;
+      source: string | null;
+      message: string | null;
+      assignedTherapistId: string | null;
+      createdAt: string;
+    }>;
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    const qs = status ? `?status=${status}` : '';
+    return this.request(`/intake/leads${qs}`);
+  }
+
+  async updateLead(
+    id: string,
+    dto: { status?: string; assignedTherapistId?: string; message?: string },
+  ): Promise<unknown> {
+    return this.request(`/intake/leads/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async convertLead(id: string): Promise<{ inviteToken: string; inviteId: string; expiresAt: string }> {
+    return this.request(`/intake/leads/${id}/convert`, { method: 'POST' });
+  }
+
   // Session comparison (#core-4)
   async compareSessions(currentId: string, previousId: string): Promise<{
     current: { id: string; sessionNumber: number; sudsFinal: number | null; vocFinal: number | null };
