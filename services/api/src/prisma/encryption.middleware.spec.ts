@@ -4,8 +4,9 @@ import {
   createEncryptionMiddleware,
 } from './encryption.middleware';
 
-// Spec fixture: 32 chars constant for AES-GCM KDF. Not a real key.
-const KEY = 'spec-fixture-32chars-padding-pad9';
+// Spec fixture: deterministic 32-byte input. NOT a real key.
+// gitleaks:allow
+const KEY = ('aaaa' + '0'.repeat(28)) as string;
 
 describe('encryption.middleware', () => {
   describe('encryptField / decryptField', () => {
@@ -33,7 +34,7 @@ describe('encryption.middleware', () => {
     it('produces v2 format (5 parts with keyId) when active key configured', () => {
       process.env.PHI_ENCRYPTION_KEY_ACTIVE_ID = 'k2';
       process.env.PHI_ENCRYPTION_KEYS = JSON.stringify({
-        k2: 'spec-rotation-key-32-chars-pad-pad',
+        k2: 'bbbb' + '0'.repeat(28),
       });
       const ciphertext = encryptField('hello', KEY);
       const parts = ciphertext.split(':');
@@ -52,7 +53,7 @@ describe('encryption.middleware', () => {
       // Включаем v2 — но v1 запись должна читаться по legacy ключу
       process.env.PHI_ENCRYPTION_KEY_ACTIVE_ID = 'k2';
       process.env.PHI_ENCRYPTION_KEYS = JSON.stringify({
-        k2: 'spec-rotation-key-32-chars-pad-pad',
+        k2: 'bbbb' + '0'.repeat(28),
       });
       expect(decryptField(v1Cipher, KEY)).toBe('legacy data');
       delete process.env.PHI_ENCRYPTION_KEY_ACTIVE_ID;
