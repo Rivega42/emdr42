@@ -339,6 +339,57 @@ class ApiClient {
     return this.request('/billing/portal', { method: 'POST' });
   }
 
+  // Patient invites (#160) — therapist creates, anyone previews, auth user accepts.
+  async createPatientInvite(input: {
+    email?: string;
+    expiresInDays?: number;
+    notes?: string;
+  }): Promise<{ id: string; token: string; expiresAt: string }> {
+    return this.request('/therapist-patient/invites', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async previewPatientInvite(token: string): Promise<{
+    therapistName: string;
+    expiresAt: string;
+    requiresEmail: string | null;
+  }> {
+    return this.request(`/therapist-patient/invites/${encodeURIComponent(token)}/preview`);
+  }
+
+  async acceptPatientInvite(token: string): Promise<{
+    success: true;
+    therapistId: string;
+    relationId: string;
+  }> {
+    return this.request(`/therapist-patient/invites/${encodeURIComponent(token)}/accept`, {
+      method: 'POST',
+    });
+  }
+
+  async listPatientInvites(
+    status?: 'active' | 'used' | 'revoked' | 'expired',
+  ): Promise<Array<{
+    id: string;
+    email: string | null;
+    notes: string | null;
+    expiresAt: string;
+    acceptedAt: string | null;
+    revokedAt: string | null;
+    createdAt: string;
+  }>> {
+    const qs = status ? `?status=${status}` : '';
+    return this.request(`/therapist-patient/invites${qs}`);
+  }
+
+  async revokePatientInvite(id: string): Promise<{ success: true }> {
+    return this.request(`/therapist-patient/invites/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Session comparison (#core-4)
   async compareSessions(currentId: string, previousId: string): Promise<{
     current: { id: string; sessionNumber: number; sudsFinal: number | null; vocFinal: number | null };

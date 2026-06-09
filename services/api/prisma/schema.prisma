@@ -78,6 +78,10 @@ model User {
   // Therapist notes authored
   authoredNotes    TherapistNote[]     @relation("AuthoredNotes")
 
+  // Patient invites — issued by therapist (#160)
+  invitesIssued    PatientInvite[]     @relation("InvitesAuthored")
+  invitesAccepted  PatientInvite[]     @relation("InvitesAccepted")
+
   settings         Json?
 
   @@index([email])
@@ -102,6 +106,30 @@ model TherapistPatient {
   @@index([therapistId])
   @@index([patientId])
   @@index([status])
+}
+
+// #160 — приглашение пациента терапевтом через одноразовую ссылку.
+// Plain-token показывается ОДИН раз при создании; в БД — только sha256(token).
+// Срок жизни по умолчанию 14 дней; revokeable; одноразовый (acceptedByUserId).
+model PatientInvite {
+  id                String   @id @default(uuid())
+  therapistId       String
+  therapist         User     @relation("InvitesAuthored", fields: [therapistId], references: [id], onDelete: Cascade)
+  // Опциональный hint — email, на который ожидаем привязки. Если задан, accept проверяет совпадение.
+  email             String?
+  // Опциональная заметка для контекста (видна только терапевту).
+  notes             String?
+  tokenHash         String   @unique
+  expiresAt         DateTime
+  acceptedAt        DateTime?
+  acceptedByUserId  String?
+  acceptedBy        User?    @relation("InvitesAccepted", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  revokedAt         DateTime?
+  createdAt         DateTime @default(now())
+
+  @@index([therapistId])
+  @@index([email])
+  @@index([expiresAt])
 }
 
 // #112, #122 — терапевтические заметки между сессиями / supervisor notes.
