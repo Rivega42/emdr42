@@ -1,11 +1,9 @@
 # syntax=docker/dockerfile:1.6
 # NestJS API. Контекст билда — корень монорепо (pnpm workspace).
 #
-# ВНИМАНИЕ (#208): workspace-пакеты @emdr42/* экспортируют TS-source
-# (main: ./src/index.ts). NestJS esbuild-bundling рискован из-за
-# DI-метаданных декораторов, поэтому здесь оставлен tsc-build. Образ
-# СОБИРАЕТСЯ; runtime-импорт @emdr42/* требует решения из #208 (сборка
-# пакетов в dist или ts-node runtime). Vika валидирует при первом deploy.
+# #208 решён: workspace-пакеты @emdr42/* теперь собираются в dist/index.js
+# (main: ./dist/index.js). NestJS читает их в runtime через require —
+# нет TS-import-ошибок. Сначала собираем packages, потом api.
 
 FROM node:20-alpine AS builder
 WORKDIR /repo
@@ -25,6 +23,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 RUN pnpm --filter @emdr42/api exec prisma generate \
+ && pnpm --filter "./packages/*" build \
  && pnpm --filter @emdr42/api build
 
 FROM node:20-alpine AS production
