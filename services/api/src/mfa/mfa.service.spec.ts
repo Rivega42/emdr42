@@ -15,6 +15,7 @@ const mockPrisma: any = {
     create: jest.fn(),
     findMany: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn(),
     deleteMany: jest.fn(),
   },
 };
@@ -48,9 +49,7 @@ describe('MfaService', () => {
   describe('setupTotp', () => {
     it('throws если user не найден', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
-      await expect(service.setupTotp('nobody')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.setupTotp('nobody')).rejects.toThrow(UnauthorizedException);
     });
 
     it('throws если MFA уже включён', async () => {
@@ -146,9 +145,9 @@ describe('MfaService', () => {
       });
       mockPrisma.verificationToken.findMany.mockResolvedValue([]);
 
-      await expect(
-        service.verifyChallenge('u1', '000000', {}),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.verifyChallenge('u1', '000000', {})).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('fallback на backup code, помечает usedAt', async () => {
@@ -169,20 +168,37 @@ describe('MfaService', () => {
       };
       mockPrisma.verificationToken.findMany.mockResolvedValue([backupToken]);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-      mockPrisma.verificationToken.update.mockResolvedValue({});
+      mockPrisma.verificationToken.updateMany.mockResolvedValue({ count: 1 });
       mockJwt.sign.mockReturnValue('access-jwt');
 
-      const result = await service.verifyChallenge(
-        'u1',
-        'BACKUPCODE1234',
-        {},
-      );
+      const result = await service.verifyChallenge('u1', 'BACKUPCODE1234', {});
       expect(result.accessToken).toBe('access-jwt');
-      // Backup token помечен использованным
-      expect(mockPrisma.verificationToken.update).toHaveBeenCalledWith({
-        where: { id: 'vt1' },
+      // Backup token помечен использованным атомарно (usedAt: null в where)
+      expect(mockPrisma.verificationToken.updateMany).toHaveBeenCalledWith({
+        where: { id: 'vt1', usedAt: null },
         data: expect.objectContaining({ usedAt: expect.any(Date) }),
       });
+    });
+
+    it('replay backup-кода в окне гонки отклоняется (count=0, #233)', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'u1',
+        email: 'a@b.c',
+        name: 'A',
+        role: 'PATIENT',
+        mfaEnabled: true,
+        mfaSecret: FIXED_SECRET,
+      });
+      mockPrisma.verificationToken.findMany.mockResolvedValue([
+        { id: 'vt1', userId: 'u1', tokenHash: 'hash-1', purpose: 'BACKUP_CODE', usedAt: null },
+      ]);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      // Конкурентный запрос успел пометить код первым
+      mockPrisma.verificationToken.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.verifyChallenge('u1', 'BACKUPCODE1234', {})).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('throws если MFA не настроен', async () => {

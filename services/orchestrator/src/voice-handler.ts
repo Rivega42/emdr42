@@ -44,7 +44,7 @@ export class VoiceHandler {
     socket: Socket,
     sessionId: string,
     config: VoiceHandlerConfig,
-    sessionHandler: SessionHandler
+    sessionHandler: SessionHandler,
   ) {
     this.socket = socket;
     this.sessionId = sessionId;
@@ -57,6 +57,12 @@ export class VoiceHandler {
   }
 
   /** Start voice dialogue mode */
+
+  /** Перепривязка к новому socket после reconnect (#233). */
+  rebindSocket(socket: Socket): void {
+    this.socket = socket;
+  }
+
   async start(): Promise<void> {
     if (this.isActive) return;
 
@@ -170,7 +176,7 @@ export class VoiceHandler {
               words: true,
               partial_results: true,
             },
-          })
+          }),
         );
         console.log(`[voice:${this.sessionId}] Connected to Vosk`);
         if (!settled) {
@@ -202,10 +208,9 @@ export class VoiceHandler {
         // Exponential backoff с jitter — иначе при упавшем Vosk-сервере
         // мы spammим reconnect раз в секунду. Cap 30 сек.
         if (this.isActive) {
-          const delay = Math.min(
-            30_000,
-            1000 * 2 ** Math.min(this.reconnectAttempts, 5),
-          ) + Math.floor(Math.random() * 500);
+          const delay =
+            Math.min(30_000, 1000 * 2 ** Math.min(this.reconnectAttempts, 5)) +
+            Math.floor(Math.random() * 500);
           this.reconnectAttempts += 1;
           this.reconnectTimer = setTimeout(() => {
             this.reconnectTimer = null;
@@ -251,8 +256,7 @@ export class VoiceHandler {
               end: w.end,
               confidence: w.conf,
             }));
-            const durationSec =
-              words[words.length - 1].end - words[0].start;
+            const durationSec = words[words.length - 1].end - words[0].start;
             this.sessionHandler.handleVoiceMetrics({
               words,
               durationSec,
@@ -331,8 +335,7 @@ export class VoiceHandler {
 
       this.socket.emit('voice:ai_done');
     } catch (err) {
-      const isTimeout =
-        err instanceof Error && /timeout/i.test(err.message);
+      const isTimeout = err instanceof Error && /timeout/i.test(err.message);
       console.error(`[voice:${this.sessionId}] Processing error:`, err);
       this.socket.emit('voice:error', {
         message: isTimeout
@@ -367,10 +370,7 @@ export class VoiceHandler {
    * ВАЖНО: ВСЕГДА POST. GET-fallback с текстом в URL раньше отправлял
    * транскрипт пациента в access-logs → PHI leak.
    */
-  private async synthesizeSpeech(
-    text: string,
-    signal?: AbortSignal,
-  ): Promise<ArrayBuffer | null> {
+  private async synthesizeSpeech(text: string, signal?: AbortSignal): Promise<ArrayBuffer | null> {
     if (!text.trim()) return null;
 
     try {

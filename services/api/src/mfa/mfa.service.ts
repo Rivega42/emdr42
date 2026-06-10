@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
@@ -172,11 +168,7 @@ export class MfaService {
    * Login flow step 2: пользователь предоставляет TOTP код.
    * Если success — возвращает access+refresh token пару.
    */
-  async verifyChallenge(
-    userId: string,
-    code: string,
-    meta?: { ip?: string; userAgent?: string },
-  ) {
+  async verifyChallenge(userId: string, code: string, meta?: { ip?: string; userAgent?: string }) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     const secret = user?.mfaSecret ?? undefined;
     if (!user || !secret || !user.mfaEnabled) {
@@ -192,11 +184,15 @@ export class MfaService {
       });
       for (const t of backupTokens) {
         if (await bcrypt.compare(code, t.tokenHash)) {
-          verified = true;
-          await this.prisma.verificationToken.update({
-            where: { id: t.id },
+          // Атомарная пометка (#233): updateMany с условием usedAt: null.
+          // count === 0 → конкурентный запрос успел использовать код первым —
+          // replay в окне гонки отклоняется.
+          const marked = await this.prisma.verificationToken.updateMany({
+            where: { id: t.id, usedAt: null },
             data: { usedAt: new Date() },
           });
+          if (marked.count !== 1) break;
+          verified = true;
           await this.audit.log({
             userId,
             actorId: userId,
@@ -276,10 +272,7 @@ export class MfaService {
     // offset matched (or that none matched early).
     for (const offset of [-1, 0, 1]) {
       const computed = Buffer.from(computeTotp(secret, now + offset));
-      if (
-        computed.length === provided.length &&
-        timingSafeEqual(computed, provided)
-      ) {
+      if (computed.length === provided.length && timingSafeEqual(computed, provided)) {
         matched = true;
       }
     }

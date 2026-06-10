@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -63,11 +53,11 @@ export class IntakeController {
   @ApiOperation({ summary: 'Изменить status/assigned/notes лида' })
   async update(
     @Param('id') id: string,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
     @Body() dto: UpdateLeadDto,
     @Req() req: Request,
   ) {
-    return this.intake.update(id, user.id, dto, metaFrom(req));
+    return this.intake.update(id, user.id, dto, metaFrom(req), user.role);
   }
 
   @Post('leads/:id/convert')
@@ -77,9 +67,9 @@ export class IntakeController {
   @ApiOperation({ summary: 'Convert lead → invite-ссылка для assigned therapist' })
   async convert(
     @Param('id') id: string,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
     @Req() req: Request,
   ) {
-    return this.intake.convert(id, user.id, metaFrom(req));
+    return this.intake.convert(id, user.id, metaFrom(req), user.role);
   }
 }
