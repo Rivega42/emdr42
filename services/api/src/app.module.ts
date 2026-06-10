@@ -1,5 +1,5 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
@@ -24,6 +24,7 @@ import { MfaModule } from './mfa/mfa.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
+import { CsrfGuard } from './common/guards/csrf.guard';
 import { RedisModule } from './common/redis/redis.module';
 
 @Module({
@@ -53,6 +54,8 @@ import { RedisModule } from './common/redis/redis.module';
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
+    // CSRF double-submit для cookie-auth пути (#115). Bearer-путь не трогает.
+    { provide: APP_GUARD, useClass: CsrfGuard },
   ],
 })
 export class AppModule implements NestModule {

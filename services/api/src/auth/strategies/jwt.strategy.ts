@@ -28,7 +28,12 @@ function requireJwtSecret(): string {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly prisma: PrismaService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      // #115: Bearer (приоритет, legacy-фронт) ?? HttpOnly cookie.
+      // Cookie-путь защищён CSRF-гардом (csrf.guard.ts) на мутирующих методах.
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        (req: { cookies?: Record<string, string> }) => req?.cookies?.['access_token'] ?? null,
+      ]),
       ignoreExpiration: false,
       secretOrKey: requireJwtSecret(),
     });

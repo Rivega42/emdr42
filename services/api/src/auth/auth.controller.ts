@@ -1,6 +1,6 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 
 import { AuthService } from './auth.service';
 import { AuditService } from '../audit/audit.service';
@@ -10,6 +10,7 @@ import { RefreshTokenDto } from './dto/refresh.dto';
 import { Throttle, ThrottleGuard } from '../common/guards/throttle.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { setAuthCookies, clearAuthCookies } from './cookie.helper';
 
 const extractMeta = (req: Request) => ({
   ip: req.ip,
@@ -34,10 +35,16 @@ export class AuthController {
   @Post('register')
   @Throttle(5, 3600)
   @ApiOperation({ summary: 'Register a new user' })
-  async register(@Body() dto: RegisterDto, @Req() req: Request) {
+  async register(
+    @Body() dto: RegisterDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const meta = extractAuditMeta(req);
     try {
       const result = await this.authService.register(dto, extractMeta(req));
+      // #115: HttpOnly cookie-путь параллельно body (Stage A migration).
+      setAuthCookies(res, result as { accessToken: string; refreshToken?: string });
       await this.audit.log({
         userId: (result as any).user?.id,
         action: 'REGISTER',
@@ -63,15 +70,18 @@ export class AuthController {
   @Post('login')
   @Throttle(10, 60)
   @ApiOperation({ summary: 'Login (возвращает access+refresh пару)' })
-  async login(@Body() dto: LoginDto, @Req() req: Request) {
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const meta = extractAuditMeta(req);
     try {
       const result = await this.authService.login(dto, extractMeta(req));
       // result либо { accessToken, refreshToken, user, ... } либо
       // { mfaRequired: true, mfaToken, userId } — userId есть в обоих.
       const userId =
-        (result as { user?: { id?: string } }).user?.id ??
-        (result as { userId?: string }).userId;
+        (result as { user?: { id?: string } }).user?.id ?? (result as { userId?: string }).userId;
       await this.audit.log({
         userId,
         action: 'LOGIN',
@@ -86,9 +96,15 @@ export class AuthController {
       });
       // userId — внутреннее поле для audit, наружу его не светим.
       if ('mfaRequired' in result) {
-        const { userId: _omit, ...publicMfa } = result as { mfaRequired: true; mfaToken: string; userId: string };
+        const { userId: _omit, ...publicMfa } = result as {
+          mfaRequired: true;
+          mfaToken: string;
+          userId: string;
+        };
         return publicMfa;
       }
+      // #115: HttpOnly cookie-путь параллельно body.
+      setAuthCookies(res, result as { accessToken: string; refreshToken?: string });
       return result;
     } catch (err) {
       await this.audit.log({
@@ -105,13 +121,22 @@ export class AuthController {
   @Post('refresh')
   @Throttle(60, 60)
   @ApiOperation({ summary: 'Rotate refresh token → выдать новую пару' })
-  async refresh(@Body() dto: RefreshTokenDto, @Req() req: Request) {
+  async refresh(
+    @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const meta = extractAuditMeta(req);
+    // #115: body (legacy) ?? HttpOnly cookie.
+    const refreshToken =
+      dto.refreshToken ??
+      (req as Request & { cookies?: Record<string, string> }).cookies?.['refresh_token'];
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token required (body или cookie)');
+    }
     try {
-      const result = await this.authService.refresh(
-        dto.refreshToken,
-        extractMeta(req),
-      );
+      const result = await this.authService.refresh(refreshToken, extractMeta(req));
+      setAuthCookies(res, result as { accessToken: string; refreshToken?: string });
       await this.audit.log({
         userId: (result as any).user?.id,
         action: 'TOKEN_REFRESH',
@@ -134,8 +159,16 @@ export class AuthController {
 
   @Post('logout')
   @ApiOperation({ summary: 'Отозвать refresh token' })
-  async logout(@Body() dto: RefreshTokenDto, @Req() req: Request) {
-    await this.authService.logout(dto.refreshToken);
+  async logout(
+    @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken =
+      dto.refreshToken ??
+      (req as Request & { cookies?: Record<string, string> }).cookies?.['refresh_token'];
+    await this.authService.logout(refreshToken);
+    clearAuthCookies(res);
     await this.audit.log({
       action: 'LOGOUT',
       resourceType: 'RefreshToken',
@@ -149,10 +182,7 @@ export class AuthController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Отозвать все refresh tokens пользователя' })
-  async logoutAll(
-    @CurrentUser() user: { userId: string },
-    @Req() req: Request,
-  ) {
+  async logoutAll(@CurrentUser() user: { userId: string }, @Req() req: Request) {
     await this.authService.logoutAll(user.userId);
     await this.audit.log({
       userId: user.userId,
@@ -178,18 +208,14 @@ export class AuthController {
       details: { email: body.email },
     });
     return {
-      message:
-        'If an account with that email exists, a reset link has been sent.',
+      message: 'If an account with that email exists, a reset link has been sent.',
     };
   }
 
   @Post('reset-password')
   @Throttle(5, 3600)
   @ApiOperation({ summary: 'Reset password with token' })
-  async resetPassword(
-    @Body() body: { token: string; newPassword: string },
-    @Req() req: Request,
-  ) {
+  async resetPassword(@Body() body: { token: string; newPassword: string }, @Req() req: Request) {
     const meta = extractAuditMeta(req);
     try {
       await this.authService.resetPassword(body.token, body.newPassword);
