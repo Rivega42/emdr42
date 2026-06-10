@@ -37,7 +37,7 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean, onEscape?: 
 
     const focusables = (): HTMLElement[] =>
       Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-        (el) => !el.hasAttribute('disabled') && el.offsetParent !== null,
+        (el) => !el.hasAttribute('disabled'),
       );
 
     // autoFocus на первой кнопке уже выставлен в модалках; на случай отсутствия —
