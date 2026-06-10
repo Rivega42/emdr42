@@ -68,6 +68,7 @@ lib/*
 !lib/e2e-crypto/
 !lib/hooks/
 !lib/schemas/
+!lib/__tests__/
 lib64/
 parts/
 sdist/
