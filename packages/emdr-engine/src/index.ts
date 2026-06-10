@@ -51,3 +51,12 @@ export {
   PHASE_PROMPTS,
   SAFETY_PROMPTS,
 } from './prompt-templates';
+
+// Emotion dynamics (#241) — структурированный эмоциональный контекст для LLM.
+export { computeEmotionDynamics, formatDynamicsForPrompt } from './emotion-dynamics';
+export type {
+  DominantEmotion,
+  EmotionDynamicsReport,
+  EmotionTrend,
+  TrendDirection,
+} from './emotion-dynamics';
