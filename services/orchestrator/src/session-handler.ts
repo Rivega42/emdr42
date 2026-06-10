@@ -15,6 +15,8 @@ import {
   EMDR_SYSTEM_PROMPT,
   PHASE_PROMPTS,
   SAFETY_PROMPTS,
+  computeEmotionDynamics,
+  formatDynamicsForPrompt,
 } from '@emdr42/emdr-engine';
 import type { EmdrPhase, EmotionSnapshot, FullSessionExport } from '@emdr42/emdr-engine';
 
@@ -635,6 +637,19 @@ export class SessionHandler {
           `engagement=${avgEmotions.engagement.toFixed(2)}, ` +
           `valence=${avgEmotions.valence.toFixed(2)}`,
       );
+
+      // #241: структурированная динамика — доминирующие эмоции, тренды,
+      // терапевтическая подсказка. Без этого AI видел только три скаляра
+      // и не различал «тревожный + бдительный» vs «фрустрированный + утомлённый».
+      // Защита от моков без полного API движка.
+      const track =
+        typeof this.engine.getEmotionTrack === 'function' ? this.engine.getEmotionTrack() : [];
+      if (track.length >= 2) {
+        const recent = track.slice(-5);
+        const baseline = track.slice(-10, -5);
+        const dynamics = computeEmotionDynamics(recent, baseline);
+        parts.push(...formatDynamicsForPrompt(dynamics));
+      }
     }
 
     if (!safetyCheck.safe) {
