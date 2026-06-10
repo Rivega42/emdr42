@@ -69,7 +69,6 @@ lib/*
 !lib/hooks/
 !lib/__tests__/
 !lib/schemas/
-!lib/__tests__/
 lib64/
 parts/
 sdist/
