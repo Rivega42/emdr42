@@ -24,7 +24,7 @@
     "test:unit:watch": "jest --watch"
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.9.0",
+    "@hookform/resolvers": "^5.4.0",
     "@react-three/drei": "^9.88.0",
     "@react-three/fiber": "^8.13.0",
     "@tanstack/react-query": "^5.99.0",
