@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Socket } from 'socket.io-client';
-import { VoiceCapture, type VoiceState } from '@/lib/voice-capture';
+import type { VoiceState } from '@/lib/voice-capture';
+import { useVoice } from '@/lib/hooks/useVoice';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -22,30 +23,14 @@ interface VoiceButtonProps {
 // ---------------------------------------------------------------------------
 
 const STATE_CONFIG: Record<VoiceState, { label: string; color: string; icon: string }> = {
-  idle: {
-    label: 'Голос',
-    color: 'bg-gray-200',
-    icon: '🎤',
-  },
-  listening: {
-    label: 'Слушаю...',
-    color: 'bg-green-500',
-    icon: '👂',
-  },
-  processing: {
-    label: 'Думаю...',
-    color: 'bg-amber-500',
-    icon: '⏳',
-  },
-  speaking: {
-    label: 'Говорю...',
-    color: 'bg-blue-500',
-    icon: '🔊',
-  },
+  idle: { label: 'Голос', color: 'bg-gray-200', icon: '🎤' },
+  listening: { label: 'Слушаю...', color: 'bg-green-500', icon: '👂' },
+  processing: { label: 'Думаю...', color: 'bg-amber-500', icon: '⏳' },
+  speaking: { label: 'Говорю...', color: 'bg-blue-500', icon: '🔊' },
 };
 
 // ---------------------------------------------------------------------------
-// Component
+// Main button
 // ---------------------------------------------------------------------------
 
 export default function VoiceButton({
@@ -55,168 +40,14 @@ export default function VoiceButton({
   onTranscript,
   onError,
 }: VoiceButtonProps) {
-  const [voiceState, setVoiceState] = useState<VoiceState>('idle');
-  const [isEnabled, setIsEnabled] = useState(false);
-  const [transcript, setTranscript] = useState('');
-  const [permissionDenied, setPermissionDenied] = useState(false);
-
-  const voiceCaptureRef = useRef<VoiceCapture | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioQueueRef = useRef<ArrayBuffer[]>([]);
-  const isPlayingRef = useRef(false);
-
-  // -------------------------------------------------------------------------
-  // Audio playback for AI responses
-  // -------------------------------------------------------------------------
-
-  const playAudioQueue = useCallback(async () => {
-    if (isPlayingRef.current || audioQueueRef.current.length === 0) return;
-
-    isPlayingRef.current = true;
-
-    while (audioQueueRef.current.length > 0) {
-      const audioData = audioQueueRef.current.shift();
-      if (!audioData) continue;
-
-      try {
-        if (!audioContextRef.current) {
-          audioContextRef.current = new AudioContext();
-        }
-
-        const audioBuffer = await audioContextRef.current.decodeAudioData(
-          audioData.slice(0), // Clone to avoid detached buffer
-        );
-
-        const source = audioContextRef.current.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioContextRef.current.destination);
-
-        // Timeout-страховка (#234): если AudioContext закрыт или buffer
-        // битый, onended не стреляет — без таймаута очередь зависала навсегда.
-        const timeoutMs = audioBuffer.duration * 1000 + 2000;
-        await new Promise<void>((resolve) => {
-          const timer = setTimeout(resolve, timeoutMs);
-          source.onended = () => {
-            clearTimeout(timer);
-            resolve();
-          };
-          try {
-            source.start();
-          } catch {
-            clearTimeout(timer);
-            resolve();
-          }
-        });
-      } catch (err) {
-        console.error('[VoiceButton] Audio playback error:', err);
-      }
-    }
-
-    isPlayingRef.current = false;
-  }, []);
-
-  // -------------------------------------------------------------------------
-  // Voice capture handlers
-  // -------------------------------------------------------------------------
-
-  const handleStateChange = useCallback((state: VoiceState) => {
-    setVoiceState(state);
-  }, []);
-
-  const handleTranscript = useCallback(
-    (text: string, isFinal: boolean) => {
-      if (isFinal) {
-        setTranscript('');
-      } else {
-        setTranscript(text);
-      }
-      onTranscript?.(text, isFinal);
-    },
-    [onTranscript],
-  );
-
-  const handleAiAudio = useCallback(
-    (audioData: ArrayBuffer) => {
-      audioQueueRef.current.push(audioData);
-      playAudioQueue();
-    },
-    [playAudioQueue],
-  );
-
-  const handleError = useCallback(
-    (error: string) => {
-      console.error('[VoiceButton] Error:', error);
-      if (error.includes('Permission denied') || error.includes('NotAllowedError')) {
-        setPermissionDenied(true);
-      }
-      onError?.(error);
-    },
-    [onError],
-  );
-
-  // -------------------------------------------------------------------------
-  // Toggle voice mode
-  // -------------------------------------------------------------------------
-
-  const toggleVoice = useCallback(async () => {
-    if (!socket || !sessionId) return;
-
-    if (isEnabled) {
-      // Disable voice
-      voiceCaptureRef.current?.stop();
-      voiceCaptureRef.current?.dispose();
-      voiceCaptureRef.current = null;
-      setIsEnabled(false);
-      setVoiceState('idle');
-      setTranscript('');
-    } else {
-      // Enable voice
-      try {
-        const capture = new VoiceCapture(socket, sessionId, {
-          onStateChange: handleStateChange,
-          onTranscript: handleTranscript,
-          onAiAudio: handleAiAudio,
-          onError: handleError,
-        });
-
-        await capture.start();
-        voiceCaptureRef.current = capture;
-        setIsEnabled(true);
-        setPermissionDenied(false);
-      } catch (err) {
-        console.error('[VoiceButton] Failed to start voice:', err);
-        if (
-          err instanceof Error &&
-          (err.message.includes('Permission denied') || err.name === 'NotAllowedError')
-        ) {
-          setPermissionDenied(true);
-        }
-      }
-    }
-  }, [
+  // Вся pipeline-логика (capture lifecycle, audio queue с timeout-страховкой
+  // #234, error/permission handling) в hook — раньше дублировалась с Compact.
+  const { voiceState, isEnabled, transcript, permissionDenied, toggle } = useVoice({
     socket,
     sessionId,
-    isEnabled,
-    handleStateChange,
-    handleTranscript,
-    handleAiAudio,
-    handleError,
-  ]);
-
-  // -------------------------------------------------------------------------
-  // Cleanup on unmount
-  // -------------------------------------------------------------------------
-
-  useEffect(() => {
-    return () => {
-      voiceCaptureRef.current?.dispose();
-      audioContextRef.current?.close();
-    };
-  }, []);
-
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
+    onTranscript,
+    onError,
+  });
 
   const config = STATE_CONFIG[voiceState];
   const canEnable = !disabled && socket && sessionId;
@@ -225,7 +56,7 @@ export default function VoiceButton({
     <div className="flex flex-col items-center gap-2">
       {/* Main toggle button */}
       <button
-        onClick={toggleVoice}
+        onClick={toggle}
         disabled={!canEnable || permissionDenied}
         className={`
           relative flex items-center justify-center
@@ -243,10 +74,8 @@ export default function VoiceButton({
         aria-label={isEnabled ? 'Выключить голос' : 'Включить голос'}
         title={permissionDenied ? 'Нет доступа к микрофону' : config.label}
       >
-        {/* Icon */}
         <span className="text-2xl">{permissionDenied ? '🚫' : config.icon}</span>
 
-        {/* Pulse animation when listening */}
         <AnimatePresence>
           {voiceState === 'listening' && (
             <motion.span
@@ -258,7 +87,6 @@ export default function VoiceButton({
           )}
         </AnimatePresence>
 
-        {/* Processing spinner */}
         {voiceState === 'processing' && (
           <motion.span
             animate={{ rotate: 360 }}
@@ -268,12 +96,10 @@ export default function VoiceButton({
         )}
       </button>
 
-      {/* State label */}
       <span className={`text-xs font-medium ${isEnabled ? 'text-gray-700' : 'text-gray-400'}`}>
         {permissionDenied ? 'Нет доступа' : config.label}
       </span>
 
-      {/* Live transcript preview */}
       <AnimatePresence>
         {transcript && (
           <motion.div
@@ -304,98 +130,24 @@ export function VoiceButtonCompact({
   onTranscript,
   onError,
 }: VoiceButtonProps) {
-  const [voiceState, setVoiceState] = useState<VoiceState>('idle');
-  const [isEnabled, setIsEnabled] = useState(false);
-  const voiceCaptureRef = useRef<VoiceCapture | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioQueueRef = useRef<ArrayBuffer[]>([]);
-  const isPlayingRef = useRef(false);
-
-  const playAudioQueue = useCallback(async () => {
-    if (isPlayingRef.current || audioQueueRef.current.length === 0) return;
-    isPlayingRef.current = true;
-
-    while (audioQueueRef.current.length > 0) {
-      const audioData = audioQueueRef.current.shift();
-      if (!audioData) continue;
-
-      try {
-        if (!audioContextRef.current) {
-          audioContextRef.current = new AudioContext();
-        }
-        const audioBuffer = await audioContextRef.current.decodeAudioData(audioData.slice(0));
-        const source = audioContextRef.current.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioContextRef.current.destination);
-        // Timeout-страховка (#234) — как в VoiceButton выше.
-        const timeoutMs = audioBuffer.duration * 1000 + 2000;
-        await new Promise<void>((resolve) => {
-          const timer = setTimeout(resolve, timeoutMs);
-          source.onended = () => {
-            clearTimeout(timer);
-            resolve();
-          };
-          try {
-            source.start();
-          } catch {
-            clearTimeout(timer);
-            resolve();
-          }
-        });
-      } catch {
-        // Ignore playback errors
-      }
-    }
-    isPlayingRef.current = false;
-  }, []);
-
-  const toggleVoice = useCallback(async () => {
-    if (!socket || !sessionId) return;
-
-    if (isEnabled) {
-      voiceCaptureRef.current?.dispose();
-      voiceCaptureRef.current = null;
-      setIsEnabled(false);
-      setVoiceState('idle');
-    } else {
-      try {
-        const capture = new VoiceCapture(socket, sessionId, {
-          onStateChange: setVoiceState,
-          onTranscript,
-          onAiAudio: (data) => {
-            audioQueueRef.current.push(data);
-            playAudioQueue();
-          },
-          onError,
-        });
-        await capture.start();
-        voiceCaptureRef.current = capture;
-        setIsEnabled(true);
-      } catch {
-        // Handle error silently
-      }
-    }
-  }, [socket, sessionId, isEnabled, onTranscript, onError, playAudioQueue]);
-
-  useEffect(() => {
-    return () => {
-      voiceCaptureRef.current?.dispose();
-      audioContextRef.current?.close();
-    };
-  }, []);
-
+  const { voiceState, isEnabled, permissionDenied, toggle } = useVoice({
+    socket,
+    sessionId,
+    onTranscript,
+    onError,
+  });
   const config = STATE_CONFIG[voiceState];
   const canEnable = !disabled && socket && sessionId;
 
   return (
     <button
-      onClick={toggleVoice}
-      disabled={!canEnable}
+      onClick={toggle}
+      disabled={!canEnable || permissionDenied}
       className={`
         flex items-center gap-2 px-3 py-2 rounded-md
         transition-colors text-sm font-medium
         ${
-          !canEnable
+          !canEnable || permissionDenied
             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
             : isEnabled
               ? `${config.color} text-white`
@@ -404,7 +156,7 @@ export function VoiceButtonCompact({
       `}
       aria-label={isEnabled ? 'Disable voice' : 'Enable voice'}
     >
-      <span>{config.icon}</span>
+      <span>{permissionDenied ? '🚫' : config.icon}</span>
       <span className="hidden sm:inline">{isEnabled ? config.label : 'Voice'}</span>
     </button>
   );
