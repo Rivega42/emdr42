@@ -67,6 +67,7 @@ lib/*
 !lib/*.ts
 !lib/e2e-crypto/
 !lib/hooks/
+!lib/__tests__/
 !lib/schemas/
 lib64/
 parts/
