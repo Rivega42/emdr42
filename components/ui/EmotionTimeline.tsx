@@ -17,9 +17,9 @@ import React, { useMemo } from 'react';
 
 export interface EmotionPoint {
   timestamp: number; // seconds from session start
-  stress: number;    // 0-1
+  stress: number; // 0-1
   engagement: number; // 0-1
-  valence: number;   // 0-1 (был -1..1, здесь нормализован)
+  valence: number; // 0-1 (был -1..1, здесь нормализован)
 }
 
 export interface TimelineAnnotation {
@@ -28,9 +28,24 @@ export interface TimelineAnnotation {
   label: string;
 }
 
+/**
+ * Эмоциональный пик (#240) — локальный максимум по одной из метрик.
+ * timestamp в секундах (как у EmotionPoint), value 0..1.
+ */
+export interface EmotionPeak {
+  timestamp: number;
+  metric: 'stress' | 'arousal' | 'engagement';
+  value: number;
+  prominence: number;
+  phase?: string | null;
+  nearestSudsValue?: number | null;
+}
+
 interface EmotionTimelineProps {
   points: EmotionPoint[];
   annotations?: TimelineAnnotation[];
+  /** Эмоциональные пики из /sessions/:id/emotional-peaks (#240). */
+  peaks?: EmotionPeak[];
   height?: number;
   className?: string;
 }
@@ -50,6 +65,7 @@ const PAD = { top: 20, right: 20, bottom: 40, left: 40 };
 export const EmotionTimeline: React.FC<EmotionTimelineProps> = ({
   points,
   annotations = [],
+  peaks = [],
   height = 280,
   className = '',
 }) => {
@@ -69,7 +85,10 @@ export const EmotionTimeline: React.FC<EmotionTimelineProps> = ({
 
     const buildPath = (key: 'stress' | 'engagement' | 'valence') =>
       points
-        .map((p, i) => `${i === 0 ? 'M' : 'L'}${xScale(p.timestamp).toFixed(1)},${yScale(p[key]).toFixed(1)}`)
+        .map(
+          (p, i) =>
+            `${i === 0 ? 'M' : 'L'}${xScale(p.timestamp).toFixed(1)},${yScale(p[key]).toFixed(1)}`,
+        )
         .join(' ');
 
     return {
@@ -110,6 +129,7 @@ export const EmotionTimeline: React.FC<EmotionTimelineProps> = ({
         {annotations.length > 0 && (
           <span className="text-gray-400">· События отмечены метками</span>
         )}
+        {peaks.length > 0 && <span className="text-gray-400">· ★ — эмоциональные пики</span>}
       </div>
 
       <svg
@@ -170,12 +190,7 @@ export const EmotionTimeline: React.FC<EmotionTimelineProps> = ({
 
         {/* Lines */}
         <path d={layout.paths.stress} stroke={COLOR.stress} strokeWidth="2" fill="none" />
-        <path
-          d={layout.paths.engagement}
-          stroke={COLOR.engagement}
-          strokeWidth="2"
-          fill="none"
-        />
+        <path d={layout.paths.engagement} stroke={COLOR.engagement} strokeWidth="2" fill="none" />
         <path
           d={layout.paths.valence}
           stroke={COLOR.valence}
@@ -184,6 +199,50 @@ export const EmotionTimeline: React.FC<EmotionTimelineProps> = ({
           strokeDasharray="4 2"
           opacity="0.7"
         />
+
+        {/* Peaks (#240) — звёздочки на точке пика, цвет по метрике, размер по prominence */}
+        {peaks.map((p, i) => {
+          const peakColor =
+            p.metric === 'stress'
+              ? COLOR.stress
+              : p.metric === 'engagement'
+                ? COLOR.engagement
+                : '#a855f7'; // arousal — фиолетовый, отличается от трёх линий
+          // Radius 4..8 по prominence
+          const r = 4 + Math.min(4, p.prominence * 8);
+          const cx = layout.xScale(p.timestamp);
+          const cy = layout.yScale(p.value);
+          // Звёздочка через два треугольника (упрощённо)
+          const points5 = Array.from({ length: 10 })
+            .map((_, k) => {
+              const angle = (Math.PI / 5) * k - Math.PI / 2;
+              const rad = k % 2 === 0 ? r : r / 2.4;
+              return `${(cx + Math.cos(angle) * rad).toFixed(1)},${(cy + Math.sin(angle) * rad).toFixed(1)}`;
+            })
+            .join(' ');
+          const tooltip = [
+            `${p.metric}: ${(p.value * 100).toFixed(0)}%`,
+            p.phase ? `Phase: ${p.phase}` : null,
+            p.nearestSudsValue !== null && p.nearestSudsValue !== undefined
+              ? `SUDS: ${p.nearestSudsValue}/10`
+              : null,
+            `at ${formatTime(p.timestamp)}`,
+          ]
+            .filter(Boolean)
+            .join(' · ');
+          return (
+            <polygon
+              key={`peak-${i}`}
+              points={points5}
+              fill={peakColor}
+              fillOpacity={0.85}
+              stroke="#ffffff"
+              strokeWidth={1}
+            >
+              <title>{tooltip}</title>
+            </polygon>
+          );
+        })}
 
         {/* Annotations — вертикальные линии с tooltip */}
         {annotations.map((a, i) => {
@@ -205,12 +264,7 @@ export const EmotionTimeline: React.FC<EmotionTimelineProps> = ({
                 strokeDasharray="3 3"
                 opacity="0.6"
               />
-              <circle
-                cx={layout.xScale(a.timestamp)}
-                cy={PAD.top - 4}
-                r="4"
-                fill={color}
-              >
+              <circle cx={layout.xScale(a.timestamp)} cy={PAD.top - 4} r="4" fill={color}>
                 <title>{`${formatTime(a.timestamp)} — ${a.label}`}</title>
               </circle>
             </g>
