@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as webpush from 'web-push';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 
@@ -13,7 +14,8 @@ import { EmailService } from '../email/email.service';
  *   - Push — Web Push API (VAPID, требует подписки клиента)
  *   - SMS — Twilio (см. #149)
  *
- * Web Push реализация: заглушка. Vika инструкции в issue #148.
+ * Web Push (#234): web-push library + PushSubscription модель. Требует
+ * VAPID-ключи в env (npx web-push generate-vapid-keys).
  */
 
 type NotificationType =
@@ -54,8 +56,9 @@ export class NotificationsService {
     const prefs = this.getPrefs(user);
 
     // Always-on notifications (regardless of prefs): crisis/security
-    const forceSend = (['therapist_crisis_alert', 'password_changed'] as NotificationType[])
-      .includes(payload.type);
+    const forceSend = (
+      ['therapist_crisis_alert', 'password_changed'] as NotificationType[]
+    ).includes(payload.type);
 
     if (prefs.email || forceSend) {
       await this.sendEmail(user as any, payload).catch((err) =>
@@ -74,9 +77,7 @@ export class NotificationsService {
     }
   }
 
-  private getPrefs(user: {
-    settings?: unknown;
-  }): { email: boolean; push: boolean; sms: boolean } {
+  private getPrefs(user: { settings?: unknown }): { email: boolean; push: boolean; sms: boolean } {
     const settings = user.settings as
       | { notifications?: Partial<typeof DEFAULT_PREFS> }
       | null
@@ -121,14 +122,26 @@ export class NotificationsService {
     }
   }
 
+  /** Заголовки/тексты push по типам — без PHI (видны на lock screen). */
+  private pushContent(payload: NotificationPayload): { title: string; body: string } {
+    switch (payload.type) {
+      case 'session_reminder':
+        return { title: 'EMDR-AI', body: 'Напоминание: запланирована сессия' };
+      case 'weekly_progress':
+        return { title: 'EMDR-AI', body: 'Ваш недельный отчёт о прогрессе готов' };
+      case 'therapist_crisis_alert':
+        return { title: 'EMDR-AI — внимание', body: 'Кризисное событие у пациента' };
+      default:
+        return { title: 'EMDR-AI', body: 'Новое уведомление' };
+    }
+  }
+
   /**
-   * Web Push stub. Требует VAPID keys + подписки клиента.
-   * См. issue #148 для инструкций Вики + клиентский код.
+   * Web Push (#234). Шлёт во все подписки пользователя; 404/410 от
+   * push-сервиса означает протухшую подписку — удаляем её.
+   * Контент намеренно без PHI — уведомления видны на lock screen.
    */
-  private async sendPush(
-    user: { id: string },
-    payload: NotificationPayload,
-  ): Promise<void> {
+  private async sendPush(user: { id: string }, payload: NotificationPayload): Promise<void> {
     const publicKey = process.env.VAPID_PUBLIC_KEY;
     const privateKey = process.env.VAPID_PRIVATE_KEY;
     const subject = process.env.VAPID_SUBJECT;
@@ -138,9 +151,63 @@ export class NotificationsService {
       return;
     }
 
-    // Реальная реализация: web-push library + fetch subscriptions из БД
-    // const subs = await this.prisma.pushSubscription.findMany({ where: { userId: user.id } })
-    // for (const s of subs) await webpush.sendNotification(s, JSON.stringify({ ... }))
+    webpush.setVapidDetails(subject, publicKey, privateKey);
+
+    const subs = await (this.prisma as any).pushSubscription.findMany({
+      where: { userId: user.id },
+    });
+    if (subs.length === 0) return;
+
+    const message = JSON.stringify(this.pushContent(payload));
+
+    for (const sub of subs) {
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: { p256dh: sub.p256dh, auth: sub.auth },
+          },
+          message,
+        );
+      } catch (err: unknown) {
+        const statusCode = (err as { statusCode?: number }).statusCode;
+        if (statusCode === 404 || statusCode === 410) {
+          // Подписка протухла (браузер отозвал) — чистим.
+          await (this.prisma as any).pushSubscription
+            .delete({ where: { id: sub.id } })
+            .catch(() => void 0);
+        } else {
+          this.logger.warn(`Push to ${sub.endpoint.slice(0, 40)}… failed: ${err}`);
+        }
+      }
+    }
+  }
+
+  /** Сохранить подписку браузера (upsert по endpoint). */
+  async subscribe(
+    userId: string,
+    sub: { endpoint: string; keys: { p256dh: string; auth: string } },
+    userAgent?: string,
+  ) {
+    return (this.prisma as any).pushSubscription.upsert({
+      where: { endpoint: sub.endpoint },
+      update: { userId, p256dh: sub.keys.p256dh, auth: sub.keys.auth, userAgent },
+      create: {
+        userId,
+        endpoint: sub.endpoint,
+        p256dh: sub.keys.p256dh,
+        auth: sub.keys.auth,
+        userAgent,
+      },
+    });
+  }
+
+  /** Удалить подписку (logout / выключение в настройках). */
+  async unsubscribe(userId: string, endpoint: string) {
+    await (this.prisma as any).pushSubscription.deleteMany({
+      where: { userId, endpoint },
+    });
+    return { success: true };
   }
 
   private async sendSms(
