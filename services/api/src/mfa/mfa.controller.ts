@@ -1,11 +1,12 @@
-import { Body, Controller, Delete, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Post, Req, UseGuards, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsString, Length, MinLength } from 'class-validator';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Throttle, ThrottleGuard } from '../common/guards/throttle.guard';
+import { setAuthCookies } from '../auth/cookie.helper';
 import { AuthService } from '../auth/auth.service';
 import { MfaService } from './mfa.service';
 
@@ -58,23 +59,27 @@ export class MfaController {
   @UseGuards(JwtAuthGuard)
   @Throttle(10, 60)
   @ApiOperation({ summary: 'Подтвердить setup — включает MFA + возвращает backup codes' })
-  async verifySetup(
-    @CurrentUser() user: { userId: string },
-    @Body() dto: CodeDto,
-  ) {
+  async verifySetup(@CurrentUser() user: { userId: string }, @Body() dto: CodeDto) {
     return this.service.verifySetup(user.userId, dto.code);
   }
 
   @Post('challenge')
   @Throttle(10, 60)
   @ApiOperation({ summary: 'Login step 2 — предоставить TOTP или backup code' })
-  async challenge(@Body() dto: ChallengeDto, @Req() req: Request) {
+  async challenge(
+    @Body() dto: ChallengeDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     // Извлекаем userId из подписанного токена step 1, а не из body.
     const userId = this.authService.verifyMfaChallengeToken(dto.mfaToken);
-    return this.service.verifyChallenge(userId, dto.code, {
+    const result = await this.service.verifyChallenge(userId, dto.code, {
       ip: req.ip,
       userAgent: req.headers['user-agent'],
     });
+    // #115: HttpOnly cookie-путь параллельно body.
+    setAuthCookies(res, result);
+    return result;
   }
 
   @Delete()
@@ -82,10 +87,7 @@ export class MfaController {
   @UseGuards(JwtAuthGuard)
   @Throttle(5, 3600)
   @ApiOperation({ summary: 'Отключить MFA (требует текущий пароль)' })
-  async disable(
-    @CurrentUser() user: { userId: string },
-    @Body() dto: DisableDto,
-  ) {
+  async disable(@CurrentUser() user: { userId: string }, @Body() dto: DisableDto) {
     return this.service.disable(user.userId, dto.password);
   }
 }

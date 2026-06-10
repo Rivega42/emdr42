@@ -3,11 +3,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 /**
  * Защита protected routes.
  *
- * Текущая реализация: проверяет cookie `auth-token`.
- * Клиент сейчас хранит токен в localStorage (не виден middleware) — полноценная
- * защита появится после перехода на HttpOnly cookies (см. #115).
- *
- * До того, layout.tsx продолжает проверять `useAuth()` клиентом как fallback.
+ * #115 Stage A: backend выдаёт HttpOnly `access_token` cookie при
+ * login/register/refresh — middleware теперь реально работает.
+ * layout.tsx продолжает проверять `useAuth()` клиентом (защита данных,
+ * middleware — защита от flash-of-content).
  */
 const PROTECTED_PREFIXES = [
   '/dashboard',
@@ -24,7 +23,7 @@ export function middleware(request: NextRequest) {
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
   if (!isProtected) return NextResponse.next();
 
-  const token = request.cookies.get('auth-token')?.value;
+  const token = request.cookies.get('access_token')?.value;
 
   if (!token) {
     const loginUrl = new URL('/login', request.url);

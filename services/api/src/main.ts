@@ -8,6 +8,8 @@ import { PinoLoggerService } from './common/logger/pino-logger';
 import { initSentry } from './common/sentry/sentry';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const helmet = require('helmet');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const cookieParser = require('cookie-parser');
 
 async function bootstrap() {
   // Sentry обязательно до NestFactory для capture startup errors (#87)
@@ -23,6 +25,9 @@ async function bootstrap() {
 
   // Graceful shutdown (#124) — обязательно до listen
   app.enableShutdownHooks();
+
+  // Cookies для HttpOnly auth-пути (#115)
+  app.use(cookieParser());
 
   // Security headers (#115)
   app.use(
