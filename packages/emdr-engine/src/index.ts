@@ -60,3 +60,7 @@ export type {
   EmotionTrend,
   TrendDirection,
 } from './emotion-dynamics';
+
+// Emotion peaks (#240) — поиск локальных максимумов в треке для разбора.
+export { findEmotionPeaks } from './emotion-peaks';
+export type { EmotionPeak, PeakDetectionOptions } from './emotion-peaks';
