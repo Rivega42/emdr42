@@ -4,8 +4,11 @@
  */
 
 export const formatTime = (s: number): string => {
-  const m = Math.floor(s / 60);
-  const sec = Math.round(s % 60);
+  // Округляем ДО разделения на минуты и секунды, иначе на границе
+  // (59.6 сек) seconds=round(59.6)=60, minutes=floor(0)=0 → "00:60" (#257).
+  const total = Math.round(s);
+  const m = Math.floor(total / 60);
+  const sec = total % 60;
   return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
 };
 
