@@ -67,7 +67,72 @@
 - **Prometheus `/metrics`**: задержка/количество HTTP-запросов через `MetricsInterceptor`
 - **Swagger** на `/api/docs`
 
-## 4. Движок EMDR (`packages/emdr-engine`)
+## 4. Распознавание эмоций и эмоциональный трек сессии
+
+Центральная фича EMDR-AI. Полный пайплайн «камера → детекция → запись → анализ → подача AI-терапевту в реальном времени → сравнение между сессиями».
+
+### Распознавание в моменте (по мимике)
+
+- Реализовано в `packages/core/src/services/emotion-recognition.ts` (776 строк) — класс `EmotionRecognitionService`
+- **Стек**: face-api.js (TinyFaceDetector + 68 facial landmarks + FaceExpressionNet, грузится с CDN), TF.js на устройстве пользователя — видео НЕ покидает клиент
+- **Частота**: 5–10 кадров в секунду (`updateFrequency 100–200 мс`)
+- **Что распознаётся**:
+  - 7 базовых эмоций по face-api: neutral, happy, sad, angry, fearful, disgusted, surprised
+  - **98 affects по circumplex модели arousal/valence** (Adventurous, Afraid, Joyous, Terrified и др.) через гауссову вероятность по расстоянию в 2D-пространстве (σ=0.45)
+  - Поведенческие метрики: attention, engagement, positivity, stress
+- **Сглаживание**: EMA с α=0.3 + медиана по 5 кадрам (защита от выбросов)
+- **Фильтрация по уверенности**: `minConfidence: 0.6` (низкоуверенные кадры игнорируются)
+- **UI на странице сессии**: `components/EmotionCamera.tsx` — камера с consent gate (`CameraConsentDialog`), отрисовка 68-точечных landmarks для визуальной валидации
+- **Формат `EmotionData`**: `{ emotions: {joy,sadness,anger,fear,surprise,disgust}, dimensions: {valence -1..1, arousal -1..1, dominance 0..1}, behavioral: {attention,engagement,positivity,stress 0..1}, affects98: {...}, confidence: 0..1 }`
+
+### Передача эмоций AI-терапевту в моменте
+
+- Клиент шлёт `session:emotion` через socket (throttle 1/сек)
+- Оркестратор маппит в `EmotionSnapshot` (формат движка) и вызывает `safetyMonitor.analyzeEmotion()`
+- **`buildContextMessage()` (`session-handler.ts`)** включает в LLM-контекст на каждом обращении:
+  - Текущая фаза EMDR
+  - **Средние эмоции по последним 5 снимкам** (stress, engagement, valence)
+  - Текущий SUDS и VOC
+  - Active safety concern (если monitor выявил)
+  - Suggested cognitive interweave
+  - Target memory, NC (негативное убеждение), PC (позитивное)
+- **AI реагирует на эмоции в реальном времени**:
+  - Системный промпт инструктирует: «adapt your tone — speak more slowly and gently when distress is high»
+  - При `safetyAnalysis.intervention.priority === 'critical'` → автоматическая пауза BLS + grounding `5-4-3-2-1` через `SAFETY_PROMPTS`
+  - `AdaptiveController.calculateBlsParams()` подстраивает скорость и паттерн BLS под текущий arousal
+  - Composite-детекция диссоциации (см. раздел 5) триггерит автоматическую интервенцию
+
+### Запись эмоционального трека
+
+- Prisma модель `EmotionRecord`: `sessionId, timestamp (секунды от начала), stress, engagement, positivity, arousal, valence, joy, sadness, anger, fear, surprise, disgust, confidence, createdAt`
+- Индексы: `(sessionId), (sessionId, timestamp)` — быстрое чтение временных рядов
+- **Batch flush каждые 10 секунд** (`EMOTION_FLUSH_INTERVAL_MS`) в оркестраторе → `POST /sessions/:id/emotions` (`createMany`)
+- Буфер с потолком 1800 записей (защита от OOM при недоступности backend)
+- Эмоции синхронизированы по `timestamp` с другими событиями сессии (`TimelineEvent`: phase_change, suds_recorded, safety_alert, ai_utterance, patient_utterance) — позволяет восстановить полную хронологию
+
+### Визуализация трека
+
+- `components/EmotionTimeline.tsx` — SVG-график с тремя линиями (stress, engagement, valence) во времени
+- Маркеры на таймлайне: crisis (красный), safety event (оранжевый), переходы между фазами
+- Доступно в `/progress` и в деталях сессии у терапевта
+
+### Сравнение треков от сессии к сессии
+
+- `packages/emdr-engine/src/session-comparator.ts` — класс `SessionComparator.compare()`
+- Сравниваются: SUDS final, VOC final, средний stress по треку, средний engagement, количество safety events
+- **`effectivenessScore` (0–100)** — взвешенная формула: -35% за остаточный SUDS, +25% за рост VOC, -20% за средний stress, +10% за engagement, -10% за safety concerns
+- API: `GET /sessions/:current/compare/:previous` (`compareSessions` в `sessions.service.ts`)
+- UI: `/progress/compare` — две колонки рядом (сессия N vs N-1) с дельта-карточками и стрелками ↑↓→ по каждой метрике
+- В аналитике пациента (`/analytics/me/sessions`): средний `sudsReduction` и `vocGain` по всем сессиям, тренды
+
+### Выявление эмоциональных моментов
+
+- Критические события (stress > 0.9, диссоциация, абреакция, выход из window-of-tolerance) выявляются `SafetyMonitor` и записываются в `SafetyEvent` + сохраняются с timestamp относительно сессии
+- `EmotionRecognitionService.checkAlerts()`: на клиенте детектит `high_stress (>0.85)`, `dissociation (attention < 0.1)`, `low_confidence`
+- На таймлайне сессии маркируются цветом по severity
+- **Ограничения** (см. issues ниже): автоматического поиска пиков arousal/stress вне safety-контекста пока нет; affects98 (98 эмоциональных состояний) не передаются в LLM; FACS Action Units (микродвижения мышц) не кодируются — используются только высокоуровневые эмоции
+
+
 
 - **9-фазный протокол** (8 канонических по EMDRIA + опциональная фаза 2.5 `resource_development` RDI — #131)
 - **Переходы между фазами**: history → preparation → [RDI] → assessment → desensitization → installation → body_scan → closure → reevaluation; с возможностью отката RDI → preparation
@@ -82,7 +147,23 @@
 - **Анализ голосовых паттернов** (#79): hesitation, emotionalActivation, flatAffect, rushedSpeech (темп речи, паузы, слова-паразиты)
 - **AdaptiveController**: предлагает переходы между фазами на основе данных
 
-## 5. AI-провайдеры (`packages/ai-providers`)
+## 5. Движок EMDR (`packages/emdr-engine`)
+
+- **9-фазный протокол** (8 канонических по EMDRIA + опциональная фаза 2.5 `resource_development` RDI — #131)
+- **Переходы между фазами**: history → preparation → [RDI] → assessment → desensitization → installation → body_scan → closure → reevaluation; с возможностью отката RDI → preparation
+- **Адаптивная двусторонняя стимуляция (BLS)**: 11 паттернов, адаптивная длина сета (диапазон 20–40 проходов, ±8 от базы, адаптация под SUDS)
+- **Монитор безопасности**:
+  - Адаптивная базовая линия по EWMA (окно ~60 секунд, #132)
+  - Композитная детекция диссоциации: устойчивое падение engagement относительно базовой линии / низкая дисперсия valence (numbing) / голосовые признаки flatAffect+hesitation (мультимодальное подтверждение, #79)
+  - Fallback-детекция (до накопления базы) по `stress` — после #221 (раньше ошибочно использовалось поле `confidence`)
+  - Выявляет: dissociation, abreaction, выход из window-of-tolerance, всплеск стресса
+  - Интервенции: `grounding_54321`, пауза-и-дыхание, сигнал-стоп
+  - `resetBaseline()` при переподключении (#233)
+- **Анализ голосовых паттернов** (#79): hesitation, emotionalActivation, flatAffect, rushedSpeech (темп речи, паузы, слова-паразиты)
+- **AdaptiveController**: предлагает переходы между фазами на основе данных + подстраивает BLS-параметры под текущий arousal
+- **SessionComparator**: см. подраздел «Сравнение треков» в разделе 4
+
+## 6. AI-провайдеры (`packages/ai-providers`)
 
 - **AiRouter** с мульти-провайдер fallback (Anthropic / OpenAI / Ollama)
 - **Circuit-breaker** с общим состоянием в Redis (корректно работает при нескольких репликах оркестратора)
@@ -97,7 +178,7 @@
 - **TTS-провайдеры**: Piper (локальный), OpenAI-TTS, ElevenLabs
 - **UsageLog** + учёт стоимости: `costUsd` на запрос, разбивка по провайдерам
 
-## 6. Сессионный оркестратор (`services/orchestrator`)
+## 7. Сессионный оркестратор (`services/orchestrator`)
 
 - **Socket.io namespace `/session`** с JWT-аутентификацией на handshake
 - **SessionRegistry**: индекс по socket.id, проверка владения (`getOwnedSession` — без него любой авторизованный пользователь мог управлять чужой сессией, зная её ID), идле-уборщик (TTL 30 минут), льготный период 30 секунд на переподключение
@@ -112,7 +193,7 @@
 - **Метрики**: gauges `wsConnections`, `activeSessions`, `activeVoice`; гистограммы задержек STT/LLM/TTS
 - **Корректное завершение** на SIGTERM/SIGINT с force-exit через 15 секунд
 
-## 7. Фронтенд (Next.js 13 App Router)
+## 8. Фронтенд (Next.js 13 App Router)
 
 - **Страницы**:
   - Публичные: `/`, `/about`, `/login`, `/register`, `/forgot-password`, `/reset-password`, `/offline`, `/invite/[token]`
@@ -130,27 +211,27 @@
 - **PWA**: `manifest.json` со SVG-иконкой (`/icon.svg`), service worker (`/sw.js`), офлайн-страница
 - **Metadata** на корневом layout (title-template, keywords, themeColor, icons.icon+apple), шрифт Inter через `next/font`
 
-## 8. Платежи (billing)
+## 9. Платежи (billing)
 
 - Prisma-модели: `Subscription`, `Invoice`, `ProcessedStripeEvent`, `BillingPlan`
 - Эндпоинты: `GET /billing/plans`, `POST /billing/checkout/:planId`, `POST /billing/portal`
 - Webhook `POST /billing/webhook`: проверка подписи Stripe, идемпотентность, обработчики `customer.subscription.*`, `invoice.paid`, `invoice.payment_failed`
 - Страница `/billing` на фронтенде
 
-## 9. База данных (PostgreSQL + Prisma)
+## 10. База данных (PostgreSQL + Prisma)
 
 - **Миграции** (`services/api/prisma/migrations/`): init, therapist_patient_compliance, auth_hardening, billing, gamification, patient_invites, intake_leads, reset_token_unique, push_subscriptions
 - **Модели (33 штуки)**: User, Session, EmotionRecord, SudsRecord, VocRecord, SafetyEvent, TimelineEvent, TherapistPatient, TherapistNote, CrisisEvent, RefreshToken, VerificationToken, BillingPlan, Subscription, Invoice, ProcessedStripeEvent, UsageLog, UserProgress, UserAchievement, AuditLog, PlatformSettings, PatientInvite, Lead, PushSubscription и другие
 - **Шифрование полей** через Prisma middleware (см. раздел 2)
 - **Безопасный seed** (#126): случайные пароли через `crypto.randomBytes`, отказ запускаться в production без `SEED_ALLOW_PROD=1`
 
-## 10. WebRTC (LiveKit)
+## 11. WebRTC (LiveKit)
 
 - `packages/livekit-integration`: `generateToken` с TTL **1 час** (#133 — раньше был бессрочный)
 - Эндпоинт `/livekit/token`, управление комнатами
 - Интеграция на странице сессии
 
-## 11. Наблюдаемость (observability)
+## 12. Наблюдаемость (observability)
 
 - **Prometheus** (`monitoring/prometheus.yml`), `/metrics` на api и оркестраторе
 - **Grafana dashboard**: `monitoring/grafana/dashboards/api-overview.json`
@@ -159,7 +240,7 @@
 - **Sentry** (фронт + бэк, активируется при наличии DSN)
 - **Структурированные JSON-логи** pino с correlation ID
 
-## 12. CI/CD (GitHub Actions)
+## 13. CI/CD (GitHub Actions)
 
 - **Workflow-ы в `.github/workflows/`**: ci, codeql, security (Trivy для файлов + 3 Docker-образа + Gitleaks + npm audit + REUSE + SBOM SPDX), docker, e2e (Playwright), prisma-drift, deploy-staging, deploy-prod, release, dashboard-sync, dependency-review, dependency-resolver, auto-labels, labeler, validate-issue, epic-board-sync, notifications
 - **Dependabot** (`.github/dependabot.yml`): экосистемы npm + docker + github-actions
@@ -168,13 +249,13 @@
 - **prettier + eslint** глобально
 - **Шаблон PR** + CODEOWNERS + SECURITY.md + CODE_OF_CONDUCT.md + `.editorconfig` + `.nvmrc`
 
-## 13. Инфраструктура
+## 14. Инфраструктура
 
 - **docker-compose.yml**: api, orchestrator, frontend, gateway (nginx с SSL-терминацией и security-заголовками), postgres, redis, livekit, minio, ollama, whisper, piper, vosk — все с healthchecks + `deploy.resources.limits/reservations` (#135)
 - **Манифесты Kubernetes** (`k8s/`): Kustomize `base/` + `overlays/{dev,staging,prod}`, namespace, ingress + cert-manager, network-policy, migrate-job, backup-cronjob, secrets.example
 - **Vercel** для фронтенда (pnpm, переменные через project secrets)
 
-## 14. Документация
+## 15. Документация
 
 - `CLAUDE.md` — руководство по работе с AI-агентами и кодстайлу
 - `docs/ROADMAP.md` — дорожная карта (синхронизирована с кодом)
@@ -200,6 +281,9 @@
 - **#146** — юридическое ревью legal-документов + подписание BAA
 - **#150** — покрытие тестами до 70%
 - **#151** — матрица RBAC-разрешений + UI админ-портала
+- **#239** — FACS Action Units: микродвижения мышц лица отдельно от высокоуровневых эмоций (landmarks 68pt уже извлекаются, но не кодируются на AU)
+- **#240** — автоматическое выявление эмоциональных пиков сессии (peak detection) вне safety-контекста
+- **#241** — affects98 и динамика эмоций в LLM-контексте (сейчас передаются только три скалярные метрики, 98 affects вычисляются, но в промпт не попадают)
 - **#152–158** — задачи Вики (labels, GitHub Project, branch protection, GitHub Environments, Pages, security features, полный gitleaks-скан истории)
 - **#159** — META-вопросы основателям (лицензия, стратегия веток, CODEOWNERS, команда)
 - **#164** — баг lockfile, ломающий dependabot PR-ы
