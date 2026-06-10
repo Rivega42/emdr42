@@ -49,6 +49,12 @@ jobs:
       - name: Run all tests
         run: pnpm run test
 
+      # Frontend unit tests (#150) — отдельный шаг, потому что turbo run test
+      # вызывает test в каждом workspace package, а jest для Next.js на root
+      # уровне (lib/hooks, contexts, components).
+      - name: Run frontend unit tests
+        run: pnpm run test:unit
+
   build:
     name: Build Application
     runs-on: ubuntu-latest
