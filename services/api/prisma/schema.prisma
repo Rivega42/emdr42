@@ -78,6 +78,7 @@ model User {
 
   // Therapist notes authored
   authoredNotes    TherapistNote[]     @relation("AuthoredNotes")
+  pushSubscriptions PushSubscription[]
 
   // Patient invites — issued by therapist (#160)
   invitesIssued    PatientInvite[]     @relation("InvitesAuthored")
@@ -513,4 +514,20 @@ model Lead {
   @@index([email])
   @@index([assignedTherapistId])
   @@index([createdAt])
+}
+
+// #234 — Web Push подписки (Service Worker PushManager).
+// endpoint уникален per-браузер; userId FK с Cascade — подписки умирают
+// вместе с пользователем (не PHI, но привязка к устройству).
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

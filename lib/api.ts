@@ -81,11 +81,7 @@ class ApiClient {
     return this.refreshPromise;
   }
 
-  private async request<T>(
-    path: string,
-    options: RequestInit = {},
-    isRetry = false,
-  ): Promise<T> {
+  private async request<T>(path: string, options: RequestInit = {}, isRetry = false): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
@@ -104,11 +100,7 @@ class ApiClient {
       // 401 → попытка ротации + один retry. Исключаем сами auth-flow endpoints
       // (401 там означает неверные креды/токен, не истёкший access).
       const noRetryPaths = ['/auth/login', '/auth/refresh', '/auth/logout', '/mfa/challenge'];
-      if (
-        res.status === 401 &&
-        !isRetry &&
-        !noRetryPaths.some((p) => path.startsWith(p))
-      ) {
+      if (res.status === 401 && !isRetry && !noRetryPaths.some((p) => path.startsWith(p))) {
         const refreshed = await this.tryRefresh();
         if (refreshed) return this.request<T>(path, options, true);
       }
@@ -178,10 +170,7 @@ class ApiClient {
     });
   }
 
-  async resetPassword(
-    token: string,
-    newPassword: string,
-  ): Promise<{ message: string }> {
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
     return this.request('/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify({ token, newPassword }),
@@ -189,9 +178,10 @@ class ApiClient {
   }
 
   // Sessions
-  async getSessions(
-    params?: { page?: number; limit?: number },
-  ): Promise<PaginatedResponse<Session>> {
+  async getSessions(params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<Session>> {
     const query = new URLSearchParams();
     if (params?.page) query.set('page', String(params.page));
     if (params?.limit) query.set('limit', String(params.limit));
@@ -219,10 +209,7 @@ class ApiClient {
     return this.request('/admin/settings');
   }
 
-  async updateSetting(
-    key: string,
-    value: unknown,
-  ): Promise<PlatformSetting> {
+  async updateSetting(key: string, value: unknown): Promise<PlatformSetting> {
     return this.request('/admin/settings', {
       method: 'PATCH',
       body: JSON.stringify({ key, value }),
@@ -264,10 +251,7 @@ class ApiClient {
     return this.request(`/sessions/${sessionId}`);
   }
 
-  async updateSessionNotes(
-    sessionId: string,
-    notes: string,
-  ): Promise<void> {
+  async updateSessionNotes(sessionId: string, notes: string): Promise<void> {
     return this.request(`/sessions/${sessionId}/notes`, {
       method: 'PATCH',
       body: JSON.stringify({ notes }),
@@ -349,13 +333,15 @@ class ApiClient {
     return this.request('/billing/subscription');
   }
 
-  async getBillingPlans(): Promise<Array<{
-    id: string;
-    name: string;
-    priceCentsMonthly: number;
-    features: string[];
-    role: string;
-  }>> {
+  async getBillingPlans(): Promise<
+    Array<{
+      id: string;
+      name: string;
+      priceCentsMonthly: number;
+      features: string[];
+      role: string;
+    }>
+  > {
     return this.request('/billing/plans');
   }
 
@@ -446,17 +432,17 @@ class ApiClient {
     });
   }
 
-  async listPatientInvites(
-    status?: 'active' | 'used' | 'revoked' | 'expired',
-  ): Promise<Array<{
-    id: string;
-    email: string | null;
-    notes: string | null;
-    expiresAt: string;
-    acceptedAt: string | null;
-    revokedAt: string | null;
-    createdAt: string;
-  }>> {
+  async listPatientInvites(status?: 'active' | 'used' | 'revoked' | 'expired'): Promise<
+    Array<{
+      id: string;
+      email: string | null;
+      notes: string | null;
+      expiresAt: string;
+      acceptedAt: string | null;
+      revokedAt: string | null;
+      createdAt: string;
+    }>
+  > {
     const qs = status ? `?status=${status}` : '';
     return this.request(`/therapist-patient/invites${qs}`);
   }
@@ -515,14 +501,51 @@ class ApiClient {
     });
   }
 
-  async convertLead(id: string): Promise<{ inviteToken: string; inviteId: string; expiresAt: string }> {
+  async convertLead(
+    id: string,
+  ): Promise<{ inviteToken: string; inviteId: string; expiresAt: string }> {
     return this.request(`/intake/leads/${id}/convert`, { method: 'POST' });
   }
 
+  // Web Push (#234)
+  async getVapidPublicKey(): Promise<{ publicKey: string | null }> {
+    return this.request('/notifications/vapid-public-key');
+  }
+
+  async subscribePush(sub: {
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+  }): Promise<{ success: boolean }> {
+    return this.request('/notifications/subscribe', {
+      method: 'POST',
+      body: JSON.stringify(sub),
+    });
+  }
+
+  async unsubscribePush(endpoint: string): Promise<{ success: boolean }> {
+    return this.request('/notifications/subscribe', {
+      method: 'DELETE',
+      body: JSON.stringify({ endpoint }),
+    });
+  }
+
   // Session comparison (#core-4)
-  async compareSessions(currentId: string, previousId: string): Promise<{
-    current: { id: string; sessionNumber: number; sudsFinal: number | null; vocFinal: number | null };
-    previous: { id: string; sessionNumber: number; sudsFinal: number | null; vocFinal: number | null };
+  async compareSessions(
+    currentId: string,
+    previousId: string,
+  ): Promise<{
+    current: {
+      id: string;
+      sessionNumber: number;
+      sudsFinal: number | null;
+      vocFinal: number | null;
+    };
+    previous: {
+      id: string;
+      sessionNumber: number;
+      sudsFinal: number | null;
+      vocFinal: number | null;
+    };
     delta: {
       sudsDelta: number | null;
       vocDelta: number | null;

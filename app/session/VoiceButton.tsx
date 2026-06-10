@@ -84,16 +84,28 @@ export default function VoiceButton({
         }
 
         const audioBuffer = await audioContextRef.current.decodeAudioData(
-          audioData.slice(0) // Clone to avoid detached buffer
+          audioData.slice(0), // Clone to avoid detached buffer
         );
 
         const source = audioContextRef.current.createBufferSource();
         source.buffer = audioBuffer;
         source.connect(audioContextRef.current.destination);
 
+        // Timeout-страховка (#234): если AudioContext закрыт или buffer
+        // битый, onended не стреляет — без таймаута очередь зависала навсегда.
+        const timeoutMs = audioBuffer.duration * 1000 + 2000;
         await new Promise<void>((resolve) => {
-          source.onended = () => resolve();
-          source.start();
+          const timer = setTimeout(resolve, timeoutMs);
+          source.onended = () => {
+            clearTimeout(timer);
+            resolve();
+          };
+          try {
+            source.start();
+          } catch {
+            clearTimeout(timer);
+            resolve();
+          }
         });
       } catch (err) {
         console.error('[VoiceButton] Audio playback error:', err);
@@ -120,7 +132,7 @@ export default function VoiceButton({
       }
       onTranscript?.(text, isFinal);
     },
-    [onTranscript]
+    [onTranscript],
   );
 
   const handleAiAudio = useCallback(
@@ -128,7 +140,7 @@ export default function VoiceButton({
       audioQueueRef.current.push(audioData);
       playAudioQueue();
     },
-    [playAudioQueue]
+    [playAudioQueue],
   );
 
   const handleError = useCallback(
@@ -139,7 +151,7 @@ export default function VoiceButton({
       }
       onError?.(error);
     },
-    [onError]
+    [onError],
   );
 
   // -------------------------------------------------------------------------
@@ -175,8 +187,7 @@ export default function VoiceButton({
         console.error('[VoiceButton] Failed to start voice:', err);
         if (
           err instanceof Error &&
-          (err.message.includes('Permission denied') ||
-            err.name === 'NotAllowedError')
+          (err.message.includes('Permission denied') || err.name === 'NotAllowedError')
         ) {
           setPermissionDenied(true);
         }
@@ -258,11 +269,7 @@ export default function VoiceButton({
       </button>
 
       {/* State label */}
-      <span
-        className={`text-xs font-medium ${
-          isEnabled ? 'text-gray-700' : 'text-gray-400'
-        }`}
-      >
+      <span className={`text-xs font-medium ${isEnabled ? 'text-gray-700' : 'text-gray-400'}`}>
         {permissionDenied ? 'Нет доступа' : config.label}
       </span>
 
@@ -316,15 +323,24 @@ export function VoiceButtonCompact({
         if (!audioContextRef.current) {
           audioContextRef.current = new AudioContext();
         }
-        const audioBuffer = await audioContextRef.current.decodeAudioData(
-          audioData.slice(0)
-        );
+        const audioBuffer = await audioContextRef.current.decodeAudioData(audioData.slice(0));
         const source = audioContextRef.current.createBufferSource();
         source.buffer = audioBuffer;
         source.connect(audioContextRef.current.destination);
+        // Timeout-страховка (#234) — как в VoiceButton выше.
+        const timeoutMs = audioBuffer.duration * 1000 + 2000;
         await new Promise<void>((resolve) => {
-          source.onended = () => resolve();
-          source.start();
+          const timer = setTimeout(resolve, timeoutMs);
+          source.onended = () => {
+            clearTimeout(timer);
+            resolve();
+          };
+          try {
+            source.start();
+          } catch {
+            clearTimeout(timer);
+            resolve();
+          }
         });
       } catch {
         // Ignore playback errors
