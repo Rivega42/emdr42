@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateSessionDto } from './dto/create-session.dto';
@@ -13,6 +9,7 @@ import { CreateSudsRecordDto } from './dto/create-suds-record.dto';
 import { CreateVocRecordDto } from './dto/create-voc-record.dto';
 import { CreateSafetyEventDto } from './dto/create-safety-event.dto';
 import { SessionQueryDto } from './dto/session-query.dto';
+import { findEmotionPeaks } from '@emdr42/emdr-engine';
 
 @Injectable()
 export class SessionsService {
@@ -21,10 +18,7 @@ export class SessionsService {
     private readonly audit: AuditService,
   ) {}
 
-  async create(
-    dto: CreateSessionDto & { therapistId?: string },
-    userId: string,
-  ) {
+  async create(dto: CreateSessionDto & { therapistId?: string }, userId: string) {
     const lastSession = await this.prisma.session.findFirst({
       where: { userId },
       orderBy: { sessionNumber: 'desc' },
@@ -44,9 +38,7 @@ export class SessionsService {
         },
       });
       if (!rel || rel.status === 'DISCHARGED') {
-        throw new ForbiddenException(
-          'Указанный терапевт не назначен этому пациенту',
-        );
+        throw new ForbiddenException('Указанный терапевт не назначен этому пациенту');
       }
     }
 
@@ -119,8 +111,7 @@ export class SessionsService {
     // Read-доступ (#222): владелец, ADMIN, либо назначенный THERAPIST.
     if (userRole !== 'ADMIN' && session.userId !== userId) {
       const assigned =
-        userRole === 'THERAPIST' &&
-        (await this.isAssignedTherapist(userId, session.userId));
+        userRole === 'THERAPIST' && (await this.isAssignedTherapist(userId, session.userId));
       if (!assigned) {
         throw new ForbiddenException('Access denied');
       }
@@ -142,12 +133,7 @@ export class SessionsService {
     return session;
   }
 
-  async update(
-    id: string,
-    dto: UpdateSessionDto,
-    userId: string,
-    userRole: string,
-  ) {
+  async update(id: string, dto: UpdateSessionDto, userId: string, userRole: string) {
     const session = await this.ensureAccess(id, userId, userRole);
 
     return this.prisma.session.update({
@@ -195,12 +181,7 @@ export class SessionsService {
     });
   }
 
-  async addVocRecord(
-    sessionId: string,
-    dto: CreateVocRecordDto,
-    userId: string,
-    userRole: string,
-  ) {
+  async addVocRecord(sessionId: string, dto: CreateVocRecordDto, userId: string, userRole: string) {
     await this.ensureAccess(sessionId, userId, userRole);
 
     return this.prisma.vocRecord.create({
@@ -221,21 +202,14 @@ export class SessionsService {
     });
   }
 
-  async compareSessions(
-    id: string,
-    previousId: string,
-    userId: string,
-    userRole: string,
-  ) {
+  async compareSessions(id: string, previousId: string, userId: string, userRole: string) {
     const [current, previous] = await Promise.all([
       this.findOne(id, userId, userRole),
       this.findOne(previousId, userId, userRole),
     ]);
 
     const avgStress = (records: { stress: number }[]) =>
-      records.length
-        ? records.reduce((sum, r) => sum + r.stress, 0) / records.length
-        : null;
+      records.length ? records.reduce((sum, r) => sum + r.stress, 0) / records.length : null;
 
     const currentAvgStress = avgStress(current.emotionRecords);
     const previousAvgStress = avgStress(previous.emotionRecords);
@@ -266,20 +240,18 @@ export class SessionsService {
     }
 
     if (current.vocFinal != null && current.vocBaseline != null) {
-      const vocIncrease =
-        (current.vocFinal - current.vocBaseline) / 6; // max improvement is 6 (1->7)
+      const vocIncrease = (current.vocFinal - current.vocBaseline) / 6; // max improvement is 6 (1->7)
       scores.push(vocIncrease);
     }
 
     if (currentAvgStress != null && previousAvgStress != null) {
-      const stressReduction = (previousAvgStress - currentAvgStress) / Math.max(previousAvgStress, 0.01);
+      const stressReduction =
+        (previousAvgStress - currentAvgStress) / Math.max(previousAvgStress, 0.01);
       scores.push(stressReduction);
     }
 
     if (scores.length > 0) {
-      effectivenessScore = Math.round(
-        (scores.reduce((a, b) => a + b, 0) / scores.length) * 100,
-      );
+      effectivenessScore = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100);
     }
 
     return {
@@ -321,10 +293,7 @@ export class SessionsService {
   }
 
   /** Активная (не DISCHARGED) связь therapist→patient. */
-  private async isAssignedTherapist(
-    therapistId: string,
-    patientId: string,
-  ): Promise<boolean> {
+  private async isAssignedTherapist(therapistId: string, patientId: string): Promise<boolean> {
     const rel = await this.prisma.therapistPatient.findUnique({
       where: {
         therapistId_patientId: { therapistId, patientId },
@@ -338,29 +307,17 @@ export class SessionsService {
    * Доступ владельца / ADMIN / THERAPIST с активной связью к пациенту.
    * Read-пути и заметки терапевта; write-пути сессии остаются на ensureAccess.
    */
-  private async ensureAccessWithTherapist(
-    id: string,
-    userId: string,
-    userRole: string,
-  ) {
+  private async ensureAccessWithTherapist(id: string, userId: string, userRole: string) {
     const session = await this.prisma.session.findUnique({ where: { id } });
     if (!session) throw new NotFoundException('Session not found');
     if (userRole === 'ADMIN' || session.userId === userId) return session;
-    if (
-      userRole === 'THERAPIST' &&
-      (await this.isAssignedTherapist(userId, session.userId))
-    ) {
+    if (userRole === 'THERAPIST' && (await this.isAssignedTherapist(userId, session.userId))) {
       return session;
     }
     throw new ForbiddenException('Access denied');
   }
 
-  async updateNotes(
-    id: string,
-    notes: string,
-    userId: string,
-    userRole: string,
-  ) {
+  async updateNotes(id: string, notes: string, userId: string, userRole: string) {
     await this.ensureAccessWithTherapist(id, userId, userRole);
     // betweenSessionNotes — PHI-поле (шифруется middleware-ом).
     const updated = await this.prisma.session.update({
@@ -437,6 +394,73 @@ export class SessionsService {
       data: { transcriptText },
       select: { id: true },
     });
+  }
+
+  /**
+   * Топ-N эмоциональных пиков сессии (#240) — для пост-разбора и UI
+   * терапевта (#90). Доступ: владелец / ADMIN / назначенный терапевт.
+   *
+   * Возвращает пики с привязкой к ближайшей фазе из TimelineEvent и
+   * ближайшему SUDS — даёт клинический контекст моменту.
+   */
+  async getEmotionalPeaks(
+    sessionId: string,
+    userId: string,
+    userRole: string,
+    opts: { topN?: number; minHeight?: number; minProminence?: number; minDistance?: number },
+  ) {
+    const session = await this.ensureAccessWithTherapist(sessionId, userId, userRole);
+
+    const [emotionRecords, timelineEvents, sudsRecords] = await Promise.all([
+      this.prisma.emotionRecord.findMany({
+        where: { sessionId: session.id },
+        orderBy: { timestamp: 'asc' },
+      }),
+      this.prisma.timelineEvent.findMany({
+        where: { sessionId: session.id, type: 'phase_start' },
+        orderBy: { timestamp: 'asc' },
+      }),
+      this.prisma.sudsRecord.findMany({
+        where: { sessionId: session.id },
+        orderBy: { timestamp: 'asc' },
+      }),
+    ]);
+
+    // Маппим Prisma-записи в EmotionSnapshot для движка (timestamp в мс
+    // от старта сессии: оригинал хранится в секундах).
+    const track = emotionRecords.map((r) => ({
+      timestamp: r.timestamp * 1000,
+      stress: r.stress,
+      engagement: r.engagement,
+      positivity: r.positivity,
+      arousal: r.arousal,
+      valence: r.valence,
+      joy: r.joy,
+      sadness: r.sadness,
+      anger: r.anger,
+      fear: r.fear,
+      confidence: r.confidence,
+    }));
+
+    const peaks = findEmotionPeaks(track, opts);
+
+    // Обогащаем каждый пик контекстом: фаза + ближайший SUDS до момента.
+    const enriched = peaks.map((peak) => {
+      const phaseStart = [...timelineEvents]
+        .reverse()
+        .find((e) => e.timestamp * 1000 <= peak.timestamp);
+      const phase = (phaseStart?.data as { phase?: string } | null)?.phase ?? null;
+      const nearestSuds = [...sudsRecords]
+        .reverse()
+        .find((s) => s.timestamp * 1000 <= peak.timestamp);
+      return {
+        ...peak,
+        phase,
+        nearestSudsValue: nearestSuds?.value ?? null,
+      };
+    });
+
+    return { peaks: enriched, totalEmotionRecords: emotionRecords.length };
   }
 
   async getTranscript(

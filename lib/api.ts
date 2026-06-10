@@ -529,6 +529,31 @@ class ApiClient {
     });
   }
 
+  // Эмоциональные пики сессии (#240)
+  async getSessionEmotionalPeaks(
+    sessionId: string,
+    opts?: { topN?: number; minHeight?: number; minProminence?: number; minDistance?: number },
+  ): Promise<{
+    peaks: Array<{
+      metric: 'stress' | 'arousal' | 'engagement';
+      index: number;
+      timestamp: number;
+      value: number;
+      prominence: number;
+      phase: string | null;
+      nearestSudsValue: number | null;
+    }>;
+    totalEmotionRecords: number;
+  }> {
+    const qs = new URLSearchParams();
+    if (opts?.topN !== undefined) qs.set('topN', String(opts.topN));
+    if (opts?.minHeight !== undefined) qs.set('minHeight', String(opts.minHeight));
+    if (opts?.minProminence !== undefined) qs.set('minProminence', String(opts.minProminence));
+    if (opts?.minDistance !== undefined) qs.set('minDistance', String(opts.minDistance));
+    const tail = qs.toString() ? `?${qs.toString()}` : '';
+    return this.request(`/sessions/${sessionId}/emotional-peaks${tail}`);
+  }
+
   // Session comparison (#core-4)
   async compareSessions(
     currentId: string,

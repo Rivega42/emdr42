@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Param,
-  Body,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { SessionsService } from './sessions.service';
 import { CreateSessionDto } from './dto/create-session.dto';
@@ -30,28 +21,19 @@ export class SessionsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new session' })
-  create(
-    @Body() dto: CreateSessionDto,
-    @CurrentUser() user: { id: string },
-  ) {
+  create(@Body() dto: CreateSessionDto, @CurrentUser() user: { id: string }) {
     return this.sessionsService.create(dto, user.id);
   }
 
   @Get()
   @ApiOperation({ summary: 'List sessions with pagination and filters' })
-  findAll(
-    @Query() query: SessionQueryDto,
-    @CurrentUser() user: { id: string; role: string },
-  ) {
+  findAll(@Query() query: SessionQueryDto, @CurrentUser() user: { id: string; role: string }) {
     return this.sessionsService.findAll(query, user.id, user.role);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get session with all related data' })
-  findOne(
-    @Param('id') id: string,
-    @CurrentUser() user: { id: string; role: string },
-  ) {
+  findOne(@Param('id') id: string, @CurrentUser() user: { id: string; role: string }) {
     return this.sessionsService.findOne(id, user.id, user.role);
   }
 
@@ -122,22 +104,14 @@ export class SessionsController {
     @Param('previousId') previousId: string,
     @CurrentUser() user: { id: string; role: string },
   ) {
-    return this.sessionsService.compareSessions(
-      id,
-      previousId,
-      user.id,
-      user.role,
-    );
+    return this.sessionsService.compareSessions(id, previousId, user.id, user.role);
   }
 
   // --- Recording / transcript (#122) ---
 
   @Post(':id/recording-consent')
   @ApiOperation({ summary: 'Пациент даёт consent на запись сессии' })
-  recordConsent(
-    @Param('id') id: string,
-    @CurrentUser() user: { id: string; role: string },
-  ) {
+  recordConsent(@Param('id') id: string, @CurrentUser() user: { id: string; role: string }) {
     return this.sessionsService.recordConsent(id, user.id, user.role);
   }
 
@@ -168,10 +142,7 @@ export class SessionsController {
 
   @Get(':id/transcript')
   @ApiOperation({ summary: 'Получить транскрипт сессии' })
-  getTranscript(
-    @Param('id') id: string,
-    @CurrentUser() user: { id: string; role: string },
-  ) {
+  getTranscript(@Param('id') id: string, @CurrentUser() user: { id: string; role: string }) {
     return this.sessionsService.getTranscript(id, user.id, user.role);
   }
 
@@ -183,5 +154,26 @@ export class SessionsController {
     @CurrentUser() user: { id: string; role: string },
   ) {
     return this.sessionsService.updateNotes(id, body.notes, user.id, user.role);
+  }
+
+  // #240 — топ-N эмоциональных пиков сессии для пост-разбора.
+  @Get(':id/emotional-peaks')
+  @ApiOperation({
+    summary: 'Топ-N локальных максимумов эмоционального трека (stress/arousal/engagement)',
+  })
+  getEmotionalPeaks(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: string },
+    @Query('topN') topN?: string,
+    @Query('minHeight') minHeight?: string,
+    @Query('minProminence') minProminence?: string,
+    @Query('minDistance') minDistance?: string,
+  ) {
+    return this.sessionsService.getEmotionalPeaks(id, user.id, user.role, {
+      topN: topN ? Number(topN) : 5,
+      minHeight: minHeight ? Number(minHeight) : undefined,
+      minProminence: minProminence ? Number(minProminence) : undefined,
+      minDistance: minDistance ? Number(minDistance) : undefined,
+    });
   }
 }

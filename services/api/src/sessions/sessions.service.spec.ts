@@ -17,12 +17,15 @@ const mockPrisma = {
   },
   timelineEvent: {
     create: jest.fn(),
+    findMany: jest.fn(),
   },
   emotionRecord: {
     createMany: jest.fn(),
+    findMany: jest.fn(),
   },
   sudsRecord: {
     create: jest.fn(),
+    findMany: jest.fn(),
   },
   vocRecord: {
     create: jest.fn(),
@@ -90,11 +93,7 @@ describe('SessionsService', () => {
       mockPrisma.session.findMany.mockResolvedValue(sessions);
       mockPrisma.session.count.mockResolvedValue(2);
 
-      const result = await service.findAll(
-        { page: 1, limit: 20 },
-        userId,
-        'PATIENT',
-      );
+      const result = await service.findAll({ page: 1, limit: 20 }, userId, 'PATIENT');
 
       expect(result.data).toEqual(sessions);
       expect(result.meta.total).toBe(2);
@@ -144,9 +143,9 @@ describe('SessionsService', () => {
     it('throws for non-existent session', async () => {
       mockPrisma.session.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.findOne('nonexistent', 'user-1', 'PATIENT'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('nonexistent', 'user-1', 'PATIENT')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     // --- Therapist read-access (#222) ---
@@ -181,9 +180,9 @@ describe('SessionsService', () => {
       });
       mockPrisma.therapistPatient.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.findOne('session-1', 'stranger-therapist', 'THERAPIST'),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.findOne('session-1', 'stranger-therapist', 'THERAPIST')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('rejects therapist with DISCHARGED relation', async () => {
@@ -195,9 +194,9 @@ describe('SessionsService', () => {
         status: 'DISCHARGED',
       });
 
-      await expect(
-        service.findOne('session-1', 'ex-therapist', 'THERAPIST'),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.findOne('session-1', 'ex-therapist', 'THERAPIST')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -224,9 +223,9 @@ describe('SessionsService', () => {
       });
       mockPrisma.therapistPatient.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.getTranscript('session-1', 'stranger', 'THERAPIST'),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.getTranscript('session-1', 'stranger', 'THERAPIST')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -238,12 +237,7 @@ describe('SessionsService', () => {
       mockPrisma.session.findUnique.mockResolvedValue(session);
       mockPrisma.session.update.mockResolvedValue({ ...session, ...dto });
 
-      const result = await service.update(
-        'session-1',
-        dto as any,
-        'user-1',
-        'PATIENT',
-      );
+      const result = await service.update('session-1', dto as any, 'user-1', 'PATIENT');
 
       expect(mockPrisma.session.update).toHaveBeenCalledWith({
         where: { id: 'session-1' },
@@ -269,12 +263,7 @@ describe('SessionsService', () => {
         ...dto,
       });
 
-      const result = await service.addTimelineEvent(
-        'session-1',
-        dto as any,
-        'user-1',
-        'PATIENT',
-      );
+      const result = await service.addTimelineEvent('session-1', dto as any, 'user-1', 'PATIENT');
 
       expect(mockPrisma.timelineEvent.create).toHaveBeenCalledWith({
         data: { sessionId: 'session-1', ...dto },
@@ -294,12 +283,7 @@ describe('SessionsService', () => {
       mockPrisma.session.findUnique.mockResolvedValue(session);
       mockPrisma.emotionRecord.createMany.mockResolvedValue({ count: 2 });
 
-      const result = await service.addEmotionRecords(
-        'session-1',
-        dto as any,
-        'user-1',
-        'PATIENT',
-      );
+      const result = await service.addEmotionRecords('session-1', dto as any, 'user-1', 'PATIENT');
 
       expect(mockPrisma.emotionRecord.createMany).toHaveBeenCalledWith({
         data: dto.map((r) => ({ sessionId: 'session-1', ...r })),
@@ -320,12 +304,7 @@ describe('SessionsService', () => {
         ...dto,
       });
 
-      const result = await service.addSudsRecord(
-        'session-1',
-        dto as any,
-        'user-1',
-        'PATIENT',
-      );
+      const result = await service.addSudsRecord('session-1', dto as any, 'user-1', 'PATIENT');
 
       expect(mockPrisma.sudsRecord.create).toHaveBeenCalledWith({
         data: { sessionId: 'session-1', ...dto },
@@ -346,12 +325,7 @@ describe('SessionsService', () => {
         ...dto,
       });
 
-      const result = await service.addVocRecord(
-        'session-1',
-        dto as any,
-        'user-1',
-        'PATIENT',
-      );
+      const result = await service.addVocRecord('session-1', dto as any, 'user-1', 'PATIENT');
 
       expect(mockPrisma.vocRecord.create).toHaveBeenCalledWith({
         data: { sessionId: 'session-1', ...dto },
@@ -378,12 +352,7 @@ describe('SessionsService', () => {
         ...dto,
       });
 
-      const result = await service.addSafetyEvent(
-        'session-1',
-        dto as any,
-        'user-1',
-        'PATIENT',
-      );
+      const result = await service.addSafetyEvent('session-1', dto as any, 'user-1', 'PATIENT');
 
       expect(mockPrisma.safetyEvent.create).toHaveBeenCalledWith({
         data: { sessionId: 'session-1', ...dto },
@@ -402,10 +371,7 @@ describe('SessionsService', () => {
         sudsBaseline: 8,
         vocFinal: 6,
         vocBaseline: 2,
-        emotionRecords: [
-          { stress: 0.3 },
-          { stress: 0.4 },
-        ],
+        emotionRecords: [{ stress: 0.3 }, { stress: 0.4 }],
         timelineEvents: [],
         sudsRecords: [],
         vocRecords: [],
@@ -421,10 +387,7 @@ describe('SessionsService', () => {
         sudsBaseline: 9,
         vocFinal: 4,
         vocBaseline: 1,
-        emotionRecords: [
-          { stress: 0.6 },
-          { stress: 0.7 },
-        ],
+        emotionRecords: [{ stress: 0.6 }, { stress: 0.7 }],
         timelineEvents: [],
         sudsRecords: [],
         vocRecords: [],
@@ -437,12 +400,7 @@ describe('SessionsService', () => {
         .mockResolvedValueOnce(currentSession)
         .mockResolvedValueOnce(previousSession);
 
-      const result = await service.compareSessions(
-        'session-2',
-        'session-1',
-        'user-1',
-        'PATIENT',
-      );
+      const result = await service.compareSessions('session-2', 'session-1', 'user-1', 'PATIENT');
 
       expect(result.current.id).toBe('session-2');
       expect(result.previous.id).toBe('session-1');
@@ -451,6 +409,87 @@ describe('SessionsService', () => {
       expect(result.comparison.avgStressDelta).toBeCloseTo(-0.3); // 0.35 - 0.65
       expect(result.comparison.effectivenessScore).not.toBeNull();
       expect(typeof result.comparison.effectivenessScore).toBe('number');
+    });
+  });
+
+  describe('getEmotionalPeaks (#240)', () => {
+    // Утилита: трек из 15 точек с одним ярким stress-пиком на индексе 7.
+    const buildTrack = () => {
+      const baseValues = [
+        0.3, 0.3, 0.4, 0.3, 0.3, 0.4, 0.5, 0.85, 0.5, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3,
+      ];
+      return baseValues.map((stress, i) => ({
+        id: `e${i}`,
+        sessionId: 'session-1',
+        timestamp: i, // секунды
+        stress,
+        engagement: 0.5,
+        positivity: 0.5,
+        arousal: 0.5,
+        valence: 0,
+        joy: 0.1,
+        sadness: 0.1,
+        anger: 0.05,
+        fear: 0.1,
+        confidence: 0.85,
+      }));
+    };
+
+    it('возвращает пик stress с привязкой к фазе и ближайшему SUDS', async () => {
+      mockPrisma.session.findUnique.mockResolvedValue({
+        id: 'session-1',
+        userId: 'user-1',
+      });
+      mockPrisma.emotionRecord.findMany.mockResolvedValue(buildTrack());
+      mockPrisma.timelineEvent.findMany.mockResolvedValue([
+        { timestamp: 0, type: 'phase_start', data: { phase: 'preparation' } },
+        { timestamp: 5, type: 'phase_start', data: { phase: 'desensitization' } },
+      ]);
+      mockPrisma.sudsRecord.findMany.mockResolvedValue([
+        { timestamp: 1, value: 8 },
+        { timestamp: 6, value: 6 },
+      ]);
+
+      const result = await service.getEmotionalPeaks('session-1', 'user-1', 'PATIENT', { topN: 5 });
+
+      const stressPeak = result.peaks.find((p) => p.metric === 'stress');
+      expect(stressPeak).toBeDefined();
+      expect(stressPeak!.value).toBe(0.85);
+      // timestamp в EmotionSnapshot — мс, проверяем что = индекс * 1000
+      expect(stressPeak!.timestamp).toBe(7000);
+      // Фаза desensitization (началась в timestamp=5, пик на 7)
+      expect(stressPeak!.phase).toBe('desensitization');
+      // Ближайший SUDS до пика — 6 (timestamp=6, пик на 7)
+      expect(stressPeak!.nearestSudsValue).toBe(6);
+      expect(result.totalEmotionRecords).toBe(15);
+    });
+
+    it('пустой трек — пустые пики', async () => {
+      mockPrisma.session.findUnique.mockResolvedValue({
+        id: 'session-1',
+        userId: 'user-1',
+      });
+      mockPrisma.emotionRecord.findMany.mockResolvedValue([]);
+      mockPrisma.timelineEvent.findMany.mockResolvedValue([]);
+      mockPrisma.sudsRecord.findMany.mockResolvedValue([]);
+
+      const result = await service.getEmotionalPeaks('session-1', 'user-1', 'PATIENT', { topN: 5 });
+      expect(result.peaks).toEqual([]);
+      expect(result.totalEmotionRecords).toBe(0);
+    });
+
+    it('non-assigned терапевт — 403', async () => {
+      mockPrisma.session.findUnique.mockResolvedValue({
+        id: 'session-1',
+        userId: 'patient-1',
+      });
+      mockPrisma.therapistPatient.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.getEmotionalPeaks('session-1', 'stranger', 'THERAPIST', {
+          topN: 5,
+        }),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });
