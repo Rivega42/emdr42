@@ -69,34 +69,39 @@ interface SessionEndedData {
 // ---------------------------------------------------------------------------
 
 const PHASE_META: Record<EmdrPhase, { label: string; group: 'pre' | 'bls' | 'post' }> = {
-  history:          { label: 'History',          group: 'pre' },
-  preparation:      { label: 'Preparation',      group: 'pre' },
-  assessment:       { label: 'Assessment',        group: 'pre' },
-  desensitization:  { label: 'Desensitization',   group: 'bls' },
-  installation:     { label: 'Installation',       group: 'bls' },
-  body_scan:        { label: 'Body Scan',          group: 'bls' },
-  closure:          { label: 'Closure',            group: 'post' },
-  reevaluation:     { label: 'Reevaluation',       group: 'post' },
+  history: { label: 'History', group: 'pre' },
+  preparation: { label: 'Preparation', group: 'pre' },
+  assessment: { label: 'Assessment', group: 'pre' },
+  desensitization: { label: 'Desensitization', group: 'bls' },
+  installation: { label: 'Installation', group: 'bls' },
+  body_scan: { label: 'Body Scan', group: 'bls' },
+  closure: { label: 'Closure', group: 'post' },
+  reevaluation: { label: 'Reevaluation', group: 'post' },
 };
 
 const PHASE_ORDER: EmdrPhase[] = [
-  'history', 'preparation', 'assessment',
-  'desensitization', 'installation', 'body_scan',
-  'closure', 'reevaluation',
+  'history',
+  'preparation',
+  'assessment',
+  'desensitization',
+  'installation',
+  'body_scan',
+  'closure',
+  'reevaluation',
 ];
 
 const BLS_PHASES: EmdrPhase[] = ['desensitization', 'installation', 'body_scan'];
 
 const PATTERNS = [
   { value: 'horizontal', label: 'Horizontal' },
-  { value: 'infinity',   label: 'Infinity' },
-  { value: 'diagonal',   label: 'Diagonal' },
-  { value: 'circular',   label: 'Circular' },
-  { value: 'butterfly',  label: 'Butterfly' },
-  { value: 'spiral',     label: 'Spiral' },
-  { value: 'wave',       label: 'Wave' },
-  { value: 'lissajous',  label: 'Lissajous' },
-  { value: 'pendulum',   label: 'Pendulum' },
+  { value: 'infinity', label: 'Infinity' },
+  { value: 'diagonal', label: 'Diagonal' },
+  { value: 'circular', label: 'Circular' },
+  { value: 'butterfly', label: 'Butterfly' },
+  { value: 'spiral', label: 'Spiral' },
+  { value: 'wave', label: 'Wave' },
+  { value: 'lissajous', label: 'Lissajous' },
+  { value: 'pendulum', label: 'Pendulum' },
   { value: 'random_smooth', label: 'Random Smooth' },
 ];
 
@@ -122,7 +127,11 @@ export default function SessionPage() {
   const streamBufferRef = useRef('');
 
   // BLS
-  const [blsConfig, setBlsConfig] = useState<BlsConfig>({ pattern: 'horizontal', speed: 1.0, paused: true });
+  const [blsConfig, setBlsConfig] = useState<BlsConfig>({
+    pattern: 'horizontal',
+    speed: 1.0,
+    paused: true,
+  });
 
   // SUDS / VOC
   const [suds, setSuds] = useState(5);
@@ -179,11 +188,11 @@ export default function SessionPage() {
   };
 
   const addMessage = useCallback((msg: ChatMessage) => {
-    setMessages(prev => [...prev, msg]);
+    setMessages((prev) => [...prev, msg]);
   }, []);
 
   const updateLastAiMessage = useCallback((text: string, done: boolean) => {
-    setMessages(prev => {
+    setMessages((prev) => {
       const last = prev[prev.length - 1];
       if (last && last.role === 'ai' && last.streaming) {
         return [...prev.slice(0, -1), { ...last, text, streaming: !done }];
@@ -198,9 +207,11 @@ export default function SessionPage() {
 
   useEffect(() => {
     if (sessionId && !isPaused && !sessionSummary) {
-      timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
+      timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
     }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, [sessionId, isPaused, sessionSummary]);
 
   // Auto-scroll chat
@@ -214,43 +225,44 @@ export default function SessionPage() {
   // Это замыкает петлю «эмоция → SafetyMonitor/AdaptiveController → BLS + LLM».
   // -------------------------------------------------------------------------
 
-  const handleEmotionUpdate = useCallback((data: EmotionData) => {
-    const stressVal = data.behavioral.stress;
-    const engagementVal = data.behavioral.engagement;
+  const handleEmotionUpdate = useCallback(
+    (data: EmotionData) => {
+      const stressVal = data.behavioral.stress;
+      const engagementVal = data.behavioral.engagement;
 
-    // Обновляем UI-индикаторы всегда (плавно).
-    setStress(stressVal);
-    setEngagement(engagementVal);
-    setEmotionLabel(
-      stressVal > 0.6 ? 'Elevated' : stressVal > 0.4 ? 'Moderate' : 'Calm',
-    );
+      // Обновляем UI-индикаторы всегда (плавно).
+      setStress(stressVal);
+      setEngagement(engagementVal);
+      setEmotionLabel(stressVal > 0.6 ? 'Elevated' : stressVal > 0.4 ? 'Moderate' : 'Calm');
 
-    // На сервер — не чаще 1/сек (throttle), только при активной сессии.
-    const now = Date.now();
-    const sock = socketRef.current;
-    const sid = sessionId;
-    if (!sock || !sid || now - lastEmotionEmitRef.current < 1000) return;
-    lastEmotionEmitRef.current = now;
+      // На сервер — не чаще 1/сек (throttle), только при активной сессии.
+      const now = Date.now();
+      const sock = socketRef.current;
+      const sid = sessionId;
+      if (!sock || !sid || now - lastEmotionEmitRef.current < 1000) return;
+      lastEmotionEmitRef.current = now;
 
-    // Маппинг EmotionData (core) → EmotionSnapshot (emdr-engine).
-    sock.emit('session:emotion', {
-      sessionId: sid,
-      emotion: {
-        timestamp: data.timestamp,
-        stress: stressVal,
-        engagement: engagementVal,
-        positivity: data.behavioral.positivity,
-        // arousal/valence в core: -1..1 → нормализуем в 0..1 для engine.
-        arousal: (data.dimensions.arousal + 1) / 2,
-        valence: (data.dimensions.valence + 1) / 2,
-        joy: data.emotions.joy,
-        sadness: data.emotions.sadness,
-        anger: data.emotions.anger,
-        fear: data.emotions.fear,
-        confidence: data.confidence,
-      },
-    });
-  }, [sessionId]);
+      // Маппинг EmotionData (core) → EmotionSnapshot (emdr-engine).
+      sock.emit('session:emotion', {
+        sessionId: sid,
+        emotion: {
+          timestamp: data.timestamp,
+          stress: stressVal,
+          engagement: engagementVal,
+          positivity: data.behavioral.positivity,
+          // arousal/valence в core: -1..1 → нормализуем в 0..1 для engine.
+          arousal: (data.dimensions.arousal + 1) / 2,
+          valence: (data.dimensions.valence + 1) / 2,
+          joy: data.emotions.joy,
+          sadness: data.emotions.sadness,
+          anger: data.emotions.anger,
+          fear: data.emotions.fear,
+          confidence: data.confidence,
+        },
+      });
+    },
+    [sessionId],
+  );
 
   // Включение камеры через consent gate.
   const requestCamera = useCallback(() => {
@@ -296,12 +308,15 @@ export default function SessionPage() {
       if (data.type === 'chunk') {
         streamBufferRef.current += data.text;
         // Create a streaming message on first chunk
-        setMessages(prev => {
+        setMessages((prev) => {
           const last = prev[prev.length - 1];
           if (last && last.role === 'ai' && last.streaming) {
             return [...prev.slice(0, -1), { ...last, text: streamBufferRef.current }];
           }
-          return [...prev, { id: crypto.randomUUID(), role: 'ai', text: streamBufferRef.current, streaming: true }];
+          return [
+            ...prev,
+            { id: crypto.randomUUID(), role: 'ai', text: streamBufferRef.current, streaming: true },
+          ];
         });
       } else if (data.type === 'complete') {
         streamBufferRef.current = '';
@@ -316,7 +331,7 @@ export default function SessionPage() {
     socket.on('session:phase_changed', (data: { phase: EmdrPhase; reason: string }) => {
       setPhase(data.phase);
       if (BLS_PHASES.includes(data.phase)) {
-        setBlsConfig(prev => ({ ...prev, paused: false }));
+        setBlsConfig((prev) => ({ ...prev, paused: false }));
         if (audioEnabledRef.current && audioRef.current) {
           audioRef.current.startBilateral(blsSpeedRef.current);
         }
@@ -455,7 +470,9 @@ export default function SessionPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-lg w-full p-8 space-y-6 text-center">
           <h1 className="text-4xl font-bold text-gray-900">EMDR Session</h1>
-          <p className="text-gray-500">Start an AI-guided EMDR therapy session or use standalone BLS mode.</p>
+          <p className="text-gray-500">
+            Start an AI-guided EMDR therapy session or use standalone BLS mode.
+          </p>
           <div className="space-y-3">
             <button
               onClick={connectAndStart}
@@ -470,7 +487,10 @@ export default function SessionPage() {
               BLS Only (Offline)
             </button>
           </div>
-          <button onClick={() => router.push('/')} className="text-gray-400 hover:text-gray-700 text-sm transition-colors">
+          <button
+            onClick={() => router.push('/')}
+            className="text-gray-400 hover:text-gray-700 text-sm transition-colors"
+          >
             &larr; Back to Home
           </button>
         </div>
@@ -487,7 +507,13 @@ export default function SessionPage() {
       <div className="min-h-screen bg-gray-950 flex flex-col">
         {/* Top bar -- light Cal.com style */}
         <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200">
-          <button onClick={() => { setSessionId(null); setOfflineMode(false); }} className="text-gray-500 hover:text-gray-900 text-sm transition-colors">
+          <button
+            onClick={() => {
+              setSessionId(null);
+              setOfflineMode(false);
+            }}
+            className="text-gray-500 hover:text-gray-900 text-sm transition-colors"
+          >
             &larr; Exit
           </button>
           <span className="text-gray-500 text-sm">BLS Only Mode (Offline)</span>
@@ -513,14 +539,18 @@ export default function SessionPage() {
           <div className="flex flex-wrap items-center gap-3 sm:gap-4 justify-center">
             <select
               value={blsConfig.pattern}
-              onChange={e => setBlsConfig(c => ({ ...c, pattern: e.target.value }))}
+              onChange={(e) => setBlsConfig((c) => ({ ...c, pattern: e.target.value }))}
               className="bg-white border border-gray-300 text-gray-900 rounded-md px-3 py-2.5 text-sm focus:outline-none focus:border-gray-900"
               aria-label="Паттерн BLS"
             >
-              {PATTERNS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+              {PATTERNS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
             </select>
             <button
-              onClick={() => setBlsConfig(c => ({ ...c, paused: !c.paused }))}
+              onClick={() => setBlsConfig((c) => ({ ...c, paused: !c.paused }))}
               className={`px-6 py-2.5 rounded-md font-semibold text-sm transition-colors min-w-[80px] ${blsConfig.paused ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-amber-500 hover:bg-amber-400 text-white'}`}
             >
               {blsConfig.paused ? 'Start' : 'Pause'}
@@ -531,11 +561,18 @@ export default function SessionPage() {
             <div className="flex items-center gap-2">
               <span className="text-gray-500 text-sm">Speed</span>
               <input
-                type="range" min="0.3" max="2.0" step="0.1"
+                type="range"
+                min="0.3"
+                max="2.0"
+                step="0.1"
                 value={blsConfig.speed}
-                onChange={e => setBlsConfig(c => ({ ...c, speed: parseFloat(e.target.value) }))}
+                onChange={(e) => setBlsConfig((c) => ({ ...c, speed: parseFloat(e.target.value) }))}
                 className="w-20 sm:w-24"
                 aria-label="Скорость BLS"
+                aria-valuemin={0.3}
+                aria-valuemax={2.0}
+                aria-valuenow={blsConfig.speed}
+                aria-valuetext={`${blsConfig.speed.toFixed(1)}x`}
               />
               <span className="text-gray-500 text-sm w-10">{blsConfig.speed.toFixed(1)}x</span>
             </div>
@@ -561,7 +598,12 @@ export default function SessionPage() {
             </label>
             <div className="flex items-center gap-2">
               <label className="text-gray-500 text-sm">Color</label>
-              <input type="color" value={blsColor} onChange={(e) => setBlsColor(e.target.value)} className="w-10 h-8 rounded-md cursor-pointer" />
+              <input
+                type="color"
+                value={blsColor}
+                onChange={(e) => setBlsColor(e.target.value)}
+                className="w-10 h-8 rounded-md cursor-pointer"
+              />
             </div>
           </div>
         </div>
@@ -577,21 +619,30 @@ export default function SessionPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* ---- Панель эмоций ---- */}
       <header className="flex items-center gap-3 sm:gap-6 px-3 sm:px-6 py-2 bg-white border-b border-gray-200 text-sm overflow-x-auto">
-        <button onClick={() => router.push('/')} className="text-gray-400 hover:text-gray-900 transition-colors shrink-0 p-1 min-w-[44px] min-h-[44px] flex items-center justify-center">
+        <button
+          onClick={() => router.push('/')}
+          className="text-gray-400 hover:text-gray-900 transition-colors shrink-0 p-1 min-w-[44px] min-h-[44px] flex items-center justify-center"
+        >
           &larr;
         </button>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-gray-400 hidden sm:inline">Stress</span>
           <span className="text-gray-400 sm:hidden text-xs">S</span>
           <div className="w-16 sm:w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-full bg-red-500 transition-all" style={{ width: `${stress * 100}%` }} />
+            <div
+              className="h-full bg-red-500 transition-all"
+              style={{ width: `${stress * 100}%` }}
+            />
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-gray-400 hidden sm:inline">Engagement</span>
           <span className="text-gray-400 sm:hidden text-xs">E</span>
           <div className="w-16 sm:w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-full bg-green-500 transition-all" style={{ width: `${engagement * 100}%` }} />
+            <div
+              className="h-full bg-green-500 transition-all"
+              style={{ width: `${engagement * 100}%` }}
+            />
           </div>
         </div>
         <span className="text-gray-500 shrink-0">{emotionLabel}</span>
@@ -639,7 +690,9 @@ export default function SessionPage() {
           const isPast = i < phaseIndex;
           return (
             <React.Fragment key={p}>
-              {i > 0 && <div className={`h-px flex-1 min-w-2 ${isPast ? 'bg-gray-900' : 'bg-gray-200'}`} />}
+              {i > 0 && (
+                <div className={`h-px flex-1 min-w-2 ${isPast ? 'bg-gray-900' : 'bg-gray-200'}`} />
+              )}
               <div
                 className={`px-2 py-1 rounded text-xs whitespace-nowrap font-medium transition-colors ${
                   isCurrent ? 'bg-gray-900 text-white' : isPast ? 'text-gray-900' : 'text-gray-400'
@@ -653,8 +706,18 @@ export default function SessionPage() {
       </div>
 
       {/* ---- Мобильные табы (чат / канвас) ---- */}
-      <div className="md:hidden flex border-b border-gray-200 bg-white">
+      {/* role="tablist" + aria-selected + связь tab↔tabpanel через aria-controls/id (#109) */}
+      <div
+        role="tablist"
+        aria-label="Mobile session view"
+        className="md:hidden flex border-b border-gray-200 bg-white"
+      >
         <button
+          role="tab"
+          id="mobile-tab-chat"
+          aria-selected={mobileTab === 'chat'}
+          aria-controls="mobile-panel-chat"
+          tabIndex={mobileTab === 'chat' ? 0 : -1}
           onClick={() => setMobileTab('chat')}
           className={`flex-1 py-3 text-sm font-semibold transition-colors ${
             mobileTab === 'chat' ? 'text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'
@@ -663,6 +726,11 @@ export default function SessionPage() {
           Чат
         </button>
         <button
+          role="tab"
+          id="mobile-tab-canvas"
+          aria-selected={mobileTab === 'canvas'}
+          aria-controls="mobile-panel-canvas"
+          tabIndex={mobileTab === 'canvas' ? 0 : -1}
           onClick={() => setMobileTab('canvas')}
           className={`flex-1 py-3 text-sm font-semibold transition-colors ${
             mobileTab === 'canvas' ? 'text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'
@@ -675,9 +743,14 @@ export default function SessionPage() {
       {/* ---- Основной контент ---- */}
       <div className="flex flex-1 overflow-hidden">
         {/* -- Чат -- */}
-        <div className={`flex-col w-full md:w-1/2 lg:w-2/5 border-r border-gray-200 bg-white ${
-          mobileTab === 'chat' ? 'flex' : 'hidden md:flex'
-        }`}>
+        <div
+          id="mobile-panel-chat"
+          role="tabpanel"
+          aria-labelledby="mobile-tab-chat"
+          className={`flex-col w-full md:w-1/2 lg:w-2/5 border-r border-gray-200 bg-white ${
+            mobileTab === 'chat' ? 'flex' : 'hidden md:flex'
+          }`}
+        >
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             {messages.length === 0 && (
@@ -685,8 +758,11 @@ export default function SessionPage() {
                 {connected ? 'Connecting to AI therapist...' : 'Waiting for connection...'}
               </p>
             )}
-            {messages.map(msg => (
-              <div key={msg.id} className={`flex ${msg.role === 'patient' ? 'justify-end' : 'justify-start'}`}>
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${msg.role === 'patient' ? 'justify-end' : 'justify-start'}`}
+              >
                 <div
                   className={`max-w-[85%] rounded-lg px-4 py-3 text-sm leading-relaxed ${
                     msg.role === 'ai'
@@ -721,8 +797,8 @@ export default function SessionPage() {
               <input
                 type="text"
                 value={inputText}
-                onChange={e => setInputText(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                 placeholder="Type your message..."
                 className="flex-1 bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 rounded-md px-4 py-2.5 text-sm outline-none focus:border-gray-900 transition-colors"
                 aria-label="Message input"
@@ -740,9 +816,12 @@ export default function SessionPage() {
         </div>
 
         {/* -- Канвас + Управление -- */}
-        <div className={`flex-1 flex-col ${
-          mobileTab === 'canvas' ? 'flex' : 'hidden md:flex'
-        }`}>
+        <div
+          id="mobile-panel-canvas"
+          role="tabpanel"
+          aria-labelledby="mobile-tab-canvas"
+          className={`flex-1 flex-col ${mobileTab === 'canvas' ? 'flex' : 'hidden md:flex'}`}
+        >
           {/* Canvas area -- stays dark for therapy */}
           <div className="flex-1 relative bg-gray-950">
             {isBlsPhase ? (
@@ -757,7 +836,9 @@ export default function SessionPage() {
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
-                <p className="text-white/20 text-lg">BLS visualization activates during desensitization phases</p>
+                <p className="text-white/20 text-lg">
+                  BLS visualization activates during desensitization phases
+                </p>
               </div>
             )}
           </div>
@@ -767,31 +848,55 @@ export default function SessionPage() {
             {/* SUDS / VOC */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="text-gray-400 text-xs block mb-1">Rate your distress (SUDS 0-10)</label>
+                <label className="text-gray-400 text-xs block mb-1">
+                  Rate your distress (SUDS 0-10)
+                </label>
                 <div className="flex items-center gap-2">
                   <input
-                    type="range" min="0" max="10" step="1" value={suds}
-                    onChange={e => setSuds(parseInt(e.target.value))}
+                    type="range"
+                    min="0"
+                    max="10"
+                    step="1"
+                    value={suds}
+                    onChange={(e) => setSuds(parseInt(e.target.value))}
                     className="flex-1"
                     aria-label="SUDS rating"
+                    aria-valuemin={0}
+                    aria-valuemax={10}
+                    aria-valuenow={suds}
                   />
                   <span className="text-gray-900 font-mono w-6 text-center">{suds}</span>
-                  <button onClick={sendSuds} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded-md transition-colors">
+                  <button
+                    onClick={sendSuds}
+                    className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded-md transition-colors"
+                  >
                     Submit
                   </button>
                 </div>
               </div>
               <div>
-                <label className="text-gray-400 text-xs block mb-1">How true does this feel? (VOC 1-7)</label>
+                <label className="text-gray-400 text-xs block mb-1">
+                  How true does this feel? (VOC 1-7)
+                </label>
                 <div className="flex items-center gap-2">
                   <input
-                    type="range" min="1" max="7" step="1" value={voc}
-                    onChange={e => setVoc(parseInt(e.target.value))}
+                    type="range"
+                    min="1"
+                    max="7"
+                    step="1"
+                    value={voc}
+                    onChange={(e) => setVoc(parseInt(e.target.value))}
                     className="flex-1"
                     aria-label="VOC rating"
+                    aria-valuemin={1}
+                    aria-valuemax={7}
+                    aria-valuenow={voc}
                   />
                   <span className="text-gray-900 font-mono w-6 text-center">{voc}</span>
-                  <button onClick={sendVoc} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded-md transition-colors">
+                  <button
+                    onClick={sendVoc}
+                    className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded-md transition-colors"
+                  >
                     Submit
                   </button>
                 </div>
@@ -805,21 +910,34 @@ export default function SessionPage() {
                   <label className="text-gray-400 text-xs">Pattern</label>
                   <select
                     value={blsConfig.pattern}
-                    onChange={e => setBlsConfig(c => ({ ...c, pattern: e.target.value }))}
+                    onChange={(e) => setBlsConfig((c) => ({ ...c, pattern: e.target.value }))}
                     className="bg-white border border-gray-300 text-gray-900 rounded-md px-2 py-1 text-xs focus:outline-none focus:border-gray-900"
                     aria-label="BLS pattern"
                   >
-                    {PATTERNS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                    {PATTERNS.map((p) => (
+                      <option key={p.value} value={p.value}>
+                        {p.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="flex items-center gap-2">
                   <label className="text-gray-400 text-xs">Speed</label>
                   <input
-                    type="range" min="0.3" max="2.0" step="0.1"
+                    type="range"
+                    min="0.3"
+                    max="2.0"
+                    step="0.1"
                     value={blsConfig.speed}
-                    onChange={e => setBlsConfig(c => ({ ...c, speed: parseFloat(e.target.value) }))}
+                    onChange={(e) =>
+                      setBlsConfig((c) => ({ ...c, speed: parseFloat(e.target.value) }))
+                    }
                     className="w-20"
                     aria-label="BLS speed"
+                    aria-valuemin={0.3}
+                    aria-valuemax={2.0}
+                    aria-valuenow={blsConfig.speed}
+                    aria-valuetext={`${blsConfig.speed.toFixed(1)}x`}
                   />
                   <span className="text-gray-500 text-xs w-8">{blsConfig.speed.toFixed(1)}x</span>
                 </div>
@@ -838,7 +956,12 @@ export default function SessionPage() {
                 </label>
                 <div className="flex items-center gap-2">
                   <label className="text-gray-400 text-xs">Color</label>
-                  <input type="color" value={blsColor} onChange={(e) => setBlsColor(e.target.value)} className="w-8 h-6 rounded cursor-pointer" />
+                  <input
+                    type="color"
+                    value={blsColor}
+                    onChange={(e) => setBlsColor(e.target.value)}
+                    className="w-8 h-6 rounded cursor-pointer"
+                  />
                 </div>
               </div>
             )}
@@ -887,11 +1010,15 @@ export default function SessionPage() {
             aria-live="assertive"
           >
             <div className="bg-white border border-red-200 rounded-lg p-8 max-w-md mx-4 shadow-lg">
-              <h2 id="safety-alert-title" className="text-xl font-bold text-red-600 mb-3">Safety Alert</h2>
+              <h2 id="safety-alert-title" className="text-xl font-bold text-red-600 mb-3">
+                Safety Alert
+              </h2>
               <div id="safety-alert-desc">
                 <p className="text-red-500 text-sm mb-2">Risk level: {safetyAlert.riskLevel}</p>
                 {safetyAlert.events.map((evt, i) => (
-                  <p key={i} className="text-gray-600 text-sm">{evt.type}: {evt.actionTaken}</p>
+                  <p key={i} className="text-gray-600 text-sm">
+                    {evt.type}: {evt.actionTaken}
+                  </p>
                 ))}
               </div>
               <button
@@ -921,8 +1048,12 @@ export default function SessionPage() {
             aria-live="assertive"
           >
             <div className="bg-white border border-amber-200 rounded-lg p-8 max-w-md mx-4 shadow-lg">
-              <h2 id="intervention-title" className="text-xl font-bold text-amber-700 mb-3">Intervention</h2>
-              <p id="intervention-desc" className="text-gray-700 text-sm mb-4 whitespace-pre-line">{intervention.instructions}</p>
+              <h2 id="intervention-title" className="text-xl font-bold text-amber-700 mb-3">
+                Intervention
+              </h2>
+              <p id="intervention-desc" className="text-gray-700 text-sm mb-4 whitespace-pre-line">
+                {intervention.instructions}
+              </p>
               <button
                 onClick={() => setIntervention(null)}
                 autoFocus
@@ -948,15 +1079,21 @@ export default function SessionPage() {
             aria-labelledby="session-summary-title"
           >
             <div className="bg-white border border-gray-200 rounded-lg p-8 max-w-md mx-4 shadow-lg">
-              <h2 id="session-summary-title" className="text-2xl font-bold text-gray-900 mb-4">Session Complete</h2>
+              <h2 id="session-summary-title" className="text-2xl font-bold text-gray-900 mb-4">
+                Session Complete
+              </h2>
               <div className="space-y-2 text-sm text-gray-500 mb-6">
                 <p>Duration: {formatTime(sessionSummary.elapsedSeconds)}</p>
                 <p>BLS sets completed: {sessionSummary.blsSetsCompleted}</p>
                 <p>Phases completed: {sessionSummary.phasesCompleted}</p>
-                {sessionSummary.finalSuds !== null && <p>Final SUDS: {sessionSummary.finalSuds}/10</p>}
+                {sessionSummary.finalSuds !== null && (
+                  <p>Final SUDS: {sessionSummary.finalSuds}/10</p>
+                )}
                 {sessionSummary.finalVoc !== null && <p>Final VOC: {sessionSummary.finalVoc}/7</p>}
                 {sessionSummary.safetyEventsCount > 0 && (
-                  <p className="text-amber-600">Safety events: {sessionSummary.safetyEventsCount}</p>
+                  <p className="text-amber-600">
+                    Safety events: {sessionSummary.safetyEventsCount}
+                  </p>
                 )}
               </div>
               <div className="flex gap-3">

@@ -3,11 +3,8 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import type {
-  SafetyAlertData,
-  InterventionData,
-  SessionEndedData,
-} from './types';
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
+import type { SafetyAlertData, InterventionData, SessionEndedData } from './types';
 import { formatTime } from './types';
 
 interface OverlaysProps {
@@ -27,11 +24,20 @@ export function Overlays({
 }: OverlaysProps) {
   const router = useRouter();
 
+  // Focus-trap (#109). Safety/intervention НЕ закрываются Esc — клиническая
+  // безопасность требует явного подтверждения; summary закрывается.
+  const safetyRef = useFocusTrap<HTMLDivElement>(Boolean(safetyAlert));
+  const interventionRef = useFocusTrap<HTMLDivElement>(Boolean(intervention));
+  const summaryRef = useFocusTrap<HTMLDivElement>(Boolean(sessionSummary), () =>
+    router.push('/progress'),
+  );
+
   return (
     <>
       <AnimatePresence>
         {safetyAlert && (
           <motion.div
+            ref={safetyRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -65,6 +71,7 @@ export function Overlays({
       <AnimatePresence>
         {intervention && (
           <motion.div
+            ref={interventionRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -95,6 +102,7 @@ export function Overlays({
       <AnimatePresence>
         {sessionSummary && (
           <motion.div
+            ref={summaryRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -114,9 +122,7 @@ export function Overlays({
                 {sessionSummary.finalSuds !== null && (
                   <p>Final SUDS: {sessionSummary.finalSuds}/10</p>
                 )}
-                {sessionSummary.finalVoc !== null && (
-                  <p>Final VOC: {sessionSummary.finalVoc}/7</p>
-                )}
+                {sessionSummary.finalVoc !== null && <p>Final VOC: {sessionSummary.finalVoc}/7</p>}
                 {sessionSummary.safetyEventsCount > 0 && (
                   <p className="text-amber-600">
                     Safety events: {sessionSummary.safetyEventsCount}
