@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -26,10 +27,7 @@ export class IntakeService {
   ) {}
 
   /** Публичный submit (без auth). */
-  async submit(
-    dto: CreateLeadDto,
-    meta: { ip?: string; userAgent?: string },
-  ) {
+  async submit(dto: CreateLeadDto, meta: { ip?: string; userAgent?: string }) {
     // Honeypot — silent 200, без записи.
     if (dto._hp && dto._hp.length > 0) {
       this.logger.warn(`[intake] honeypot triggered from ${meta.ip}`);
@@ -99,8 +97,7 @@ export class IntakeService {
     const skip = (Math.max(query.page ?? 1, 1) - 1) * take;
     const where: any = {};
     if (query.status) where.status = query.status;
-    if (query.assignedTherapistId)
-      where.assignedTherapistId = query.assignedTherapistId;
+    if (query.assignedTherapistId) where.assignedTherapistId = query.assignedTherapistId;
     const [items, total] = await Promise.all([
       (this.prisma as any).lead.findMany({
         where,
@@ -118,9 +115,26 @@ export class IntakeService {
     actorId: string,
     dto: UpdateLeadDto,
     meta?: { ip?: string; userAgent?: string },
+    actorRole?: string,
   ) {
     const existing = await (this.prisma as any).lead.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Lead not found');
+    // Ownership (#233): THERAPIST не может перехватывать чужие лиды.
+    //  - менять можно только свои или неназначенные лиды;
+    //  - assignedTherapistId можно ставить только на себя (или снимать).
+    // Произвольное переназначение — ADMIN.
+    if (actorRole === 'THERAPIST') {
+      if (existing.assignedTherapistId && existing.assignedTherapistId !== actorId) {
+        throw new ForbiddenException('Лид назначен другому терапевту');
+      }
+      if (
+        dto.assignedTherapistId !== undefined &&
+        dto.assignedTherapistId !== null &&
+        dto.assignedTherapistId !== actorId
+      ) {
+        throw new ForbiddenException('Терапевт может назначать лиды только на себя');
+      }
+    }
     const updated = await (this.prisma as any).lead.update({
       where: { id },
       data: dto,
@@ -145,11 +159,16 @@ export class IntakeService {
     leadId: string,
     actorId: string,
     meta?: { ip?: string; userAgent?: string },
+    actorRole?: string,
   ) {
     const lead = await (this.prisma as any).lead.findUnique({ where: { id: leadId } });
     if (!lead) throw new NotFoundException('Lead not found');
     if (!lead.assignedTherapistId) {
       throw new BadRequestException('Сначала назначьте терапевта');
+    }
+    // Ownership (#233): THERAPIST конвертирует только свои лиды.
+    if (actorRole === 'THERAPIST' && lead.assignedTherapistId !== actorId) {
+      throw new ForbiddenException('Лид назначен другому терапевту');
     }
     if (lead.status === 'CONVERTED' || lead.convertedUserId) {
       throw new BadRequestException('Лид уже сконвертирован');

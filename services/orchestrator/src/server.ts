@@ -11,10 +11,7 @@ import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import Redis from 'ioredis';
 import { AiRouter, RedisCircuitStateStore } from '@emdr42/ai-providers';
-import type {
-  AiProviderConfig,
-  CircuitStateStore,
-} from '@emdr42/ai-providers';
+import type { AiProviderConfig, CircuitStateStore } from '@emdr42/ai-providers';
 import type { EmotionSnapshot } from '@emdr42/emdr-engine';
 
 import { loadConfig } from './config';
@@ -49,28 +46,20 @@ const main = async (): Promise<void> => {
   // отключает (для dev / тестов).
   let circuitStore: CircuitStateStore | undefined;
   let redisCb: Redis | null = null;
-  if (
-    config.redisUrl &&
-    process.env.ORCHESTRATOR_CIRCUIT_BACKEND !== 'memory'
-  ) {
+  if (config.redisUrl && process.env.ORCHESTRATOR_CIRCUIT_BACKEND !== 'memory') {
     try {
       redisCb = new Redis(config.redisUrl, {
         maxRetriesPerRequest: 1,
         lazyConnect: false,
       });
-      redisCb.on('error', (err) =>
-        console.warn('[circuit-store] redis error:', err.message),
-      );
+      redisCb.on('error', (err) => console.warn('[circuit-store] redis error:', err.message));
       circuitStore = new RedisCircuitStateStore(redisCb, {
         keyPrefix: `orchestrator:cb:${config.nodeEnv}:`,
         ttlSec: 600,
       });
       console.log('[circuit-store] Redis-backed circuit-breaker enabled');
     } catch (err) {
-      console.warn(
-        '[circuit-store] Failed to init Redis, falling back to in-memory:',
-        err,
-      );
+      console.warn('[circuit-store] Failed to init Redis, falling back to in-memory:', err);
     }
   }
 
@@ -80,9 +69,7 @@ const main = async (): Promise<void> => {
   if (!redisRevocation && config.redisUrl) {
     try {
       redisRevocation = new Redis(config.redisUrl, { maxRetriesPerRequest: 1 });
-      redisRevocation.on('error', (err) =>
-        console.warn('[revocation] redis error:', err.message),
-      );
+      redisRevocation.on('error', (err) => console.warn('[revocation] redis error:', err.message));
     } catch {
       redisRevocation = null;
     }
@@ -139,9 +126,7 @@ const main = async (): Promise<void> => {
 
   // JWT authentication middleware
   sessionNs.use((socket, next) => {
-    const token =
-      socket.handshake.auth?.token ??
-      socket.handshake.query?.token;
+    const token = socket.handshake.auth?.token ?? socket.handshake.query?.token;
 
     if (!token || typeof token !== 'string') {
       return next(new Error('Authentication required'));
@@ -224,9 +209,7 @@ const main = async (): Promise<void> => {
         .isRevoked(userId, tokenIat)
         .then((revoked) => {
           if (!revoked) return next();
-          console.warn(
-            `[ws] Revoked token used: userId=${userId} event=${event} — disconnecting`,
-          );
+          console.warn(`[ws] Revoked token used: userId=${userId} event=${event} — disconnecting`);
           socket.emit('session:error', { message: 'Session expired, please re-login' });
           socket.disconnect(true);
         })
@@ -239,184 +222,144 @@ const main = async (): Promise<void> => {
       typeof s === 'string' && s.length > 0 && s.length <= 128;
 
     // ---- session:start ----
-    socket.on(
-      'session:start',
-      async (data: { sessionId: string }) => {
-        if (!isValidSessionId(data?.sessionId)) {
-          socket.emit('session:error', { message: 'Invalid sessionId' });
-          return;
-        }
-        const { sessionId } = data;
-
-        if (registry.hasSession(sessionId)) {
-          socket.emit('session:error', {
-            message: 'Session already active',
-          });
-          return;
-        }
-
-        const backendClient = new BackendClient(
-          config.apiBaseUrl,
-          userToken
-        );
-        const handler = new SessionHandler(
-          socket,
-          sessionId,
-          userId,
-          aiRouter,
-          backendClient
-        );
-        registry.addSession(sessionId, {
-          handler,
-          socketId: socket.id,
-          userId,
-        });
-
-        try {
-          await handler.start();
-        } catch (err) {
-          console.error(`[session:${sessionId}] Start failed:`, err);
-          socket.emit('session:error', {
-            message: 'Failed to start session',
-          });
-          registry.removeSession(sessionId);
-        }
+    socket.on('session:start', async (data: { sessionId: string }) => {
+      if (!isValidSessionId(data?.sessionId)) {
+        socket.emit('session:error', { message: 'Invalid sessionId' });
+        return;
       }
-    );
+      const { sessionId } = data;
+
+      if (registry.hasSession(sessionId)) {
+        socket.emit('session:error', {
+          message: 'Session already active',
+        });
+        return;
+      }
+
+      const backendClient = new BackendClient(config.apiBaseUrl, userToken);
+      const handler = new SessionHandler(socket, sessionId, userId, aiRouter, backendClient);
+      registry.addSession(sessionId, {
+        handler,
+        socketId: socket.id,
+        userId,
+      });
+
+      try {
+        await handler.start();
+      } catch (err) {
+        console.error(`[session:${sessionId}] Start failed:`, err);
+        socket.emit('session:error', {
+          message: 'Failed to start session',
+        });
+        registry.removeSession(sessionId);
+      }
+    });
 
     // Helper — owned-only lookup для всех session-events. Без этой проверки
     // любой авторизованный пользователь, знающий чужой sessionId, мог бы
     // управлять чужой EMDR-сессией. См. SessionRegistry.getOwnedSession.
-    const ownedSession = (sessionId: string) =>
-      registry.getOwnedSession(sessionId, userId);
+    const ownedSession = (sessionId: string) => registry.getOwnedSession(sessionId, userId);
 
     // ---- session:message ----
-    socket.on(
-      'session:message',
-      async (data: { sessionId: string; text: string }) => {
-        const handler = ownedSession(data.sessionId);
-        if (!handler) {
-          socket.emit('session:error', { message: 'Session not found' });
-          return;
-        }
-        try {
-          await handler.handlePatientMessage(data.text);
-        } catch (err) {
-          console.error(`[session:${data.sessionId}] Message error:`, err);
-        }
+    socket.on('session:message', async (data: { sessionId: string; text: string }) => {
+      const handler = ownedSession(data.sessionId);
+      if (!handler) {
+        socket.emit('session:error', { message: 'Session not found' });
+        return;
       }
-    );
+      try {
+        await handler.handlePatientMessage(data.text);
+      } catch (err) {
+        console.error(`[session:${data.sessionId}] Message error:`, err);
+      }
+    });
 
     // ---- session:emotion ----
-    socket.on(
-      'session:emotion',
-      (data: { sessionId: string; emotion: EmotionSnapshot }) => {
-        const handler = ownedSession(data.sessionId);
-        if (!handler) return;
-        handler.handleEmotionUpdate(data.emotion);
-      }
-    );
+    socket.on('session:emotion', (data: { sessionId: string; emotion: EmotionSnapshot }) => {
+      const handler = ownedSession(data.sessionId);
+      if (!handler) return;
+      handler.handleEmotionUpdate(data.emotion);
+    });
 
     // ---- session:suds ----
-    socket.on(
-      'session:suds',
-      (data: { sessionId: string; value: number; context: string }) => {
-        const handler = ownedSession(data.sessionId);
-        if (!handler) return;
-        handler.handleSudsRating(data.value, data.context);
-      }
-    );
+    socket.on('session:suds', (data: { sessionId: string; value: number; context: string }) => {
+      const handler = ownedSession(data.sessionId);
+      if (!handler) return;
+      handler.handleSudsRating(data.value, data.context);
+    });
 
     // ---- session:voc ----
-    socket.on(
-      'session:voc',
-      (data: { sessionId: string; value: number; context: string }) => {
-        const handler = ownedSession(data.sessionId);
-        if (!handler) return;
-        handler.handleVocRating(data.value, data.context);
-      }
-    );
+    socket.on('session:voc', (data: { sessionId: string; value: number; context: string }) => {
+      const handler = ownedSession(data.sessionId);
+      if (!handler) return;
+      handler.handleVocRating(data.value, data.context);
+    });
 
     // ---- session:stop_signal ----
-    socket.on(
-      'session:stop_signal',
-      (data: { sessionId: string }) => {
-        const handler = ownedSession(data.sessionId);
-        if (!handler) return;
-        handler.handleStopSignal();
-      }
-    );
+    socket.on('session:stop_signal', (data: { sessionId: string }) => {
+      const handler = ownedSession(data.sessionId);
+      if (!handler) return;
+      handler.handleStopSignal();
+    });
 
     // ---- session:pause ----
-    socket.on(
-      'session:pause',
-      (data: { sessionId: string }) => {
-        const handler = ownedSession(data.sessionId);
-        if (!handler) return;
-        handler.handlePause();
-      }
-    );
+    socket.on('session:pause', (data: { sessionId: string }) => {
+      const handler = ownedSession(data.sessionId);
+      if (!handler) return;
+      handler.handlePause();
+    });
 
     // ---- session:resume ----
-    socket.on(
-      'session:resume',
-      (data: { sessionId: string }) => {
-        const handler = ownedSession(data.sessionId);
-        if (!handler) return;
-        handler.handleResume();
-      }
-    );
+    socket.on('session:resume', (data: { sessionId: string }) => {
+      const handler = ownedSession(data.sessionId);
+      if (!handler) return;
+      handler.handleResume();
+    });
 
     // ---- session:end ----
-    socket.on(
-      'session:end',
-      async (data: { sessionId: string }) => {
-        const handler = ownedSession(data.sessionId);
-        if (!handler) return;
+    socket.on('session:end', async (data: { sessionId: string }) => {
+      const handler = ownedSession(data.sessionId);
+      if (!handler) return;
 
-        try {
-          await handler.endSession();
-        } catch (err) {
-          console.error(`[session:${data.sessionId}] End error:`, err);
-        } finally {
-          registry.removeSession(data.sessionId);
-        }
+      try {
+        await handler.endSession();
+      } catch (err) {
+        console.error(`[session:${data.sessionId}] End error:`, err);
+      } finally {
+        registry.removeSession(data.sessionId);
       }
-    );
+    });
 
     // ---- voice:start ----
-    socket.on(
-      'voice:start',
-      async (data: { sessionId: string }) => {
-        const handler = ownedSession(data.sessionId);
-        if (!handler) {
-          socket.emit('voice:error', { message: 'Session not found' });
-          return;
-        }
-
-        if (!registry.getOwnedVoice(data.sessionId, userId)) {
-          const voiceHandler = new VoiceHandler(
-            socket,
-            data.sessionId,
-            {
-              voskUrl: config.voskUrl,
-              piperUrl: config.piperUrl,
-            },
-            handler
-          );
-          registry.addVoice(data.sessionId, {
-            handler: voiceHandler,
-            socketId: socket.id,
-          });
-        }
-
-        try {
-          await registry.getOwnedVoice(data.sessionId, userId)!.start();
-        } catch (err) {
-          console.error(`[voice:${data.sessionId}] Start failed:`, err);
-        }
+    socket.on('voice:start', async (data: { sessionId: string }) => {
+      const handler = ownedSession(data.sessionId);
+      if (!handler) {
+        socket.emit('voice:error', { message: 'Session not found' });
+        return;
       }
-    );
+
+      if (!registry.getOwnedVoice(data.sessionId, userId)) {
+        const voiceHandler = new VoiceHandler(
+          socket,
+          data.sessionId,
+          {
+            voskUrl: config.voskUrl,
+            piperUrl: config.piperUrl,
+          },
+          handler,
+        );
+        registry.addVoice(data.sessionId, {
+          handler: voiceHandler,
+          socketId: socket.id,
+        });
+      }
+
+      try {
+        await registry.getOwnedVoice(data.sessionId, userId)!.start();
+      } catch (err) {
+        console.error(`[voice:${data.sessionId}] Start failed:`, err);
+      }
+    });
 
     // ---- voice:audio ----
     socket.on(
@@ -425,24 +368,21 @@ const main = async (): Promise<void> => {
         const voiceHandler = registry.getOwnedVoice(data.sessionId, userId);
         if (!voiceHandler) return;
         voiceHandler.handleAudioChunk(data.audio);
-      }
+      },
     );
 
     // ---- voice:stop ----
-    socket.on(
-      'voice:stop',
-      (data: { sessionId: string }) => {
-        const voiceHandler = registry.getOwnedVoice(data.sessionId, userId);
-        if (voiceHandler) {
-          try {
-            voiceHandler.stop();
-          } catch (err) {
-            console.warn(`[voice:${data.sessionId}] stop error:`, err);
-          }
-          registry.removeVoice(data.sessionId);
+    socket.on('voice:stop', (data: { sessionId: string }) => {
+      const voiceHandler = registry.getOwnedVoice(data.sessionId, userId);
+      if (voiceHandler) {
+        try {
+          voiceHandler.stop();
+        } catch (err) {
+          console.warn(`[voice:${data.sessionId}] stop error:`, err);
         }
+        registry.removeVoice(data.sessionId);
       }
-    );
+    });
 
     // ---- error ----
     socket.on('error', (err) => {
@@ -459,7 +399,7 @@ const main = async (): Promise<void> => {
     // тогда полный teardown.
     socket.on('disconnect', async (reason) => {
       console.log(
-        `[ws] Client disconnected: userId=${userId} socketId=${socket.id} reason=${reason}`
+        `[ws] Client disconnected: userId=${userId} socketId=${socket.id} reason=${reason}`,
       );
       metrics.wsConnections.dec();
 
@@ -476,23 +416,27 @@ const main = async (): Promise<void> => {
         // уже не вернёт эти sessionIds (registry перенесёт их на новый socket).
         // Проверяем по userId владельца — если ту же сессию теперь держит
         // другой socket, оставляем её жить.
-        const stillDetached = sessionIds.filter(
-          (sid) => registry.sessionDetachedAt(sid) !== null,
-        );
+        const stillDetached = sessionIds.filter((sid) => registry.sessionDetachedAt(sid) !== null);
         for (const sid of voiceIds) {
           if (!stillDetached.includes(sid)) continue;
           const voice = registry.getVoice(sid);
           if (voice) {
-            try { voice.stop(); } catch (err) { console.warn(`[voice:${sid}] stop error`, err); }
+            try {
+              voice.stop();
+            } catch (err) {
+              console.warn(`[voice:${sid}] stop error`, err);
+            }
             registry.removeVoice(sid);
           }
         }
         for (const sid of stillDetached) {
           const handler = registry.getSession(sid);
           if (handler) {
-            handler.endSession().catch((err) =>
-              console.warn(`[session:${sid}] endSession on disconnect failed:`, err),
-            );
+            handler
+              .endSession()
+              .catch((err) =>
+                console.warn(`[session:${sid}] endSession on disconnect failed:`, err),
+              );
             registry.removeSession(sid);
           }
         }
@@ -505,6 +449,11 @@ const main = async (): Promise<void> => {
     socket.on('session:reattach', (data: { sessionId: string }) => {
       const ok = registry.reattach(data.sessionId, userId, socket.id);
       if (ok) {
+        // #233: handler держал ссылку на СТАРЫЙ socket — все emit уходили
+        // в мёртвое соединение. Перепривязываем + сбрасываем safety-baseline
+        // (другая камера/свет после reconnect).
+        registry.getOwnedSession(data.sessionId, userId)?.handleReattach(socket);
+        registry.getOwnedVoice(data.sessionId, userId)?.rebindSocket(socket);
         socket.emit('session:reattached', { sessionId: data.sessionId });
       } else {
         socket.emit('session:error', { message: 'Session unavailable for reattach' });
@@ -514,9 +463,7 @@ const main = async (): Promise<void> => {
 
   // -- Start listening --
   httpServer.listen(config.port, () => {
-    console.log(
-      `[orchestrator] Listening on port ${config.port} (${config.nodeEnv})`
-    );
+    console.log(`[orchestrator] Listening on port ${config.port} (${config.nodeEnv})`);
   });
 
   // -- Graceful shutdown (см. #124) --

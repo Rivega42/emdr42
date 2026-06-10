@@ -16,11 +16,7 @@ import {
   PHASE_PROMPTS,
   SAFETY_PROMPTS,
 } from '@emdr42/emdr-engine';
-import type {
-  EmdrPhase,
-  EmotionSnapshot,
-  FullSessionExport,
-} from '@emdr42/emdr-engine';
+import type { EmdrPhase, EmotionSnapshot, FullSessionExport } from '@emdr42/emdr-engine';
 
 import { AiDialogue } from './ai-dialogue';
 import { BackendClient } from './backend-client';
@@ -58,7 +54,7 @@ export class SessionHandler {
     sessionId: string,
     userId: string,
     aiRouter: AiRouter,
-    backendClient: BackendClient
+    backendClient: BackendClient,
   ) {
     this.socket = socket;
     this.sessionId = sessionId;
@@ -92,13 +88,12 @@ export class SessionHandler {
     }
 
     // Start emotion batch flush
-    this.emotionFlushTimer = setInterval(
-      () => this.flushEmotions(),
-      EMOTION_FLUSH_INTERVAL_MS
-    );
+    this.emotionFlushTimer = setInterval(() => this.flushEmotions(), EMOTION_FLUSH_INTERVAL_MS);
 
     // Send initial AI greeting (Phase 1: History)
-    await this.streamAiResponse('Begin the EMDR session. Greet the client warmly and start Phase 1 (History Taking).');
+    await this.streamAiResponse(
+      'Begin the EMDR session. Greet the client warmly and start Phase 1 (History Taking).',
+    );
 
     // Record timeline event
     this.recordTimeline('phase_start', { phase: 'history' });
@@ -132,12 +127,14 @@ export class SessionHandler {
     });
 
     // Notify gamification (#89) — best-effort, не ломает endSession
-    this.backendClient.notifyGamificationEvent({
-      type: 'session_completed',
-      finalSuds: latestSuds,
-      finalVoc: latestVoc,
-      phasesCompleted: exportData.phases.length,
-    }).catch(() => void 0);
+    this.backendClient
+      .notifyGamificationEvent({
+        type: 'session_completed',
+        finalSuds: latestSuds,
+        finalVoc: latestVoc,
+        phasesCompleted: exportData.phases.length,
+      })
+      .catch(() => void 0);
   }
 
   // --------------------------------------------------------------------------
@@ -154,21 +151,18 @@ export class SessionHandler {
     const fullResponse = await this.streamAiResponseWithContext(text, context);
 
     // Check if AI suggests a phase transition
-    const { suggestsTransition, nextPhase } =
-      this.aiDialogue.analyzeResponse(fullResponse);
+    const { suggestsTransition, nextPhase } = this.aiDialogue.analyzeResponse(fullResponse);
 
     if (suggestsTransition && nextPhase) {
       this.tryPhaseTransition(nextPhase, 'ai_suggestion');
     }
 
     // Also check AdaptiveController for data-driven transitions
-    const transitionCheck = this.adaptiveController.shouldTransitionPhase(
-      this.engine.getState()
-    );
+    const transitionCheck = this.adaptiveController.shouldTransitionPhase(this.engine.getState());
     if (transitionCheck.transition && transitionCheck.nextPhase) {
       this.tryPhaseTransition(
         transitionCheck.nextPhase,
-        transitionCheck.reason ?? 'adaptive_controller'
+        transitionCheck.reason ?? 'adaptive_controller',
       );
     }
   }
@@ -209,20 +203,17 @@ export class SessionHandler {
     }
 
     // Check for phase transitions
-    const { suggestsTransition, nextPhase } =
-      this.aiDialogue.analyzeResponse(fullResponse);
+    const { suggestsTransition, nextPhase } = this.aiDialogue.analyzeResponse(fullResponse);
 
     if (suggestsTransition && nextPhase) {
       this.tryPhaseTransition(nextPhase, 'ai_suggestion');
     }
 
-    const transitionCheck = this.adaptiveController.shouldTransitionPhase(
-      this.engine.getState()
-    );
+    const transitionCheck = this.adaptiveController.shouldTransitionPhase(this.engine.getState());
     if (transitionCheck.transition && transitionCheck.nextPhase) {
       this.tryPhaseTransition(
         transitionCheck.nextPhase,
-        transitionCheck.reason ?? 'adaptive_controller'
+        transitionCheck.reason ?? 'adaptive_controller',
       );
     }
 
@@ -263,10 +254,7 @@ export class SessionHandler {
     this.emotionBuffer.push(data);
 
     // Feed to SafetyMonitor
-    const analysis = this.safetyMonitor.analyzeEmotion(
-      data,
-      this.engine.getState()
-    );
+    const analysis = this.safetyMonitor.analyzeEmotion(data, this.engine.getState());
 
     if (!analysis.safe && analysis.intervention) {
       // Report safety event to engine
@@ -293,7 +281,7 @@ export class SessionHandler {
         this.backendClient
           .addSafetyEvent(this.sessionId, event)
           .catch((err) =>
-            console.error(`[session:${this.sessionId}] Failed to save safety event:`, err)
+            console.error(`[session:${this.sessionId}] Failed to save safety event:`, err),
           );
       }
 
@@ -337,10 +325,7 @@ export class SessionHandler {
               type: mappedType,
             })
             .catch((err) =>
-              console.error(
-                `[session:${this.sessionId}] Failed to record crisis event:`,
-                err,
-              ),
+              console.error(`[session:${this.sessionId}] Failed to record crisis event:`, err),
             );
         }
       }
@@ -353,7 +338,7 @@ export class SessionHandler {
         currentPhase,
         data,
         this.engine.getBlsSetsCompleted(),
-        this.engine.getSudsHistory()
+        this.engine.getSudsHistory(),
       );
 
       const currentConfig = this.engine.getBlsConfig();
@@ -384,25 +369,19 @@ export class SessionHandler {
         value,
         context,
       })
-      .catch((err) =>
-        console.error(`[session:${this.sessionId}] Failed to save SUDS:`, err)
-      );
+      .catch((err) => console.error(`[session:${this.sessionId}] Failed to save SUDS:`, err));
 
     // Check for phase transition (SUDS=0 in desensitization -> installation)
-    const transitionCheck = this.adaptiveController.shouldTransitionPhase(
-      this.engine.getState()
-    );
+    const transitionCheck = this.adaptiveController.shouldTransitionPhase(this.engine.getState());
     if (transitionCheck.transition && transitionCheck.nextPhase) {
       this.tryPhaseTransition(
         transitionCheck.nextPhase,
-        transitionCheck.reason ?? 'suds_threshold'
+        transitionCheck.reason ?? 'suds_threshold',
       );
     }
 
     // Check for stuck processing
-    const interweave = this.adaptiveController.suggestInterweave(
-      this.engine.getState()
-    );
+    const interweave = this.adaptiveController.suggestInterweave(this.engine.getState());
     if (interweave) {
       this.recordTimeline('interweave', { question: interweave });
       // The interweave will be included in the next AI context
@@ -420,19 +399,12 @@ export class SessionHandler {
         value,
         context,
       })
-      .catch((err) =>
-        console.error(`[session:${this.sessionId}] Failed to save VOC:`, err)
-      );
+      .catch((err) => console.error(`[session:${this.sessionId}] Failed to save VOC:`, err));
 
     // Check for phase transition (VOC=7 in installation -> body_scan)
-    const transitionCheck = this.adaptiveController.shouldTransitionPhase(
-      this.engine.getState()
-    );
+    const transitionCheck = this.adaptiveController.shouldTransitionPhase(this.engine.getState());
     if (transitionCheck.transition && transitionCheck.nextPhase) {
-      this.tryPhaseTransition(
-        transitionCheck.nextPhase,
-        transitionCheck.reason ?? 'voc_threshold'
-      );
+      this.tryPhaseTransition(transitionCheck.nextPhase, transitionCheck.reason ?? 'voc_threshold');
     }
   }
 
@@ -486,6 +458,18 @@ export class SessionHandler {
     });
   }
 
+  /**
+   * Reattach к новому socket после disconnect (#233).
+   * Baseline SafetyMonitor сбрасывается: после переподключения камера/свет/
+   * ракурс могут отличаться — смешивание данных двух подключений делает
+   * composite-детекцию диссоциации недостоверной.
+   */
+  handleReattach(newSocket: Socket): void {
+    this.socket = newSocket;
+    this.safetyMonitor.resetBaseline();
+    this.recordTimeline('session_reattached', {});
+  }
+
   // --------------------------------------------------------------------------
   // Phase transitions
   // --------------------------------------------------------------------------
@@ -497,9 +481,7 @@ export class SessionHandler {
 
     // Update AI system prompt with new phase-specific prompt
     const phasePrompt = PHASE_PROMPTS[nextPhase];
-    this.aiDialogue.updateSystemPrompt(
-      `${EMDR_SYSTEM_PROMPT}\n\n${phasePrompt}`
-    );
+    this.aiDialogue.updateSystemPrompt(`${EMDR_SYSTEM_PROMPT}\n\n${phasePrompt}`);
 
     // Emit to client
     this.socket.emit('session:phase_changed', {
@@ -523,9 +505,7 @@ export class SessionHandler {
       .updateSession(this.sessionId, {
         currentPhase: nextPhase,
       })
-      .catch((err) =>
-        console.error(`[session:${this.sessionId}] Failed to update phase:`, err)
-      );
+      .catch((err) => console.error(`[session:${this.sessionId}] Failed to update phase:`, err));
   }
 
   // --------------------------------------------------------------------------
@@ -545,10 +525,7 @@ export class SessionHandler {
    * Stream AI response for a given user message and context.
    * Emits `session:ai_response` chunks and a final complete message.
    */
-  private async streamAiResponseWithContext(
-    userMessage: string,
-    context: string
-  ): Promise<string> {
+  private async streamAiResponseWithContext(userMessage: string, context: string): Promise<string> {
     let fullResponse = '';
     const start = Date.now();
 
@@ -593,16 +570,17 @@ export class SessionHandler {
       // Usage tracking (#130) — best-effort. Используем реального провайдера
       // (после возможного fallback), а не захардкоженного `anthropic` — иначе
       // billing неверный при failover.
-      const usedProvider =
-        this.aiRouter.getLastUsedLlmProvider?.() ?? 'unknown';
-      this.backendClient.recordUsage({
-        sessionId: this.sessionId,
-        provider: usedProvider,
-        providerType: 'LLM',
-        inputTokens: userMessage.length / 4, // rough estimate
-        outputTokens: fullResponse.length / 4,
-        durationMs: Date.now() - start,
-      }).catch(() => void 0);
+      const usedProvider = this.aiRouter.getLastUsedLlmProvider?.() ?? 'unknown';
+      this.backendClient
+        .recordUsage({
+          sessionId: this.sessionId,
+          provider: usedProvider,
+          providerType: 'LLM',
+          inputTokens: userMessage.length / 4, // rough estimate
+          outputTokens: fullResponse.length / 4,
+          durationMs: Date.now() - start,
+        })
+        .catch(() => void 0);
 
       // Emit complete response
       this.socket.emit('session:ai_response', {
@@ -655,7 +633,7 @@ export class SessionHandler {
       parts.push(
         `Avg emotions (last 5): stress=${avgEmotions.stress.toFixed(2)}, ` +
           `engagement=${avgEmotions.engagement.toFixed(2)}, ` +
-          `valence=${avgEmotions.valence.toFixed(2)}`
+          `valence=${avgEmotions.valence.toFixed(2)}`,
       );
     }
 
@@ -673,7 +651,7 @@ export class SessionHandler {
     if (target) {
       parts.push(
         `Target: ${target.description}`,
-        `NC: "${target.negativeCognition}" | PC: "${target.positiveCognition}"`
+        `NC: "${target.negativeCognition}" | PC: "${target.positiveCognition}"`,
       );
     }
 
@@ -684,10 +662,7 @@ export class SessionHandler {
   // Persistence helpers
   // --------------------------------------------------------------------------
 
-  private recordTimeline(
-    type: string,
-    data: Record<string, unknown>
-  ): void {
+  private recordTimeline(type: string, data: Record<string, unknown>): void {
     const event = {
       timestamp: Date.now(),
       type: type as import('@emdr42/emdr-engine').TimelineEventType,
@@ -696,9 +671,11 @@ export class SessionHandler {
 
     this.engine.addTimelineEvent(event);
 
-    this.backendClient.addTimelineEvent(this.sessionId, event).catch((err) =>
-      console.error(`[session:${this.sessionId}] Failed to save timeline event:`, err)
-    );
+    this.backendClient
+      .addTimelineEvent(this.sessionId, event)
+      .catch((err) =>
+        console.error(`[session:${this.sessionId}] Failed to save timeline event:`, err),
+      );
   }
 
   private async flushEmotions(): Promise<void> {
@@ -751,7 +728,10 @@ export class SessionHandler {
     const config = this.engine.getBlsConfig();
     // Длительность одного BLS-сета в секундах (passes / speed Hz).
     // Clamp в [20, 90] чтобы не вызывать check-in слишком часто/редко.
-    const setDurationSec = Math.max(20, Math.min(90, (config.setLength ?? 24) / Math.max(config.speed, 0.3)));
+    const setDurationSec = Math.max(
+      20,
+      Math.min(90, (config.setLength ?? 24) / Math.max(config.speed, 0.3)),
+    );
     this.blsSetTimer = setTimeout(() => {
       void this.triggerCheckIn();
     }, setDurationSec * 1000);
