@@ -4,9 +4,9 @@
  * jsdom не имеет IndexedDB — используем fake-indexeddb с пере-инициализацией
  * для чистого состояния БД на каждый тест.
  *
- * Покрывает write/read/upsert/filter-by-index пути без boolean-индексов.
- * `getUnsyncedSessions` / `getUnsyncedEmotions` отложены до фикса #261
- * (`IDBKeyRange.only(false)` — boolean невалидный IDB key по W3C spec).
+ * После фикса #261 synced хранится как 0|1 (boolean невалидный IDB-key
+ * по W3C spec), публичный API остаётся boolean — покрыто полностью,
+ * включая индекс-запросы getUnsyncedSessions / getUnsyncedEmotions.
  */
 
 import 'fake-indexeddb/auto';
@@ -19,6 +19,7 @@ import {
   saveChatMessage,
   getSessionMessages,
   saveEmotionSnapshot,
+  getUnsyncedEmotions,
   markAsSynced,
 } from '../offline-db';
 
@@ -152,7 +153,7 @@ describe('offline-db (#150) — messages', () => {
 });
 
 describe('offline-db (#150) — emotions', () => {
-  it('saveEmotionSnapshot сохраняет stress + engagement', async () => {
+  it('saveEmotionSnapshot + getUnsyncedEmotions фильтрует по synced=false', async () => {
     await saveEmotionSnapshot({
       id: 'e-1',
       sessionId: 's',
@@ -161,18 +162,68 @@ describe('offline-db (#150) — emotions', () => {
       engagement: 0.7,
       synced: false,
     });
-    // Прямого read-by-id для emotions нет, поэтому проверяем write не падает
-    // (полное покрытие emotions read придёт с #261).
-    await expect(
-      saveEmotionSnapshot({
-        id: 'e-2',
-        sessionId: 's',
-        timestamp: 't',
-        stress: 0,
-        engagement: 0,
-        synced: false,
-      }),
-    ).resolves.toBeDefined();
+    await saveEmotionSnapshot({
+      id: 'e-2',
+      sessionId: 's',
+      timestamp: 't',
+      stress: 0.5,
+      engagement: 0.8,
+      synced: true,
+    });
+
+    const unsynced = await getUnsyncedEmotions();
+    expect(unsynced).toHaveLength(1);
+    expect(unsynced[0]).toMatchObject({ id: 'e-1', stress: 0.6, synced: false });
+  });
+
+  it('getUnsyncedEmotions: пустой массив без данных', async () => {
+    expect(await getUnsyncedEmotions()).toEqual([]);
+  });
+});
+
+describe('offline-db (#261) — getUnsyncedSessions через 0|1 индекс', () => {
+  it('возвращает только записи с synced=false, API остаётся boolean', async () => {
+    await saveOfflineSession({
+      id: 'a',
+      startedAt: 't',
+      phase: 'p',
+      blsPattern: 'h',
+      blsSpeed: 1,
+      synced: false,
+    });
+    await saveOfflineSession({
+      id: 'b',
+      startedAt: 't',
+      phase: 'p',
+      blsPattern: 'h',
+      blsSpeed: 1,
+      synced: true,
+    });
+    await saveOfflineSession({
+      id: 'c',
+      startedAt: 't',
+      phase: 'p',
+      blsPattern: 'h',
+      blsSpeed: 1,
+      synced: false,
+    });
+
+    const unsynced = await getUnsyncedSessions();
+    expect(unsynced.map((s) => s.id).sort()).toEqual(['a', 'c']);
+    // Граница конвертации: наружу — boolean, не 0|1
+    expect(unsynced.every((s) => s.synced === false)).toBe(true);
+  });
+
+  it('пустой массив когда все synced', async () => {
+    await saveOfflineSession({
+      id: 'a',
+      startedAt: 't',
+      phase: 'p',
+      blsPattern: 'h',
+      blsSpeed: 1,
+      synced: true,
+    });
+    expect(await getUnsyncedSessions()).toEqual([]);
   });
 });
 
@@ -209,7 +260,7 @@ describe('offline-db (#150) — markAsSynced', () => {
     expect(msgs[0].synced).toBe(true);
   });
 
-  it('помечает emotion как synced (без read-by-id, проверка не падает)', async () => {
+  it('помечает emotion как synced — исчезает из getUnsyncedEmotions', async () => {
     await saveEmotionSnapshot({
       id: 'e-1',
       sessionId: 's',
@@ -218,7 +269,23 @@ describe('offline-db (#150) — markAsSynced', () => {
       engagement: 0.5,
       synced: false,
     });
-    await expect(markAsSynced('emotions', 'e-1')).resolves.toBeUndefined();
+    expect(await getUnsyncedEmotions()).toHaveLength(1);
+    await markAsSynced('emotions', 'e-1');
+    expect(await getUnsyncedEmotions()).toEqual([]);
+  });
+
+  it('после markAsSynced сессия исчезает из getUnsyncedSessions (#261)', async () => {
+    await saveOfflineSession({
+      id: 's-1',
+      startedAt: 't',
+      phase: 'p',
+      blsPattern: 'h',
+      blsSpeed: 1,
+      synced: false,
+    });
+    expect(await getUnsyncedSessions()).toHaveLength(1);
+    await markAsSynced('sessions', 's-1');
+    expect(await getUnsyncedSessions()).toEqual([]);
   });
 });
 
@@ -258,23 +325,5 @@ describe('offline-db (#150) — DB upgrade flow', () => {
 
     expect(await getOfflineSession('s-1')).toBeDefined();
     expect(await getSessionMessages('s-1')).toHaveLength(1);
-  });
-});
-
-describe('offline-db (#150) — known bug (#261)', () => {
-  it('getUnsyncedSessions: документирует баг IDBKeyRange.only(false) (boolean невалидный IDB key)', async () => {
-    await saveOfflineSession({
-      id: 's-1',
-      startedAt: 't',
-      phase: 'p',
-      blsPattern: 'h',
-      blsSpeed: 1,
-      synced: false,
-    });
-    // По W3C spec boolean не входит в допустимые типы ключей.
-    // fake-indexeddb (и Safari/Firefox) кидают DataError, Chromium терпим.
-    // Этот тест зафиксирует поведение: после фикса #261 его нужно
-    // переписать на ожидание реального массива.
-    await expect(getUnsyncedSessions()).rejects.toThrow();
   });
 });
