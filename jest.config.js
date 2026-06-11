@@ -19,6 +19,10 @@ const customJestConfig = {
   testPathIgnorePatterns: ['/node_modules/', '/.next/', '/services/', '/packages/', '/e2e/'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    // Workspace-алиасы из tsconfig paths — jest их сам не подхватывает,
+    // без маппинга jest.mock('@emdr42/core') не резолвится из тестов.
+    '^@emdr42/core$': '<rootDir>/packages/core/src',
+    '^@emdr42/core/(.*)$': '<rootDir>/packages/core/src/$1',
   },
   collectCoverageFrom: [
     'lib/hooks/**/*.{ts,tsx}',
