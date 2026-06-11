@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "paths": {
+      "@voice-platform/core": ["./packages/core/src"],
+      "@voice-platform/providers": ["./packages/providers/src"],
+      "@voice-platform/transport": ["./packages/transport/src"]
+    }
+  }
+}
