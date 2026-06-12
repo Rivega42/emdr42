@@ -34,6 +34,9 @@ function resolveJwtSecret(): string {
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, RefreshTokenService, TokenRevocationService],
-  exports: [AuthService, RefreshTokenService, TokenRevocationService],
+  // JwtModule экспортируется для модулей, инжектящих JwtService напрямую
+  // (MfaService) — без этого Nest падает на старте: "can't resolve
+  // dependencies of the MfaService". Юнит-тесты это не ловят (моки).
+  exports: [AuthService, RefreshTokenService, TokenRevocationService, JwtModule],
 })
 export class AuthModule {}
