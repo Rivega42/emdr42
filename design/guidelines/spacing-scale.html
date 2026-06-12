@@ -1,0 +1,24 @@
+<!-- @dsCard group="Spacing" viewport="700x240" name="Шкала отступов" subtitle="шаг 4px · покой = воздух, секции 80–128px" -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 20px 24px; display: flex; flex-direction: column; gap: 7px; }
+  .r { display: flex; align-items: center; gap: 14px; }
+  .t { font-size: 11px; color: var(--text-muted); font-family: ui-monospace, monospace; width: 120px; flex: none; }
+  .bar { height: 12px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 3px; }
+</style>
+</head>
+<body>
+  <div class="r"><span class="t">--space-2 · 8</span><span class="bar" style="width: 8px;"></span></div>
+  <div class="r"><span class="t">--space-4 · 16</span><span class="bar" style="width: 16px;"></span></div>
+  <div class="r"><span class="t">--space-6 · 24</span><span class="bar" style="width: 24px;"></span></div>
+  <div class="r"><span class="t">--space-8 · 32</span><span class="bar" style="width: 32px;"></span></div>
+  <div class="r"><span class="t">--space-12 · 48</span><span class="bar" style="width: 48px;"></span></div>
+  <div class="r"><span class="t">--space-16 · 64</span><span class="bar" style="width: 64px;"></span></div>
+  <div class="r"><span class="t">--space-20 · 80</span><span class="bar" style="width: 80px;"></span></div>
+  <div class="r"><span class="t">--space-32 · 128</span><span class="bar" style="width: 128px;"></span></div>
+</body>
+</html>

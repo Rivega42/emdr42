@@ -1,0 +1,28 @@
+<!-- @dsCard group="Spacing" viewport="700x210" name="Свет и тени" subtitle="ореол только у CTA · кромка на ребре карточки · фокус-кольцо" -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 28px 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .box { border-radius: var(--radius-lg); height: 110px; display: flex; flex-direction: column; justify-content: flex-end; padding: 12px 14px; }
+  .t { font-size: 12px; font-weight: 500; }
+  .v { font-size: 10px; color: var(--text-muted); font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+  <div class="box" style="background: var(--accent); box-shadow: var(--glow-moon);">
+    <span class="t" style="color: var(--on-accent);">--glow-moon</span>
+    <span class="v" style="color: var(--on-accent); opacity: 0.7;">ореол CTA — макс. 1–2 на экран</span>
+  </div>
+  <div class="box" style="background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-card);">
+    <span class="t">--shadow-card</span>
+    <span class="v">кромка сверху + мягкая глубина</span>
+  </div>
+  <div class="box" style="background: var(--surface); border: 1px solid var(--border); box-shadow: var(--focus-ring);">
+    <span class="t">--focus-ring</span>
+    <span class="v">фокус — всегда видимый</span>
+  </div>
+</body>
+</html>

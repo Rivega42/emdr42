@@ -1,0 +1,42 @@
+/* EMDR42 — свет, тени, движение.
+   Принцип Куинджи: светится только то, что ведёт к действию или показывает прогресс.
+   «Свечение» — через ореол/тень, не через яркость текста. */
+
+:root {
+  /* ореол лунного света — ТОЛЬКО для primary CTA, прогресса, активных состояний */
+  --glow-moon: 0 0 0 1px rgba(184, 230, 211, 0.25), 0 4px 28px rgba(159, 216, 192, 0.28);
+  --glow-moon-hover: 0 0 0 1px rgba(184, 230, 211, 0.4), 0 6px 36px rgba(159, 216, 192, 0.4);
+
+  /* тени поверхностей — глубокие, мягкие, без резкости */
+  --shadow-card: 0 1px 0 var(--edge-light) inset, 0 8px 24px rgba(4, 10, 14, 0.35);
+  --shadow-raised: 0 1px 0 var(--edge-light) inset, 0 16px 48px rgba(4, 10, 14, 0.5);
+
+  /* фокус — лунный акцент, всегда видимый */
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+
+  /* движение: медленное, плавное, без отскоков */
+  --ease-calm: cubic-bezier(0.25, 0.1, 0.25, 1); /* @kind other */
+  --duration-fast: 180ms; /* @kind other */
+  --duration-slow: 420ms; /* @kind other */
+
+  /* «лунная дорожка» — фирменный градиентный мотив, один раз на страницу */
+  --moonpath-gradient: linear-gradient(
+    to bottom,
+    rgba(184, 230, 211, 0) 0%,
+    rgba(184, 230, 211, 0.55) 35%,
+    rgba(159, 216, 192, 0.85) 100%
+  ); /* @kind other */
+}
+
+[data-theme="light"] {
+  --glow-moon: 0 0 0 1px rgba(31, 92, 77, 0.18), 0 4px 20px rgba(31, 92, 77, 0.22);
+  --glow-moon-hover: 0 0 0 1px rgba(31, 92, 77, 0.3), 0 6px 28px rgba(31, 92, 77, 0.3);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 6px 20px rgba(20, 40, 42, 0.08);
+  --shadow-raised: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 14px 40px rgba(20, 40, 42, 0.14);
+  --moonpath-gradient: linear-gradient(
+    to bottom,
+    rgba(31, 92, 77, 0) 0%,
+    rgba(31, 92, 77, 0.35) 35%,
+    rgba(31, 92, 77, 0.7) 100%
+  ); /* @kind other */
+}

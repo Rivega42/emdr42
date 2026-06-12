@@ -1,0 +1,7 @@
+/* EMDR42 — webfonts.
+   Кириллица обязательна. Пара по арт-дирекшену «Лунная ночь»:
+   - Spectral (serif) — заголовки h1/h2, «литературность» русской пейзажной классики
+   - Onest (sans)    — текст и UI, спокойный гуманистический гротеск
+   Загружаются с Google Fonts (subset cyrillic). Если появятся собственные
+   файлы шрифтов — заменить на локальные @font-face. */
+@import url("https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=Onest:wght@400;500;600&display=swap");

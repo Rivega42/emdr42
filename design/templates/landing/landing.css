@@ -1,0 +1,141 @@
+/* EMDR42 — лейаут главной страницы (UI kit «landing»). */
+
+.l-page { min-height: 100vh; background: var(--bg); }
+
+.l-container {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+}
+
+/* ---------- Navbar ---------- */
+.l-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 40;
+  transition: background var(--duration-slow) var(--ease-calm),
+    border-color var(--duration-slow) var(--ease-calm),
+    backdrop-filter var(--duration-slow) var(--ease-calm);
+  border-bottom: 1px solid transparent;
+}
+.l-nav--scrolled {
+  background: color-mix(in oklab, var(--bg) 78%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom-color: var(--border);
+}
+.l-nav__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: 68px;
+}
+.l-logo { display: flex; align-items: center; gap: var(--space-3); color: var(--text); }
+.l-logo:hover { color: var(--text); }
+.l-logo__mark {
+  width: 28px; height: 28px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 40% 36%, #d9f2e6, var(--accent) 78%);
+  box-shadow: 0 0 14px 3px var(--accent-soft);
+}
+.l-logo__word { font-family: var(--font-display); font-size: 20px; font-weight: 500; }
+.l-nav__links { display: flex; align-items: center; gap: var(--space-5); }
+.l-nav__link { color: var(--text-muted); font-size: var(--text-sm); }
+.l-nav__link:hover { color: var(--text); }
+@media (max-width: 640px) {
+  .l-nav__link--about { display: none; }
+}
+
+/* ---------- Hero: сцена «Лунная ночь» ---------- */
+.l-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 164px 0 140px;
+  background:
+    radial-gradient(560px 300px at 50% 8%, rgba(184, 230, 211, 0.14), transparent 70%),
+    linear-gradient(to bottom, var(--bg-scene) 0%, var(--bg) 78%);
+}
+[data-theme="light"] .l-hero {
+  background:
+    radial-gradient(560px 300px at 50% 8%, rgba(31, 92, 77, 0.1), transparent 70%),
+    linear-gradient(to bottom, var(--bg-scene) 0%, var(--bg) 78%);
+}
+.l-hero__moon {
+  position: absolute;
+  top: 52px; left: 50%; transform: translateX(-50%);
+  width: 64px; height: 64px; border-radius: 50%;
+  background: radial-gradient(circle at 42% 38%, #d9f2e6, var(--accent) 76%);
+  box-shadow: 0 0 48px 14px color-mix(in oklab, var(--accent) 30%, transparent);
+}
+.l-hero__path {
+  position: absolute;
+  top: 120px; bottom: -56px; left: 50%; transform: translateX(-50%);
+  width: 2px;
+  background: var(--moonpath-gradient);
+  opacity: 0.85;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .l-hero__path { animation: l-shimmer 7s var(--ease-calm) infinite alternate; }
+  @keyframes l-shimmer { from { opacity: 0.6; } to { opacity: 1; } }
+}
+.l-hero__inner { position: relative; text-align: center; }
+.l-hero__title { font-size: clamp(40px, 6vw, var(--text-5xl)); margin-bottom: var(--space-6); }
+.l-hero__sub {
+  font-size: clamp(var(--text-base), 2vw, var(--text-xl));
+  color: var(--text-muted);
+  max-width: 640px;
+  margin: 0 auto var(--space-10);
+  line-height: var(--leading-relaxed);
+}
+.l-hero__cta { display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap; }
+
+/* ---------- Дисклеймер ---------- */
+.l-disclaimer { margin: var(--space-8) auto 0; max-width: 880px; position: relative; z-index: 1; }
+
+/* ---------- Features ---------- */
+.l-features { padding: var(--space-24) 0 var(--space-20); }
+.l-features__title { text-align: center; font-size: var(--text-3xl); margin-bottom: var(--space-12); }
+.l-features__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+}
+@media (max-width: 900px) { .l-features__grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .l-features__grid { grid-template-columns: 1fr; } }
+
+/* ---------- CTA ---------- */
+.l-cta {
+  position: relative;
+  text-align: center;
+  padding: var(--space-24) 0 var(--space-32);
+  overflow: hidden;
+}
+.l-cta__path {
+  position: absolute;
+  top: 0; left: 50%; transform: translateX(-50%);
+  height: 96px;
+  width: 2px;
+  background: var(--moonpath-gradient);
+  opacity: 0.85;
+}
+.l-cta__title { font-size: var(--text-3xl); margin: var(--space-16) 0 var(--space-4); }
+.l-cta__sub { color: var(--text-muted); font-size: var(--text-lg); margin-bottom: var(--space-10); }
+
+/* ---------- Footer ---------- */
+.l-footer {
+  background: var(--bg-deep);
+  border-top: 1px solid var(--border);
+  padding: var(--space-10) 0;
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.l-footer__links {
+  display: flex;
+  gap: var(--space-5);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+.l-footer__links a { color: var(--text-muted); }
+.l-footer__links a:hover { color: var(--text); }
