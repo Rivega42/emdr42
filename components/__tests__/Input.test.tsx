@@ -1,5 +1,6 @@
 /**
  * Spec для components/ui/Input (#150) — label + input + error.
+ * Классы — дизайн-система «Лунная ночь» (design/components/forms).
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -20,21 +21,23 @@ describe('Input (#150)', () => {
     expect(screen.getByLabelText('Email')).toHaveAttribute('id', 'email-field');
   });
 
-  it('error отображается красным текстом', () => {
+  it('error отображается классом e-field__error', () => {
     render(<Input error="Обязательно поле" />);
     const errText = screen.getByText('Обязательно поле');
     expect(errText).toBeInTheDocument();
-    expect(errText.className).toMatch(/text-red-500/);
+    expect(errText.className).toMatch(/e-field__error/);
   });
 
-  it('input получает красную границу при наличии error', () => {
+  it('input получает error-границу при наличии error', () => {
     render(<Input error="err" placeholder="x" />);
-    expect(screen.getByPlaceholderText('x').className).toMatch(/border-red-500/);
+    expect(screen.getByPlaceholderText('x').className).toMatch(/e-input--error/);
   });
 
-  it('без error — нейтральная серая граница', () => {
+  it('без error — нейтральная граница без модификатора', () => {
     render(<Input placeholder="x" />);
-    expect(screen.getByPlaceholderText('x').className).toMatch(/border-gray-300/);
+    const input = screen.getByPlaceholderText('x');
+    expect(input.className).toMatch(/e-input/);
+    expect(input.className).not.toMatch(/e-input--error/);
   });
 
   it('пробрасывает остальные input-пропсы (type, value, onChange)', async () => {
@@ -51,7 +54,7 @@ describe('Input (#150)', () => {
     const input = screen.getByPlaceholderText('x');
     expect(input.className).toMatch(/custom-cls/);
     // дефолтные сохранились
-    expect(input.className).toMatch(/w-full/);
+    expect(input.className).toMatch(/e-input/);
   });
 
   it('disabled пробрасывается', () => {
