@@ -48,8 +48,7 @@ jobs:
           node-version-file: '.nvmrc'
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
+        # version берётся из packageManager в package.json (pnpm@10.33.0)
 
       - name: Install deps
         run: pnpm install --frozen-lockfile
@@ -66,7 +65,7 @@ jobs:
           npx prisma migrate deploy
 
       - name: Build packages
-        run: pnpm run build --filter=@emdr42/core
+        run: pnpm --filter=@emdr42/core build
 
       - name: Run Playwright tests
         env:
