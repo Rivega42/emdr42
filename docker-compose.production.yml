@@ -222,7 +222,8 @@ services:
       - "7881:7881"
       - "50000-50100:50000-50100/udp"
     environment:
-      - LIVEKIT_KEYS=${LIVEKIT_API_KEY:?}: ${LIVEKIT_API_SECRET:?}
+      # формат livekit: "key: secret" (пробел после двоеточия обязателен)
+      - "LIVEKIT_KEYS=${LIVEKIT_API_KEY:?}: ${LIVEKIT_API_SECRET:?}"
     volumes:
       - ./livekit.production.yaml:/livekit.yaml:ro
     command: --config /livekit.yaml
