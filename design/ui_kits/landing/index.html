@@ -1,0 +1,60 @@
+<!-- @dsCard group="Главная страница" viewport="1440x980" name="Главная — ночь" subtitle="hero «Лунная ночь» · дисклеймер · features 3×2 · CTA · footer" -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EMDR-AI — Главная</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="landing.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  .theme-toggle {
+    position: fixed; bottom: 20px; right: 20px; z-index: 50;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px; min-height: 44px;
+    font: 500 13px var(--font-body); color: var(--text-muted);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-pill); cursor: pointer;
+    box-shadow: var(--shadow-card);
+  }
+  .theme-toggle:hover { color: var(--text); border-color: var(--border-strong); }
+  .theme-toggle svg { width: 16px; height: 16px; stroke-width: 1.5; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { LandingPage } = window.EMDR42DesignSystem_d3a71e;
+
+function ThemeToggle() {
+  const [theme, setTheme] = React.useState(
+    () => localStorage.getItem('emdr42-ds-theme') || 'night'
+  );
+  React.useEffect(() => {
+    if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('emdr42-ds-theme', theme);
+    if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.5 } });
+  }, [theme]);
+  return (
+    <button className="theme-toggle" onClick={() => setTheme(theme === 'light' ? 'night' : 'light')}>
+      <i data-lucide={theme === 'light' ? 'moon' : 'sun'}></i>
+      {theme === 'light' ? 'Ночь' : 'Рассвет'}
+    </button>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <>
+    <LandingPage />
+    <ThemeToggle />
+  </>
+);
+</script>
+</body>
+</html>

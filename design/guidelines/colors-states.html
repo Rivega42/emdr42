@@ -1,0 +1,32 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Состояния" subtitle="success / warning / danger — приглушённые, без тревожности" -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .sw { border-radius: var(--radius-md); padding: 12px 14px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; }
+  .n { font-size: 13px; font-weight: 500; }
+  .v { font-size: 11px; color: var(--text-muted); font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+  <div class="sw" style="background: var(--success-soft);">
+    <span class="dot" style="background: var(--success);"></span>
+    <span class="n" style="color: var(--success);">success</span>
+    <span class="v">#7FC8A9 · сессия завершена</span>
+  </div>
+  <div class="sw" style="background: var(--warning-soft);">
+    <span class="dot" style="background: var(--warning);"></span>
+    <span class="n" style="color: var(--warning);">warning</span>
+    <span class="v">#D9B98A · требует внимания</span>
+  </div>
+  <div class="sw" style="background: var(--danger-soft);">
+    <span class="dot" style="background: var(--danger);"></span>
+    <span class="n" style="color: var(--danger);">danger</span>
+    <span class="v">#D98E84 · ошибка, crisis</span>
+  </div>
+</body>
+</html>

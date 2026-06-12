@@ -1,0 +1,79 @@
+/* EMDR42 — цветовые токены.
+   Арт-дирекшен: «Лунная ночь на Днепре» Куинджи.
+   Свечение создаётся контрастом окружения, а не яркостью акцента.
+   Тёмная тема («ночь») — первичная, живёт на :root.
+   Светлая («тот же пейзаж на рассвете») — [data-theme="light"].
+   Семантика ролей идентична в обеих темах. */
+
+:root {
+  /* --- база: ночь --- */
+  --night-900: #071016; /* берег, footer — самый тёмный тон */
+  --night-800: #0a161d; /* фон страницы */
+  --night-700: #0b1d26; /* фон hero-сцены, глубокое небо */
+  --night-600: #10242e; /* поверхность карточки */
+  --night-500: #142c38; /* приподнятая поверхность */
+  --moon-300: #b8e6d3;  /* лунный свет, яркий */
+  --moon-400: #9fd8c0;  /* лунный свет, основной акцент */
+  --moon-600: #1f5c4d;  /* хвойно-зелёный (акцент рассвета) */
+  --umber-400: #b08d5f; /* песочная охра (рассвет) */
+  --umber-500: #8a6f52; /* умбра тёмного берега */
+  --mist-100: #e8f0ec;  /* туманно-белый текст */
+  --mist-400: #8fa8a0;  /* вторичный текст ночи */
+
+  /* --- семантические роли --- */
+  --bg: var(--night-800);
+  --bg-deep: var(--night-900);
+  --bg-scene: var(--night-700);
+  --surface: var(--night-600);
+  --surface-2: var(--night-500);
+  --text: var(--mist-100);
+  --text-muted: var(--mist-400);
+  --accent: var(--moon-400);
+  --accent-bright: var(--moon-300);
+  --accent-soft: rgba(159, 216, 192, 0.12);
+  --on-accent: #07131a;
+  --warm: var(--umber-500);
+  --warm-soft: rgba(138, 111, 82, 0.2);
+  --warm-text: #d8c3a5;
+  --border: #1c3641;
+  --border-strong: #2a4a57;
+  --edge-light: rgba(184, 230, 211, 0.35); /* «свет луны на ребре» карточки */
+
+  /* --- состояния (приглушённые, без тревожности) --- */
+  --success: #7fc8a9;
+  --warning: #d9b98a;
+  --danger: #d98e84;
+  --danger-strong: #c4685d;
+  --success-soft: rgba(127, 200, 169, 0.14);
+  --warning-soft: rgba(217, 185, 138, 0.14);
+  --danger-soft: rgba(217, 142, 132, 0.14);
+}
+
+[data-theme="light"] {
+  /* --- тот же пейзаж в предрассветном тумане --- */
+  --bg: #f4f8f6;
+  --bg-deep: #e9f1ed;
+  --bg-scene: #eef5f1;
+  --surface: #ffffff;
+  --surface-2: #e9f1ed;
+  --text: #14282a;
+  --text-muted: #5b716c;
+  --accent: #1f5c4d;
+  --accent-bright: #17473c;
+  --accent-soft: rgba(31, 92, 77, 0.1);
+  --on-accent: #f4f8f6;
+  --warm: #b08d5f;
+  --warm-soft: rgba(176, 141, 95, 0.14);
+  --warm-text: #735a3a;
+  --border: #d5e2dc;
+  --border-strong: #b9cdc4;
+  --edge-light: rgba(31, 92, 77, 0.22);
+
+  --success: #2e7d5f;
+  --warning: #9a7434;
+  --danger: #b04f43;
+  --danger-strong: #8f3c32;
+  --success-soft: rgba(46, 125, 95, 0.1);
+  --warning-soft: rgba(154, 116, 52, 0.12);
+  --danger-soft: rgba(176, 79, 67, 0.1);
+}

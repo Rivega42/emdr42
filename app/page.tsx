@@ -1,154 +1,168 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import {
+  ActivityIcon,
+  AudioLinesIcon,
+  HeartHandIcon,
+  HeartPulseIcon,
+  ShieldIcon,
+  SparklesIcon,
+  WavesIcon,
+} from '@/components/ui/icons';
 
-const FeatureCard: React.FC<{ icon: string; title: string; description: string }> = ({ icon, title, description }) => {
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 hover:border-gray-300 transition-colors">
-      <div className="text-4xl mb-4" aria-hidden="true">{icon}</div>
-      <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
-      <p className="text-gray-500">{description}</p>
-    </div>
-  );
-};
+/* Главная страница в дизайн-системе «Лунная ночь» (design/ui_kits/landing). */
+
+const FEATURES = [
+  {
+    icon: ShieldIcon,
+    title: 'Приватность прежде всего',
+    description: 'Распознавание эмоций работает локально в браузере. Видео не покидает ваше устройство.',
+  },
+  {
+    icon: WavesIcon,
+    title: 'Адаптивная терапия',
+    description: 'ИИ подбирает паттерны и интенсивность BLS на основе ваших реальных эмоциональных реакций.',
+  },
+  {
+    icon: AudioLinesIcon,
+    title: 'Мультисенсорный подход',
+    description: 'Визуальная стимуляция в сочетании с билатеральным аудио для усиления терапевтического эффекта.',
+  },
+  {
+    icon: ActivityIcon,
+    title: 'Отслеживание прогресса',
+    description: 'Детальная аналитика SUDS/VOC, эмоциональных трендов и истории сессий.',
+  },
+  {
+    icon: SparklesIcon,
+    title: 'Геймификация',
+    description: 'Система достижений и уровней делает процесс терапии вовлекающим.',
+  },
+  {
+    icon: HeartPulseIcon,
+    title: 'Клинически обоснованно',
+    description: 'Протокол EMDRIA из 8 фаз со встроенными механизмами безопасности и crisis-детекцией.',
+  },
+];
 
 export default function HomePage() {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="l-page">
       {/* Навигация */}
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2" aria-label="EMDR-AI главная">
-            <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center" aria-hidden="true">
-              <span className="text-white text-lg">🧠</span>
-            </div>
-            <span className="text-lg font-bold text-gray-900">EMDR-AI</span>
+      <nav className={`l-nav${scrolled ? ' l-nav--scrolled' : ''}`}>
+        <div className="l-container l-nav__inner">
+          <Link href="/" className="l-logo" aria-label="EMDR-AI главная">
+            <span className="l-logo__mark" aria-hidden="true"></span>
+            <span className="l-logo__word">EMDR-AI</span>
           </Link>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Link href="/about" className="text-gray-500 hover:text-gray-900 text-sm transition-colors hidden sm:inline">
+          <div className="l-nav__links">
+            <Link href="/about" className="l-nav__link l-nav__link--about">
               О проекте
             </Link>
-            <Link href="/login" className="text-gray-500 hover:text-gray-900 text-sm transition-colors">
+            <Link href="/login" className="l-nav__link">
               Войти
             </Link>
-            <Link href="/register" className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-md transition-colors">
+            <ThemeToggle />
+            <Link href="/register" className="e-btn e-btn--primary e-btn--sm">
               Регистрация
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="relative">
-        <div className="max-w-7xl mx-auto px-4 py-16 sm:py-24 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6">
-              EMDR-AI Терапия
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-500 mb-8 max-w-3xl mx-auto">
-              Платформа виртуальной EMDR-терапии с ИИ-ассистентом и распознаванием эмоций в реальном времени
-            </p>
+      {/* Hero — сцена «Лунная ночь» */}
+      <header className="l-hero">
+        <span className="l-hero__moon" aria-hidden="true"></span>
+        <span className="l-hero__path" aria-hidden="true"></span>
+        <div className="l-container l-hero__inner">
+          <h1 className="l-hero__title">EMDR-AI Терапия</h1>
+          <p className="l-hero__sub">
+            Платформа виртуальной EMDR-терапии с ИИ-ассистентом и распознаванием эмоций в реальном времени
+          </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/session"
-                className="px-8 py-4 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-md transition-colors"
-              >
-                Начать сессию
-              </Link>
-              <Link
-                href="/about"
-                className="px-8 py-4 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-md transition-colors"
-              >
-                Узнать больше
-              </Link>
+          <div className="l-hero__cta">
+            <Link href="/session" className="e-btn e-btn--primary e-btn--lg">
+              Начать сессию
+            </Link>
+            <Link href="/about" className="e-btn e-btn--ghost e-btn--lg">
+              Узнать больше
+            </Link>
+          </div>
+
+          {/* Медицинский disclaimer — смысловой якорь доверия, не прячется */}
+          <div className="l-disclaimer">
+            <div className="e-disclaimer" role="note">
+              <span className="e-disclaimer__icon" aria-hidden="true">
+                <HeartHandIcon />
+              </span>
+              <div>
+                <strong>Важно:</strong> EMDR-AI — вспомогательный инструмент и не заменяет профессиональную
+                психотерапевтическую помощь. В кризисной ситуации звоните: RU <strong>8-800-2000-122</strong> ·
+                US <strong>988</strong> · UK <strong>116 123</strong> ·{' '}
+                <a href="https://www.befrienders.org" target="_blank" rel="noopener noreferrer">
+                  befrienders.org
+                </a>
+                .
+              </div>
             </div>
           </div>
         </div>
-      </section>
+      </header>
 
-      {/* Медицинский disclaimer */}
-      <section className="max-w-4xl mx-auto px-4">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900" role="note">
-          <strong>Важно:</strong> EMDR-AI — вспомогательный инструмент и не заменяет профессиональную психотерапевтическую
-          помощь. В кризисной ситуации звоните: 🇷🇺 8-800-2000-122 · 🇺🇸 988 · 🇬🇧 116 123 · 🌍{' '}
-          <a href="https://www.befrienders.org" target="_blank" rel="noopener noreferrer" className="underline">
-            befrienders.org
-          </a>
-          .
-        </div>
-      </section>
+      <main>
+        {/* Features Section */}
+        <section className="l-features" id="features">
+          <div className="l-container">
+            <h2 className="l-features__title">Почему EMDR-AI</h2>
 
-      {/* Features Section */}
-      <section className="py-20 px-4 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold text-gray-900 text-center mb-12">
-            Почему EMDR-AI
-          </h2>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            <FeatureCard
-              icon="🧠"
-              title="Приватность прежде всего"
-              description="Распознавание эмоций работает локально в браузере. Видео не покидает ваше устройство."
-            />
-            <FeatureCard
-              icon="🎯"
-              title="Адаптивная терапия"
-              description="ИИ подбирает паттерны и интенсивность BLS на основе ваших реальных эмоциональных реакций."
-            />
-            <FeatureCard
-              icon="🎵"
-              title="Мультисенсорный подход"
-              description="Визуальная стимуляция в сочетании с билатеральным аудио для усиления терапевтического эффекта."
-            />
-            <FeatureCard
-              icon="📊"
-              title="Отслеживание прогресса"
-              description="Детальная аналитика SUDS/VOC, эмоциональных трендов и истории сессий."
-            />
-            <FeatureCard
-              icon="🏆"
-              title="Геймификация"
-              description="Система достижений и уровней делает процесс терапии вовлекающим."
-            />
-            <FeatureCard
-              icon="🔒"
-              title="Клинически обоснованно"
-              description="Протокол EMDRIA из 8 фаз со встроенными механизмами безопасности и crisis-детекцией."
-            />
+            <div className="l-features__grid">
+              {FEATURES.map(({ icon: Icon, title, description }) => (
+                <div key={title} className="e-card e-card--hoverable">
+                  <div className="e-card__icon" aria-hidden="true">
+                    <Icon />
+                  </div>
+                  <h3 className="e-card__title">{title}</h3>
+                  <p className="e-card__text">{description}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* CTA Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl font-bold text-gray-900 mb-6">
-            Готовы начать путь восстановления?
-          </h2>
-          <p className="text-xl text-gray-500 mb-8">
-            Присоединяйтесь к тем, кто нашёл поддержку через нашу платформу.
-          </p>
-          <Link
-            href="/register"
-            className="inline-block px-12 py-5 bg-gray-900 hover:bg-gray-800 text-white font-bold text-lg rounded-md transition-colors"
-          >
-            Попробовать бесплатно
-          </Link>
-        </div>
-      </section>
+        {/* CTA Section */}
+        <section className="l-cta">
+          <span className="l-cta__path" aria-hidden="true"></span>
+          <div className="l-container">
+            <h2 className="l-cta__title">Готовы начать путь восстановления?</h2>
+            <p className="l-cta__sub">Присоединяйтесь к тем, кто нашёл поддержку через нашу платформу.</p>
+            <Link href="/register" className="e-btn e-btn--primary e-btn--lg">
+              Попробовать бесплатно
+            </Link>
+          </div>
+        </section>
+      </main>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 py-8 px-4">
-        <div className="max-w-7xl mx-auto text-sm text-gray-500 text-center space-y-2">
+      <footer className="l-footer">
+        <div className="l-container">
           <p>© {new Date().getFullYear()} EMDR-AI Therapy Assistant</p>
-          <div className="flex flex-wrap gap-4 justify-center">
-            <Link href="/legal/terms" className="hover:text-gray-900">Условия использования</Link>
-            <Link href="/legal/privacy" className="hover:text-gray-900">Политика конфиденциальности</Link>
-            <Link href="/legal/consent" className="hover:text-gray-900">Информированное согласие</Link>
-            <Link href="/about" className="hover:text-gray-900">О проекте</Link>
+          <div className="l-footer__links">
+            <Link href="/legal/terms">Условия использования</Link>
+            <Link href="/legal/privacy">Политика конфиденциальности</Link>
+            <Link href="/legal/consent">Информированное согласие</Link>
+            <Link href="/about">О проекте</Link>
           </div>
         </div>
       </footer>

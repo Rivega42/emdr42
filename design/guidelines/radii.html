@@ -1,0 +1,20 @@
+<!-- @dsCard group="Spacing" viewport="700x160" name="Радиусы" subtitle="8 / 12 / 16 / 24 / pill" -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 20px 24px; display: flex; gap: 14px; align-items: flex-end; }
+  .chip { background: var(--surface-2); border: 1px solid var(--border-strong); width: 110px; height: 78px; display: flex; align-items: flex-end; padding: 8px 10px; }
+  .t { font-size: 11px; color: var(--text-muted); font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+  <div class="chip" style="border-radius: var(--radius-sm);"><span class="t">sm · 8 · бейджи</span></div>
+  <div class="chip" style="border-radius: var(--radius-md);"><span class="t">md · 12 · кнопки</span></div>
+  <div class="chip" style="border-radius: var(--radius-lg);"><span class="t">lg · 16 · карточки</span></div>
+  <div class="chip" style="border-radius: var(--radius-xl);"><span class="t">xl · 24 · сцены</span></div>
+  <div class="chip" style="border-radius: var(--radius-pill); width: 130px; height: 44px; align-items: center;"><span class="t">pill · 999</span></div>
+</body>
+</html>

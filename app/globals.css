@@ -2,31 +2,51 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
+/* Дизайн-система «Лунная ночь» (design/) — единый источник токенов.
+   Тёмная тема живёт на :root, светлая — на [data-theme="light"]
+   (переключается ThemeToggle, инициализация — public/theme-init.js). */
+@import '../design/tokens/colors.css';
+@import '../design/tokens/typography.css';
+@import '../design/tokens/spacing.css';
+@import '../design/tokens/effects.css';
+@import '../design/components/components.css';
+@import '../design/ui_kits/landing/landing.css';
+
+/* Шрифты загружаются через next/font (app/layout.tsx), а не Google @import
+   из design/tokens/fonts.css — без блокировки рендера и внешних запросов. */
 :root {
-  --cal-bg: white;
-  --cal-bg-subtle: #f3f4f6;
-  --cal-bg-muted: #f9fafb;
-  --cal-bg-emphasis: #e5e7eb;
-  --cal-bg-inverted: #111827;
-  --cal-bg-info: #dee9fc;
-  --cal-bg-success: #e2fbe8;
-  --cal-bg-attention: #fceed8;
-  --cal-bg-error: #f9e3e2;
-  --cal-text: #111827;
-  --cal-text-muted: #6b7280;
-  --cal-text-subtle: #9ca3af;
-  --cal-text-inverted: white;
-  --cal-border: #e5e7eb;
-  --cal-border-emphasis: #d1d5db;
-  --cal-success: #10b981;
-  --cal-warning: #f59e0b;
-  --cal-error: #ef4444;
-  --cal-info: #3b82f6;
+  --font-display: var(--font-spectral), 'STIX Two Text', Georgia, serif;
+  --font-body: var(--font-onest), 'PT Root UI', system-ui, sans-serif;
 }
 
-/* Font */
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Крупный «лунный» знак на auth-страницах (login/register/forgot/reset).
+   Отдельный класс: .l-logo__mark жёстко 28px и переборет утилиты размера. */
+.auth-mark {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--space-4);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 36%, #d9f2e6, var(--accent) 78%);
+  box-shadow: 0 0 24px 6px var(--accent-soft);
+}
+
+h1, h2 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-medium);
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
 }
 
 /* Custom scrollbar */
@@ -36,16 +56,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--cal-bg-subtle);
+  background: var(--surface);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--cal-border-emphasis);
+  background: var(--border-strong);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--cal-text-subtle);
+  background: var(--text-muted);
 }
 
 /* Smooth scroll behavior */
@@ -55,9 +75,9 @@ html {
 
 /* Loading spinner */
 .spinner {
-  border: 3px solid var(--cal-border);
+  border: 3px solid var(--border);
   border-radius: 50%;
-  border-top: 3px solid var(--cal-bg-inverted);
+  border-top: 3px solid var(--accent);
   width: 40px;
   height: 40px;
   animation: spin 1s linear infinite;
@@ -76,6 +96,7 @@ html {
 /*
  * Focus ring восстановлен для всех интерактивных элементов, иначе
  * keyboard-навигация по ссылкам и role="button" остаётся невидимой (WCAG 2.4.7).
+ * Лунный акцент — всегда видим на обеих темах.
  */
 button:focus-visible,
 a:focus-visible,
@@ -85,7 +106,7 @@ select:focus-visible,
 [role="button"]:focus-visible,
 [role="link"]:focus-visible,
 [tabindex]:not([tabindex="-1"]):focus-visible {
-  outline: 2px solid var(--cal-bg-inverted);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -95,6 +116,10 @@ select:focus-visible,
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
 }
 
 /* Мобильная адаптация */

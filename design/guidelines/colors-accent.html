@@ -1,0 +1,31 @@
+<!-- @dsCard group="Colors" viewport="700x200" name="Акценты — лунный свет и умбра" subtitle="светится только то, что ведёт к действию; умбра — якорь доверия" -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .half { border-radius: var(--radius-md); padding: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-content: start; }
+  .night { background: var(--night-800); border: 1px solid var(--border); }
+  .dawn { background: #f4f8f6; border: 1px solid #d5e2dc; }
+  .sw { height: 64px; border-radius: var(--radius-sm); padding: 8px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .v { font-size: 10px; font-family: ui-monospace, monospace; }
+  .lab { grid-column: 1 / -1; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+  <div class="half night">
+    <span class="lab" style="color: #8fa8a0;">Ночь</span>
+    <div class="sw" style="background: #9fd8c0;"><span class="v" style="color: #07131a;">accent #9FD8C0</span></div>
+    <div class="sw" style="background: #b8e6d3;"><span class="v" style="color: #07131a;">bright #B8E6D3</span></div>
+    <div class="sw" style="background: #8a6f52;"><span class="v" style="color: #e8f0ec;">warm #8A6F52</span></div>
+  </div>
+  <div class="half dawn">
+    <span class="lab" style="color: #5b716c;">Рассвет</span>
+    <div class="sw" style="background: #1f5c4d;"><span class="v" style="color: #f4f8f6;">accent #1F5C4D</span></div>
+    <div class="sw" style="background: #17473c;"><span class="v" style="color: #f4f8f6;">bright #17473C</span></div>
+    <div class="sw" style="background: #b08d5f;"><span class="v" style="color: #14282a;">warm #B08D5F</span></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!-- @dsCard group="Brand" viewport="700x190" name="Иконография" subtitle="Lucide · штрих 1.5px · серебристо-зелёный · без эмодзи" -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
+<style>
+  body { padding: 20px 24px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .ic { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 96px; }
+  .box { width: 48px; height: 48px; border-radius: var(--radius-md); background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+  .box svg { width: 24px; height: 24px; }
+  .t { font-size: 10px; color: var(--text-muted); font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="ic"><span class="box"><i data-lucide="shield"></i></span><span class="t">shield</span></div>
+    <div class="ic"><span class="box"><i data-lucide="waves"></i></span><span class="t">waves</span></div>
+    <div class="ic"><span class="box"><i data-lucide="audio-lines"></i></span><span class="t">audio-lines</span></div>
+    <div class="ic"><span class="box"><i data-lucide="activity"></i></span><span class="t">activity</span></div>
+    <div class="ic"><span class="box"><i data-lucide="sparkles"></i></span><span class="t">sparkles</span></div>
+    <div class="ic"><span class="box"><i data-lucide="heart-pulse"></i></span><span class="t">heart-pulse</span></div>
+    <div class="ic"><span class="box"><i data-lucide="moon"></i></span><span class="t">moon</span></div>
+  </div>
+  <script>lucide.createIcons({ attrs: { "stroke-width": 1.5 } });</script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 /**
  * Spec для components/ui/Button (#150) — базовая кнопка с variant/size/loading.
+ * Классы — дизайн-система «Лунная ночь» (design/components/buttons).
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -15,25 +16,25 @@ describe('Button (#150)', () => {
   it('по умолчанию variant=primary, size=md', () => {
     render(<Button>X</Button>);
     const btn = screen.getByRole('button');
-    expect(btn.className).toMatch(/bg-gray-900/);
-    expect(btn.className).toMatch(/px-5 py-2.5/);
+    expect(btn.className).toMatch(/e-btn--primary/);
+    expect(btn.className).toMatch(/e-btn--md/);
   });
 
-  it('variant=danger применяет красные классы', () => {
+  it('variant=danger применяет danger-классы', () => {
     render(<Button variant="danger">Delete</Button>);
-    expect(screen.getByRole('button').className).toMatch(/bg-red-600/);
+    expect(screen.getByRole('button').className).toMatch(/e-btn--danger/);
   });
 
-  it('variant=secondary применяет серые классы', () => {
+  it('variant=secondary применяет secondary-классы', () => {
     render(<Button variant="secondary">Cancel</Button>);
-    expect(screen.getByRole('button').className).toMatch(/bg-gray-100/);
+    expect(screen.getByRole('button').className).toMatch(/e-btn--secondary/);
   });
 
-  it('size=sm и size=lg применяют разные padding', () => {
+  it('size=sm и size=lg применяют разные классы размера', () => {
     const { rerender } = render(<Button size="sm">X</Button>);
-    expect(screen.getByRole('button').className).toMatch(/px-3 py-1.5/);
+    expect(screen.getByRole('button').className).toMatch(/e-btn--sm/);
     rerender(<Button size="lg">X</Button>);
-    expect(screen.getByRole('button').className).toMatch(/px-8 py-4/);
+    expect(screen.getByRole('button').className).toMatch(/e-btn--lg/);
   });
 
   it('onClick вызывается при клике', async () => {
@@ -60,13 +61,13 @@ describe('Button (#150)', () => {
     render(<Button loading>Save</Button>);
     const btn = screen.getByRole('button');
     expect(btn).toBeDisabled();
-    // Спиннер — span с animate-spin
-    const spinner = btn.querySelector('span.animate-spin');
+    // Спиннер — span с e-btn__spinner
+    const spinner = btn.querySelector('span.e-btn__spinner');
     expect(spinner).toBeInTheDocument();
   });
 
   it('loading=false → нет спиннера', () => {
     render(<Button>Save</Button>);
-    expect(screen.getByRole('button').querySelector('span.animate-spin')).toBeNull();
+    expect(screen.getByRole('button').querySelector('span.e-btn__spinner')).toBeNull();
   });
 });

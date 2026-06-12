@@ -1,0 +1,28 @@
+<!-- @dsCard group="Brand" viewport="700x200" name="Логотип" subtitle="лунный знак + словесный знак · легаси-фавикон из репозитория" -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 24px; display: flex; gap: 16px; align-items: stretch; }
+  .lock { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 24px; flex: 1; }
+  .mark { width: 36px; height: 36px; border-radius: 50%; flex: none;
+    background: radial-gradient(circle at 40% 36%, #d9f2e6, var(--accent) 78%);
+    box-shadow: 0 0 18px 4px var(--accent-soft); }
+  .word { font-family: var(--font-display); font-size: 24px; font-weight: 500; color: var(--text); letter-spacing: 0.01em; }
+  .legacy { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; }
+  .t { font-size: 10px; color: var(--text-muted); font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+  <div class="lock">
+    <span class="mark"></span>
+    <span class="word">EMDR-AI</span>
+  </div>
+  <div class="legacy">
+    <img src="../assets/legacy-favicon.svg" width="44" height="44" alt="Легаси-фавикон EMDR42">
+    <span class="t">legacy app/icon.svg</span>
+  </div>
+</body>
+</html>
