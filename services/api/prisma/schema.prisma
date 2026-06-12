@@ -1,5 +1,9 @@
 generator client {
   provider = "prisma-client-js"
+  // Docker: builder-стадия (alpine без openssl) детектит linux-musl, а в
+  // runtime-стадии установлен openssl 3 → Prisma ищет engine
+  // linux-musl-openssl-3.0.x и не находит его. Перечисляем оба явно.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
