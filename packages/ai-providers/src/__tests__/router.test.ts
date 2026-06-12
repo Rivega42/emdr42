@@ -129,6 +129,18 @@ describe('AiRouter', () => {
       // Router should still use original primary
       expect(r).toBeInstanceOf(AiRouter);
     });
+
+    it('should not structuredClone circuitStore (содержит ioredis-клиент с функциями)', () => {
+      // Регрессия: orchestrator передаёт circuitStore с живым Redis-клиентом,
+      // retryStrategy — функция → structuredClone кидал DataCloneError на старте.
+      const storeWithFunction = {
+        client: { options: { retryStrategy: (times: number) => times * 50 } },
+        get: jest.fn(),
+        set: jest.fn(),
+      };
+      const config = { ...makeConfig(), circuitStore: storeWithFunction };
+      expect(() => new AiRouter(config as AiProviderConfig)).not.toThrow();
+    });
   });
 
   // ---- Provider access ----
