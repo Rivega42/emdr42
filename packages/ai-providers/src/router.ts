@@ -91,7 +91,12 @@ export class AiRouter {
   private readonly circuitStore: import('./circuit-breaker').CircuitStateStore | undefined;
 
   constructor(config: AiProviderConfig, reliability: RouterReliabilityOptions = {}) {
-    this.config = structuredClone(config);
+    // circuitStore извлекаем ДО клонирования: внутри него живой ioredis-клиент
+    // (retryStrategy — функция), structuredClone на нём кидает DataCloneError.
+    const { circuitStore, ...cloneableConfig } = config as AiProviderConfig & {
+      circuitStore?: import('./circuit-breaker').CircuitStateStore;
+    };
+    this.config = structuredClone(cloneableConfig) as AiProviderConfig;
     this.reliability = {
       timeoutMs: reliability.timeoutMs ?? 30_000,
       maxRetries: reliability.maxRetries ?? 2,
@@ -100,9 +105,7 @@ export class AiRouter {
       halfOpenAfterMs: reliability.halfOpenAfterMs ?? 30_000,
     };
     // Если caller передал shared store (Redis) — используем во всех breakers.
-    this.circuitStore = (config as AiProviderConfig & {
-      circuitStore?: import('./circuit-breaker').CircuitStateStore;
-    }).circuitStore;
+    this.circuitStore = circuitStore;
   }
 
   private getBreaker(kind: 'llm' | 'stt' | 'tts', name: string): CircuitBreaker {
