@@ -100,7 +100,10 @@
       "@prisma/engines",
       "prisma",
       "bcrypt"
-    ]
+    ],
+    "overrides": {
+      "axios@<1.16.0": "^1.16.0"
+    }
   },
   "lint-staged": {
     "{app,components,contexts,lib}/**/*.{ts,tsx}": [
