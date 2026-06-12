@@ -1,0 +1,29 @@
+# LiveKit Server — PRODUCTION конфиг (single-node, без GPU-сервера).
+#
+# Отличия от dev livekit.yaml:
+#   - НЕТ секции keys: ключи приходят ТОЛЬКО через env LIVEKIT_KEYS
+#     (dev-файл содержит devkey:secret — в production это бэкдор).
+#   - TURN выключен: для TLS-TURN нужен отдельный домен+сертификат.
+#     NAT traversal работает через use_third-party_ip (STUN автоопределение
+#     внешнего IP) + TCP fallback на 7881.
+#   - Браузер подключается к signaling через wss://<домен>/livekit/
+#     (host nginx проксирует на 127.0.0.1:7880).
+
+port: 7880
+
+rtc:
+  port_range_start: 50000
+  port_range_end: 50100
+  tcp_port: 7881
+  use_third-party_ip: true
+
+logging:
+  level: info
+  json: true
+
+turn:
+  enabled: false
+
+room:
+  empty_timeout: 300
+  max_participants: 10
