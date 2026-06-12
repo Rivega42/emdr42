@@ -39,13 +39,13 @@ export default function ResetPasswordPage() {
 
   if (!tokenFromUrl) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-white border border-gray-200 rounded-lg p-8 text-center">
-          <h2 className="text-xl font-bold text-gray-900 mb-3">Ссылка недействительна</h2>
-          <p className="text-gray-600 text-sm mb-6">
+      <div className="min-h-screen bg-page flex items-center justify-center px-4">
+        <div className="e-card w-full max-w-md text-center">
+          <h2 className="text-xl text-ink mb-3">Ссылка недействительна</h2>
+          <p className="text-ink-muted text-sm mb-6">
             Ссылка для сброса пароля устарела или некорректна.
           </p>
-          <Link href="/forgot-password" className="inline-block px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-md font-semibold">
+          <Link href="/forgot-password" className="e-btn e-btn--primary e-btn--md">
             Запросить новую
           </Link>
         </div>
@@ -54,21 +54,21 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white border border-gray-200 rounded-lg p-8">
+    <div className="min-h-screen bg-page flex items-center justify-center px-4">
+      <div className="e-card w-full max-w-md">
         {success ? (
           <div className="text-center space-y-4" role="status">
-            <h2 className="text-2xl font-bold text-gray-900">Пароль изменён</h2>
-            <p className="text-gray-600 text-sm">Перенаправляем на страницу входа…</p>
+            <h2 className="text-2xl text-ink">Пароль изменён</h2>
+            <p className="text-ink-muted text-sm">Перенаправляем на страницу входа…</p>
           </div>
         ) : (
           <>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Новый пароль</h2>
+            <h2 className="text-2xl text-ink mb-6 text-center">Новый пароль</h2>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
               <input type="hidden" {...register('token')} />
 
-              <div>
-                <label htmlFor="password" className="block text-gray-500 text-sm mb-2">
+              <div className="e-field">
+                <label htmlFor="password" className="e-field__label">
                   Новый пароль
                 </label>
                 <input
@@ -78,18 +78,16 @@ export default function ResetPasswordPage() {
                   aria-invalid={errors.password ? 'true' : 'false'}
                   aria-describedby="password-help password-error"
                   {...register('password')}
-                  className={`w-full px-4 py-3 bg-white border rounded-md text-gray-900 focus:outline-none transition-colors ${
-                    errors.password ? 'border-red-400' : 'border-gray-300 focus:border-gray-900'
-                  }`}
+                  className={`e-input ${errors.password ? 'e-input--error' : ''}`}
                 />
-                <p id="password-help" className="mt-1 text-xs text-gray-400">
+                <p id="password-help" className="e-field__hint">
                   Минимум 12 символов. Заглавные + строчные + цифры + спецсимволы.
                 </p>
-                {errors.password && <p id="password-error" role="alert" className="mt-1 text-xs text-red-600">{errors.password.message}</p>}
+                {errors.password && <p id="password-error" role="alert" className="e-field__error">{errors.password.message}</p>}
               </div>
 
-              <div>
-                <label htmlFor="passwordConfirm" className="block text-gray-500 text-sm mb-2">
+              <div className="e-field">
+                <label htmlFor="passwordConfirm" className="e-field__label">
                   Подтверждение
                 </label>
                 <input
@@ -98,15 +96,13 @@ export default function ResetPasswordPage() {
                   autoComplete="new-password"
                   aria-invalid={errors.passwordConfirm ? 'true' : 'false'}
                   {...register('passwordConfirm')}
-                  className={`w-full px-4 py-3 bg-white border rounded-md text-gray-900 focus:outline-none transition-colors ${
-                    errors.passwordConfirm ? 'border-red-400' : 'border-gray-300 focus:border-gray-900'
-                  }`}
+                  className={`e-input ${errors.passwordConfirm ? 'e-input--error' : ''}`}
                 />
-                {errors.passwordConfirm && <p role="alert" className="mt-1 text-xs text-red-600">{errors.passwordConfirm.message}</p>}
+                {errors.passwordConfirm && <p role="alert" className="e-field__error">{errors.passwordConfirm.message}</p>}
               </div>
 
               {apiError && (
-                <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                <div role="alert" className="p-3 bg-danger-soft border border-danger rounded-md text-danger text-sm">
                   {apiError}
                 </div>
               )}
@@ -114,7 +110,7 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-md transition-colors disabled:opacity-50"
+                className="e-btn e-btn--primary e-btn--md w-full"
               >
                 {isSubmitting ? 'Сохраняем...' : 'Изменить пароль'}
               </button>

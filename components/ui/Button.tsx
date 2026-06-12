@@ -9,18 +9,8 @@ export interface ButtonProps {
   onClick?: () => void;
 }
 
-const sizeClasses = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-5 py-2.5 text-sm',
-  lg: 'px-8 py-4 text-base',
-};
-
-const variantClasses = {
-  primary: 'bg-gray-900 hover:bg-gray-800 text-white',
-  secondary: 'bg-gray-100 hover:bg-gray-200 text-gray-700',
-  danger: 'bg-red-600 hover:bg-red-500 text-white',
-};
-
+/* Кнопка дизайн-системы «Лунная ночь» (design/components/buttons).
+   primary — единственный «светящийся» элемент: ореол, не неон. */
 export const Button: React.FC<ButtonProps> = ({
   children,
   variant = 'primary',
@@ -30,13 +20,11 @@ export const Button: React.FC<ButtonProps> = ({
   onClick,
 }) => (
   <button
-    className={`${variantClasses[variant]} ${sizeClasses[size]} font-semibold rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2`}
+    className={`e-btn e-btn--${variant} e-btn--${size}`}
     disabled={disabled || loading}
     onClick={onClick}
   >
-    {loading && (
-      <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-    )}
+    {loading && <span className="e-btn__spinner" aria-hidden="true" />}
     {children}
   </button>
 );

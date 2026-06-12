@@ -4,36 +4,36 @@ import React from 'react';
 import Link from 'next/link';
 
 const FeatureDetail: React.FC<{ title: string; description: string }> = ({ title, description }) => (
-  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-    <h3 className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
-    <p className="text-gray-500 text-sm">{description}</p>
+  <div className="bg-surface-2 border border-line rounded-lg p-4">
+    <h3 className="text-lg font-semibold text-ink mb-2">{title}</h3>
+    <p className="text-ink-muted text-sm">{description}</p>
   </div>
 );
 
 const Step: React.FC<{ number: string; title: string; description: string }> = ({ number, title, description }) => (
   <div className="flex gap-4">
-    <div className="flex-shrink-0 w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center" aria-hidden="true">
-      <span className="text-white font-bold">{number}</span>
+    <div className="flex-shrink-0 w-10 h-10 bg-accent-soft border border-line rounded-full flex items-center justify-center" aria-hidden="true">
+      <span className="text-accent font-semibold">{number}</span>
     </div>
     <div>
-      <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
-      <p className="text-gray-500">{description}</p>
+      <h3 className="text-xl font-semibold text-ink mb-2">{title}</h3>
+      <p className="text-ink-muted">{description}</p>
     </div>
   </div>
 );
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-white">
-      <header className="bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-page">
+      <header className="border-b border-line">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="text-gray-500 hover:text-gray-900 transition-colors text-sm sm:text-base">
+            <Link href="/" className="text-ink-muted hover:text-ink transition-colors text-sm sm:text-base">
               &larr; На главную
             </Link>
             <nav className="flex gap-3 sm:gap-6" aria-label="Основная навигация">
-              <Link href="/session" className="text-gray-500 hover:text-gray-900 text-sm sm:text-base">Сессия</Link>
-              <Link href="/register" className="text-gray-500 hover:text-gray-900 text-sm sm:text-base">Регистрация</Link>
+              <Link href="/session" className="text-ink-muted hover:text-ink text-sm sm:text-base">Сессия</Link>
+              <Link href="/register" className="text-ink-muted hover:text-ink text-sm sm:text-base">Регистрация</Link>
             </nav>
           </div>
         </div>
@@ -41,15 +41,15 @@ export default function AboutPage() {
 
       <div className="max-w-4xl mx-auto px-4 py-16">
         <div className="text-center mb-12">
-          <h1 className="text-3xl sm:text-5xl font-bold text-gray-900 mb-6">О платформе EMDR-AI</h1>
-          <p className="text-xl text-gray-500">
+          <h1 className="text-3xl sm:text-5xl text-ink mb-6">О платформе EMDR-AI</h1>
+          <p className="text-xl text-ink-muted">
             Делаем EMDR-терапию доступнее через технологии и клинически обоснованный подход.
           </p>
         </div>
 
-        <section className="bg-white border border-gray-200 rounded-lg p-8 mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">Что такое EMDR</h2>
-          <div className="text-gray-600 space-y-4">
+        <section className="bg-surface border border-line rounded-lg p-8 mb-8">
+          <h2 className="text-3xl text-ink mb-6">Что такое EMDR</h2>
+          <div className="text-ink-muted space-y-4">
             <p>
               EMDR (Eye Movement Desensitization and Reprocessing, десенсибилизация и переработка с помощью движений
               глаз) — научно обоснованный метод психотерапии, разработанный Франсин Шапиро в конце 1980-х. Он помогает
@@ -71,9 +71,9 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="bg-white border border-gray-200 rounded-lg p-8 mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">Наш подход</h2>
-          <div className="text-gray-600 space-y-4">
+        <section className="bg-surface border border-line rounded-lg p-8 mb-8">
+          <h2 className="text-3xl text-ink mb-6">Наш подход</h2>
+          <div className="text-ink-muted space-y-4">
             <p>
               EMDR-AI сочетает традиционный протокол EMDR с современными технологиями, чтобы сделать терапию
               персонализированной и доступной:
@@ -99,8 +99,8 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="bg-white border border-gray-200 rounded-lg p-8 mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">Как это работает</h2>
+        <section className="bg-surface border border-line rounded-lg p-8 mb-8">
+          <h2 className="text-3xl text-ink mb-6">Как это работает</h2>
           <div className="space-y-6">
             <Step
               number="1"
@@ -130,10 +130,10 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="bg-amber-50 border border-amber-200 rounded-lg p-8 mb-8" role="note">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">Безопасность и этика</h2>
-          <div className="text-gray-700 space-y-4">
-            <p className="font-semibold text-gray-900">
+        <section className="bg-warm-soft border border-warm rounded-lg p-8 mb-8" role="note">
+          <h2 className="text-3xl text-ink mb-6">Безопасность и этика</h2>
+          <div className="text-ink-muted space-y-4">
+            <p className="font-semibold text-warm-text">
               Важно: EMDR-AI — вспомогательный инструмент, а не замена профессиональной терапии.
             </p>
             <p>
@@ -146,13 +146,13 @@ export default function AboutPage() {
               <li>Немедленно прекращать сессию при усилении дистресса</li>
               <li>Обращаться за помощью при суицидальных мыслях или самоповреждении</li>
             </ul>
-            <p className="font-semibold">Линии помощи при кризисе:</p>
+            <p className="font-semibold text-warm-text">Линии помощи при кризисе:</p>
             <ul className="list-none ml-4 space-y-1">
-              <li>🇷🇺 Россия: 8-800-2000-122 (бесплатно, круглосуточно)</li>
-              <li>🇺🇸 США: 988 (Suicide &amp; Crisis Lifeline)</li>
-              <li>🇬🇧 Великобритания: 116 123 (Samaritans)</li>
+              <li>Россия: 8-800-2000-122 (бесплатно, круглосуточно)</li>
+              <li>США: 988 (Suicide &amp; Crisis Lifeline)</li>
+              <li>Великобритания: 116 123 (Samaritans)</li>
               <li>
-                🌍 Другие страны:{' '}
+                Другие страны:{' '}
                 <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer" className="underline">
                   findahelpline.com
                 </a>
@@ -161,9 +161,9 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="bg-white border border-gray-200 rounded-lg p-8 mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">Наша миссия</h2>
-          <div className="text-gray-600 space-y-4">
+        <section className="bg-surface border border-line rounded-lg p-8 mb-8">
+          <h2 className="text-3xl text-ink mb-6">Наша миссия</h2>
+          <div className="text-ink-muted space-y-4">
             <p>
               Мы считаем, что помощь в работе с травмой должна быть доступна всем — независимо от географии,
               финансовых возможностей и обстоятельств.
@@ -176,10 +176,7 @@ export default function AboutPage() {
         </section>
 
         <div className="text-center mt-12">
-          <Link
-            href="/register"
-            className="inline-block px-12 py-5 bg-gray-900 hover:bg-gray-800 text-white font-bold text-lg rounded-md transition-colors"
-          >
+          <Link href="/register" className="e-btn e-btn--primary e-btn--lg">
             Попробовать бесплатно
           </Link>
         </div>

@@ -50,7 +50,7 @@ export default function ProtectedLayout({
 
   if (loading || !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center" role="status" aria-live="polite">
+      <div data-theme="light" className="min-h-screen bg-gray-50 flex items-center justify-center" role="status" aria-live="polite">
         <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
         <span className="sr-only">Загрузка…</span>
       </div>
@@ -66,7 +66,10 @@ export default function ProtectedLayout({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    /* ЛК остаётся на старом сером UI до своего дизайн-прохода; data-theme="light"
+       заставляет общие компоненты (Button/Input) рендериться в «рассветной»
+       палитре — ночные токены на белых карточках нечитаемы. */
+    <div data-theme="light" className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="px-4 py-4">

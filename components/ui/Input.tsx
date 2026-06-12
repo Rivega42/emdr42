@@ -5,20 +5,19 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   error?: string;
 }
 
+/* Поле ввода дизайн-системы «Лунная ночь» (design/components/forms). */
 export const Input: React.FC<InputProps> = ({ label, error, id, className = '', ...props }) => (
-  <div>
+  <div className="e-field">
     {label && (
-      <label htmlFor={id} className="block text-gray-500 text-sm mb-2">
+      <label htmlFor={id} className="e-field__label">
         {label}
       </label>
     )}
     <input
       id={id}
-      className={`w-full px-4 py-3 bg-white border rounded-md text-gray-900 placeholder-gray-400 focus:outline-none transition-colors ${
-        error ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
-      } ${className}`}
+      className={`e-input ${error ? 'e-input--error' : ''} ${className}`}
       {...props}
     />
-    {error && <p className="mt-1 text-red-500 text-sm">{error}</p>}
+    {error && <p className="e-field__error">{error}</p>}
   </div>
 );
