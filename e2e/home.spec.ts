@@ -1,27 +1,34 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Главная страница', () => {
-  test('отображает заголовок и навигацию', async ({ page }) => {
+  test('отображает h1 и навигацию', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('h1')).toContainText('EMDR-AI');
-    await expect(page.locator('nav')).toBeVisible();
+    await expect(page.locator('h1')).toContainText('EMDR-AI Терапия');
+    await expect(page.locator('nav').first()).toBeVisible();
   });
 
-  test('навигация Sign In ведёт на страницу входа', async ({ page }) => {
+  test('навигация «Войти» ведёт на /login', async ({ page }) => {
     await page.goto('/');
-    await page.click('text=Sign In');
-    await expect(page).toHaveURL('/login');
+    await page.getByRole('link', { name: 'Войти' }).first().click();
+    await expect(page).toHaveURL(/\/login$/);
   });
 
-  test('навигация Sign Up ведёт на страницу регистрации', async ({ page }) => {
+  test('навигация «Регистрация» ведёт на /register', async ({ page }) => {
     await page.goto('/');
-    await page.click('text=Sign Up');
-    await expect(page).toHaveURL('/register');
+    await page.getByRole('link', { name: 'Регистрация' }).first().click();
+    await expect(page).toHaveURL(/\/register$/);
   });
 
-  test('кнопка Start Free Session ведёт на страницу сессии', async ({ page }) => {
+  test('«Начать сессию» ведёт на /session', async ({ page }) => {
     await page.goto('/');
-    await page.click('text=Start Free Session');
-    await expect(page).toHaveURL('/session');
+    const cta = page.getByRole('link', { name: 'Начать сессию' }).first();
+    await cta.scrollIntoViewIfNeeded();
+    await cta.click();
+    await page.waitForURL(/\/session$/, { timeout: 10_000 });
+  });
+
+  test('медицинский disclaimer присутствует', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('body')).toContainText('не заменяет профессиональную');
   });
 });
