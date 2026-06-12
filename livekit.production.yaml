@@ -15,7 +15,9 @@ rtc:
   port_range_start: 50000
   port_range_end: 50100
   tcp_port: 7881
-  use_third-party_ip: true
+  # STUN-автоопределение внешнего IP (в dev-конфиге опечатка use_third-party_ip —
+  # такого поля нет, сервер не стартует)
+  use_external_ip: true
 
 logging:
   level: info
