@@ -34,7 +34,9 @@ const buildCsp = () => {
     'script-src': [
       "'self'",
       ...(isDev ? ["'unsafe-inline'", "'unsafe-eval'"] : []),
-      'https://cdn.jsdelivr.net', // face-api CDN
+      // face-api.js и веса теперь self-hosted (public/vendor, public/models) —
+      // внешний CDN (jsdelivr) из CSP убран. Раньше веса грузились fetch'ем с
+      // jsdelivr, но connect-src его не содержал → инференс эмоций не стартовал.
       'blob:', // Web workers
     ],
     'style-src': ["'self'", "'unsafe-inline'"], // Tailwind inline + next/font

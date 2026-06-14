@@ -186,10 +186,15 @@ const emotionToAV: Record<string, { arousal: number; valence: number }> = {
 };
 
 // ---------------------------------------------------------------------------
-// CDN URL for face-api.js model weights
+// Model weights URL — self-hosted в public/models (scripts/fetch-face-models.sh).
+// Раньше веса грузились fetch'ем с cdn.jsdelivr.net, но прод-CSP connect-src его
+// не содержал → loadFromUri падал и инференс эмоций не стартовал. Локальная копия
+// (same-origin) снимает зависимость от CDN, CSP-блок и supply-chain риск.
+// Переопределяется через NEXT_PUBLIC_FACE_MODELS_URL при необходимости.
 // ---------------------------------------------------------------------------
 
-const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+const MODEL_URL =
+  (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_FACE_MODELS_URL) || '/models';
 
 // ---------------------------------------------------------------------------
 // Service
