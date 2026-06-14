@@ -35,8 +35,21 @@ export class SessionHandler {
   private aiRouter: AiRouter;
   private backendClient: BackendClient;
   private socket: Socket;
+  /** Клиентский id сессии — используется socket-слоем и движком. */
   private sessionId: string;
+  /**
+   * id строки сессии в БД (из createSession). Отличается от клиентского
+   * sessionId: API создаёт сессию со своим @default(uuid()). Раньше все
+   * дочерние записи (эмоции/SUDS/VOC/safety/timeline) слались на клиентский
+   * id → 404 и тихая потеря телеметрии. Для записей в БД используем этот id.
+   */
+  private backendSessionId: string | null = null;
   private userId: string;
+
+  /** id для записей в БД: id из бэкенда, пока не получен — клиентский (фолбэк). */
+  private get persistId(): string {
+    return this.backendSessionId ?? this.sessionId;
+  }
 
   /** Buffered emotions waiting to be flushed to the backend. */
   private emotionBuffer: EmotionSnapshot[] = [];
@@ -82,9 +95,13 @@ export class SessionHandler {
     // Start the engine
     this.engine.startSession();
 
-    // Create session in backend
+    // Create session in backend — сохраняем возвращённый DB-id для дочерних записей
     try {
-      await this.backendClient.createSession({});
+      const created = await this.backendClient.createSession({});
+      this.backendSessionId = created?.id ?? null;
+      if (!this.backendSessionId) {
+        console.error(`[session:${this.sessionId}] createSession не вернул id — телеметрия не запишется`);
+      }
     } catch (err) {
       console.error(`[session:${this.sessionId}] Failed to create backend session:`, err);
     }
@@ -281,7 +298,7 @@ export class SessionHandler {
       // Persist safety events
       for (const event of analysis.events) {
         this.backendClient
-          .addSafetyEvent(this.sessionId, event)
+          .addSafetyEvent(this.persistId, event)
           .catch((err) =>
             console.error(`[session:${this.sessionId}] Failed to save safety event:`, err),
           );
@@ -327,7 +344,7 @@ export class SessionHandler {
           })();
           this.backendClient
             .recordCrisisEvent({
-              sessionId: this.sessionId,
+              sessionId: this.persistId,
               severity: 'CRITICAL',
               type: mappedType,
             })
@@ -371,7 +388,7 @@ export class SessionHandler {
 
     // Persist
     this.backendClient
-      .addSudsRecord(this.sessionId, {
+      .addSudsRecord(this.persistId, {
         timestamp: Date.now(),
         value,
         context,
@@ -401,7 +418,7 @@ export class SessionHandler {
 
     // Persist
     this.backendClient
-      .addVocRecord(this.sessionId, {
+      .addVocRecord(this.persistId, {
         timestamp: Date.now(),
         value,
         context,
@@ -509,7 +526,7 @@ export class SessionHandler {
 
     // Persist
     this.backendClient
-      .updateSession(this.sessionId, {
+      .updateSession(this.persistId, {
         currentPhase: nextPhase,
       })
       .catch((err) => console.error(`[session:${this.sessionId}] Failed to update phase:`, err));
@@ -580,7 +597,7 @@ export class SessionHandler {
       const usedProvider = this.aiRouter.getLastUsedLlmProvider?.() ?? 'unknown';
       this.backendClient
         .recordUsage({
-          sessionId: this.sessionId,
+          sessionId: this.persistId,
           provider: usedProvider,
           providerType: 'LLM',
           inputTokens: userMessage.length / 4, // rough estimate
@@ -692,7 +709,7 @@ export class SessionHandler {
     this.engine.addTimelineEvent(event);
 
     this.backendClient
-      .addTimelineEvent(this.sessionId, event)
+      .addTimelineEvent(this.persistId, event)
       .catch((err) =>
         console.error(`[session:${this.sessionId}] Failed to save timeline event:`, err),
       );
@@ -703,7 +720,7 @@ export class SessionHandler {
 
     const batch = this.emotionBuffer.splice(0);
     try {
-      await this.backendClient.addEmotionRecords(this.sessionId, batch);
+      await this.backendClient.addEmotionRecords(this.persistId, batch);
     } catch (err) {
       console.error(`[session:${this.sessionId}] Failed to flush emotions:`, err);
       // Put them back for next flush attempt. Cap 1800 (~30 мин при 1/сек):
@@ -794,7 +811,7 @@ export class SessionHandler {
 
   private async saveToBackend(data: FullSessionExport): Promise<void> {
     try {
-      await this.backendClient.updateSession(this.sessionId, {
+      await this.backendClient.updateSession(this.persistId, {
         status: 'completed',
         endedAt: new Date(data.endedAt).toISOString(),
         elapsedSeconds: data.elapsedSeconds,

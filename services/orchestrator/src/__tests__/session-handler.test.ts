@@ -179,6 +179,28 @@ describe('SessionHandler', () => {
 
       expect(mockBackendClient.createSession).toHaveBeenCalledWith({});
     });
+
+    it('дочерние записи идут на DB-id из createSession, а не на клиентский id', async () => {
+      // Регрессия (session-ID mismatch): API создаёт сессию со своим uuid.
+      // Записи должны слаться на возвращённый id, иначе 404 и потеря телеметрии.
+      const h = new SessionHandler(
+        mockSocket as any,
+        'client-session-xyz',
+        'user-1',
+        {} as any,
+        { ...mockBackendClient, createSession: jest.fn().mockResolvedValue({ id: 'db-id-123' }) } as any,
+      );
+      await h.start();
+      // start() пишет timeline 'phase_start' — должно уйти на db-id, не на клиентский
+      expect(mockBackendClient.addTimelineEvent).toHaveBeenCalledWith(
+        'db-id-123',
+        expect.objectContaining({ type: 'phase_start' }),
+      );
+      expect(mockBackendClient.addTimelineEvent).not.toHaveBeenCalledWith(
+        'client-session-xyz',
+        expect.anything(),
+      );
+    });
   });
 
   describe('handlePatientMessage', () => {
