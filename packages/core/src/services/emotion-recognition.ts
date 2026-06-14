@@ -447,12 +447,16 @@ export class EmotionRecognitionService extends EventEmitter {
       attention * 0.5 + emotionalIntensity * 0.5
     ));
 
+    // Взвешенная сумма негативных выражений (макс ≈3.6 при всех =1), нормируется
+    // делением на 3, затем кламп в [0,1]. ВАЖНО: деление ВНУТРИ Math.min — иначе
+    // Math.min(1, sum)/3 зажимал stress в [0, 0.333], и пороги stress>0.75/0.8/0.85
+    // (адаптация BLS + safety-алерты/триггеры) были недостижимы.
     const stress = Math.max(0, Math.min(1,
-      (expressions.fearful ?? 0) * 1.2 +
-      (expressions.angry ?? 0) +
-      (expressions.sad ?? 0) * 0.8 +
-      (expressions.disgusted ?? 0) * 0.6
-    ) / 3);
+      ((expressions.fearful ?? 0) * 1.2 +
+        (expressions.angry ?? 0) +
+        (expressions.sad ?? 0) * 0.8 +
+        (expressions.disgusted ?? 0) * 0.6) / 3
+    ));
 
     // --- Dominance ---
     const dominant = (expressions.angry ?? 0) * 0.8 + (expressions.disgusted ?? 0) * 0.5;
