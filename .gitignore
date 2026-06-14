@@ -103,3 +103,7 @@ coverage/
 tsconfig.tsbuildinfo
 .claude/worktrees/
 !lib/types/
+
+# self-hosted веса face-api (см. scripts/fetch-face-models.sh) — нужны в репо
+!public/models/
+!public/models/*

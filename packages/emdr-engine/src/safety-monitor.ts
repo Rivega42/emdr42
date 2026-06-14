@@ -407,7 +407,16 @@ export class SafetyMonitor {
       },
     };
 
-    return map[event.type];
+    const intervention = map[event.type];
+    // Критическое по severity событие требует critical-приоритета интервенции:
+    // gate эскалации в CrisisService (session-handler) проверяет priority ===
+    // 'critical'. Без этого window_exceeded при stress>stressCritical (severity
+    // critical, но priority high) не доходил до терапевта — крупнейший
+    // stress-эксцесс игнорировался.
+    if (event.severity === 'critical' && intervention.priority !== 'critical') {
+      return { ...intervention, priority: 'critical' };
+    }
+    return intervention;
   }
 
   // -----------------------------------------------------------------------

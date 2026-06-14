@@ -302,6 +302,17 @@ describe('SafetyMonitor', () => {
         expect(intervention.type).toBe(expectedIntervention);
       }
     );
+
+    it('critical-severity событие повышает priority интервенции до critical (эскалация)', () => {
+      // window_exceeded по умолчанию priority=high → не эскалировался в CrisisService.
+      // При severity=critical (stress>stressCritical) приоритет должен стать critical.
+      const high: SafetyEvent = {
+        timestamp: Date.now(), type: 'window_exceeded', severity: 'high', actionTaken: '', resolved: false,
+      };
+      const critical: SafetyEvent = { ...high, severity: 'critical' };
+      expect(monitor.getIntervention(high).priority).toBe('high');
+      expect(monitor.getIntervention(critical).priority).toBe('critical');
+    });
   });
 
   // -----------------------------------------------------------------------

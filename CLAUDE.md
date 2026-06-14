@@ -79,9 +79,9 @@
 | Language | TypeScript 5.1, ESM |
 | UI | Tailwind CSS, Framer Motion |
 | 3D | Three.js + @react-three/fiber + @react-three/drei |
-| Audio | Tone.js |
-| Emotion | TensorFlow.js (custom models) |
-| WebRTC | LiveKit (client + server) |
+| Audio | Web Audio API (билатеральное аудио сессии) |
+| Emotion | face-api.js (self-hosted веса, см. `docs/MECHANICS_STATUS.md`) |
+| WebRTC | LiveKit (self-hosted сервер; STT vosk/piper — опционально) |
 | Realtime | WebSocket (Socket.io) |
 | Backend | NestJS, Prisma |
 | Testing | Jest + @testing-library/react |
@@ -152,7 +152,11 @@ emdr42/
 [Backend AI-сервисы] — Session Orchestrator, TTS, BLS Engine, Dialogue Agent
 ```
 
-Текущий фронтенд работает standalone с mock-данными. WebRTC-слой будет добавлен по мере реализации бэкенда.
+Распознавание эмоций — РЕАЛЬНАЯ инференция face-api.js в браузере (не mock):
+кадр камеры → tinyFaceDetector + faceExpressionNet → stress/valence/engagement →
+socket `session:emotion` → AdaptiveController меняет BLS на лету. Веса моделей
+self-hosted в `public/models` (раньше CDN-fetch блокировался прод-CSP). Полный
+статус механик и что работает на проде — `docs/MECHANICS_STATUS.md`.
 
 ---
 

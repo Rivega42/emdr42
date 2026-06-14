@@ -35,8 +35,21 @@ export class SessionHandler {
   private aiRouter: AiRouter;
   private backendClient: BackendClient;
   private socket: Socket;
+  /** Клиентский id сессии — используется socket-слоем и движком. */
   private sessionId: string;
+  /**
+   * id строки сессии в БД (из createSession). Отличается от клиентского
+   * sessionId: API создаёт сессию со своим @default(uuid()). Раньше все
+   * дочерние записи (эмоции/SUDS/VOC/safety/timeline) слались на клиентский
+   * id → 404 и тихая потеря телеметрии. Для записей в БД используем этот id.
+   */
+  private backendSessionId: string | null = null;
   private userId: string;
+
+  /** id для записей в БД: id из бэкенда, пока не получен — клиентский (фолбэк). */
+  private get persistId(): string {
+    return this.backendSessionId ?? this.sessionId;
+  }
 
   /** Buffered emotions waiting to be flushed to the backend. */
   private emotionBuffer: EmotionSnapshot[] = [];
@@ -82,9 +95,13 @@ export class SessionHandler {
     // Start the engine
     this.engine.startSession();
 
-    // Create session in backend
+    // Create session in backend — сохраняем возвращённый DB-id для дочерних записей
     try {
-      await this.backendClient.createSession({});
+      const created = await this.backendClient.createSession({});
+      this.backendSessionId = created?.id ?? null;
+      if (!this.backendSessionId) {
+        console.error(`[session:${this.sessionId}] createSession не вернул id — телеметрия не запишется`);
+      }
     } catch (err) {
       console.error(`[session:${this.sessionId}] Failed to create backend session:`, err);
     }
@@ -92,10 +109,19 @@ export class SessionHandler {
     // Start emotion batch flush
     this.emotionFlushTimer = setInterval(() => this.flushEmotions(), EMOTION_FLUSH_INTERVAL_MS);
 
-    // Send initial AI greeting (Phase 1: History)
-    await this.streamAiResponse(
-      'Begin the EMDR session. Greet the client warmly and start Phase 1 (History Taking).',
-    );
+    // Send initial AI greeting (Phase 1: History) — только если ИИ доступен.
+    // Без провайдера (прод без ключей) явно сигналим клиенту, а не отдаём
+    // вечную «техническую ошибку».
+    // hasLlm?.() ?? true: при отсутствии метода (старый роутер/мок в тестах)
+    // считаем ИИ доступным — поведение по умолчанию не меняется.
+    if (this.aiRouter.hasLlm?.() ?? true) {
+      await this.streamAiResponse(
+        'Begin the EMDR session. Greet the client warmly and start Phase 1 (History Taking).',
+      );
+    } else {
+      console.warn(`[session:${this.sessionId}] LLM-провайдер не сконфигурирован — ИИ-диалог недоступен`);
+      this.emitAiUnavailable();
+    }
 
     // Record timeline event
     this.recordTimeline('phase_start', { phase: 'history' });
@@ -281,7 +307,7 @@ export class SessionHandler {
       // Persist safety events
       for (const event of analysis.events) {
         this.backendClient
-          .addSafetyEvent(this.sessionId, event)
+          .addSafetyEvent(this.persistId, event)
           .catch((err) =>
             console.error(`[session:${this.sessionId}] Failed to save safety event:`, err),
           );
@@ -308,6 +334,9 @@ export class SessionHandler {
           'panic',
           'suicide_ideation',
           'self_harm',
+          // выход за окно толерантности при stress>stressCritical — критический
+          // эксцесс; раньше не эскалировался (нет в наборе + priority high)
+          'window_exceeded',
         ]);
         for (const ev of analysis.events) {
           if (!criticalTypes.has(String(ev.type ?? '').toLowerCase())) continue;
@@ -317,12 +346,14 @@ export class SessionHandler {
             if (t === 'self_harm') return 'SELF_HARM' as const;
             if (t === 'panic') return 'PANIC' as const;
             if (t === 'abreaction') return 'ABREACTION' as const;
+            // выход за окно толерантности — острая гиперактивация, ближе всего к PANIC
+            if (t === 'window_exceeded') return 'PANIC' as const;
             // dissociation и прочее → DISSOCIATION
             return 'DISSOCIATION' as const;
           })();
           this.backendClient
             .recordCrisisEvent({
-              sessionId: this.sessionId,
+              sessionId: this.persistId,
               severity: 'CRITICAL',
               type: mappedType,
             })
@@ -366,7 +397,7 @@ export class SessionHandler {
 
     // Persist
     this.backendClient
-      .addSudsRecord(this.sessionId, {
+      .addSudsRecord(this.persistId, {
         timestamp: Date.now(),
         value,
         context,
@@ -396,7 +427,7 @@ export class SessionHandler {
 
     // Persist
     this.backendClient
-      .addVocRecord(this.sessionId, {
+      .addVocRecord(this.persistId, {
         timestamp: Date.now(),
         value,
         context,
@@ -504,7 +535,7 @@ export class SessionHandler {
 
     // Persist
     this.backendClient
-      .updateSession(this.sessionId, {
+      .updateSession(this.persistId, {
         currentPhase: nextPhase,
       })
       .catch((err) => console.error(`[session:${this.sessionId}] Failed to update phase:`, err));
@@ -513,6 +544,21 @@ export class SessionHandler {
   // --------------------------------------------------------------------------
   // AI streaming helpers
   // --------------------------------------------------------------------------
+
+  /**
+   * Явно сигналит клиенту, что ИИ-ассистент недоступен (нет LLM-провайдера).
+   * Фронт показывает спокойный баннер вместо вечной «технической ошибки».
+   * BLS, эмоции и адаптация при этом продолжают работать.
+   */
+  private emitAiUnavailable(): void {
+    this.socket.emit('session:ai_status', {
+      available: false,
+      reason: 'no_provider',
+      message:
+        'ИИ-ассистент сейчас недоступен. Билатеральная стимуляция и отслеживание ' +
+        'состояния продолжают работать; диалог с ассистентом временно отключён.',
+    });
+  }
 
   /**
    * Send a system-level prompt to the AI and stream the response to the client.
@@ -575,7 +621,7 @@ export class SessionHandler {
       const usedProvider = this.aiRouter.getLastUsedLlmProvider?.() ?? 'unknown';
       this.backendClient
         .recordUsage({
-          sessionId: this.sessionId,
+          sessionId: this.persistId,
           provider: usedProvider,
           providerType: 'LLM',
           inputTokens: userMessage.length / 4, // rough estimate
@@ -596,10 +642,16 @@ export class SessionHandler {
       });
     } catch (err) {
       console.error(`[session:${this.sessionId}] AI response error:`, err);
-      this.socket.emit('session:ai_response', {
-        type: 'error',
-        text: 'I apologize, I encountered a technical issue. Please give me a moment.',
-      });
+      // Отсутствие провайдера (прод без ключей) — не «временная техошибка»,
+      // а постоянная недоступность ИИ: сигналим явно, чтобы фронт показал баннер.
+      if (this.aiRouter.hasLlm?.() === false) {
+        this.emitAiUnavailable();
+      } else {
+        this.socket.emit('session:ai_response', {
+          type: 'error',
+          text: 'I apologize, I encountered a technical issue. Please give me a moment.',
+        });
+      }
     }
 
     return fullResponse;
@@ -687,7 +739,7 @@ export class SessionHandler {
     this.engine.addTimelineEvent(event);
 
     this.backendClient
-      .addTimelineEvent(this.sessionId, event)
+      .addTimelineEvent(this.persistId, event)
       .catch((err) =>
         console.error(`[session:${this.sessionId}] Failed to save timeline event:`, err),
       );
@@ -698,7 +750,7 @@ export class SessionHandler {
 
     const batch = this.emotionBuffer.splice(0);
     try {
-      await this.backendClient.addEmotionRecords(this.sessionId, batch);
+      await this.backendClient.addEmotionRecords(this.persistId, batch);
     } catch (err) {
       console.error(`[session:${this.sessionId}] Failed to flush emotions:`, err);
       // Put them back for next flush attempt. Cap 1800 (~30 мин при 1/сек):
@@ -789,7 +841,7 @@ export class SessionHandler {
 
   private async saveToBackend(data: FullSessionExport): Promise<void> {
     try {
-      await this.backendClient.updateSession(this.sessionId, {
+      await this.backendClient.updateSession(this.persistId, {
         status: 'completed',
         endedAt: new Date(data.endedAt).toISOString(),
         elapsedSeconds: data.elapsedSeconds,

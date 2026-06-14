@@ -53,10 +53,9 @@ export default function RootLayout({
         {/* Тема до первой отрисовки (анти-FOUC); отдельный файл — prod CSP
             не разрешает inline-скрипты. По умолчанию ночь, light — opt-in. */}
         <Script src="/theme-init.js" strategy="beforeInteractive" />
-        <Script
-          src="https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/dist/face-api.min.js"
-          strategy="afterInteractive"
-        />
+        {/* face-api.js self-hosted (public/vendor) — не с CDN: убирает рантайм-
+            зависимость от jsdelivr и позволяет ужесточить CSP script-src. */}
+        <Script src="/vendor/face-api.min.js" strategy="afterInteractive" />
         {/* Inline скрипт вынесен в /register-sw.js чтобы prod CSP не требовал
             'unsafe-inline' в script-src (XSS hardening). */}
         <Script src="/register-sw.js" strategy="afterInteractive" />

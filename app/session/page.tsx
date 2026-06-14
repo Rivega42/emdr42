@@ -115,6 +115,8 @@ export default function SessionPage() {
   // Connection state
   const [connected, setConnected] = useState(false);
   const [offlineMode, setOfflineMode] = useState(false);
+  // Сообщение «ИИ недоступен» (нет LLM-провайдера) — null когда ИИ доступен.
+  const [aiUnavailable, setAiUnavailable] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   // Phase
@@ -327,6 +329,12 @@ export default function SessionPage() {
       }
     });
 
+    // Статус ИИ: при отсутствии LLM-провайдера (прод без ключей) показываем
+    // спокойный баннер вместо вечной «технической ошибки». BLS/эмоции работают.
+    socket.on('session:ai_status', (data: { available: boolean; message?: string }) => {
+      setAiUnavailable(data.available ? null : data.message || 'ИИ-ассистент сейчас недоступен.');
+    });
+
     // Phase change
     socket.on('session:phase_changed', (data: { phase: EmdrPhase; reason: string }) => {
       setPhase(data.phase);
@@ -519,6 +527,16 @@ export default function SessionPage() {
           <span className="text-gray-500 text-sm">BLS Only Mode (Offline)</span>
           <span className="text-gray-500 text-sm">{formatTime(elapsed)}</span>
         </header>
+
+        {/* Баннер недоступности ИИ — спокойный, не тревожный; BLS/эмоции работают */}
+        {aiUnavailable && (
+          <div
+            role="status"
+            className="bg-warm-soft border-b border-warm text-warm-text text-sm px-4 py-2 text-center"
+          >
+            {aiUnavailable}
+          </div>
+        )}
 
         {/* Canvas -- stays dark for therapy */}
         <div className="flex-1 relative bg-gray-950">

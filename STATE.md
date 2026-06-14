@@ -8,6 +8,10 @@
 
 ## В работе сейчас
 
+- **`fix/emdr-loop-prod`** (ветка, 2026-06-14) — фиксы по ревью механик: эмоции
+  на проде (self-host face-api, P0), формула stress, эскалация кризиса,
+  session-ID mismatch, баннер «ИИ недоступен» (P1). Статус механик —
+  `docs/MECHANICS_STATUS.md`. Осталось P2 (голос STT, запись SUDS/VOC).
 - **`chore/repo-setup`** (ветка) — ✅ выполнены 10 шагов `REPO_SETUP_PROMPT.md`. Готова к PR в `main`.
 - **`claude/project-review-issues-En09l`** — основные продуктовые правки последних 60+ коммитов (core EMDR loop, security hardening, E2E smoke, billing/MFA/crisis интеграции). Готова к review/merge в `main`.
 

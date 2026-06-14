@@ -186,10 +186,15 @@ const emotionToAV: Record<string, { arousal: number; valence: number }> = {
 };
 
 // ---------------------------------------------------------------------------
-// CDN URL for face-api.js model weights
+// Model weights URL — self-hosted в public/models (scripts/fetch-face-models.sh).
+// Раньше веса грузились fetch'ем с cdn.jsdelivr.net, но прод-CSP connect-src его
+// не содержал → loadFromUri падал и инференс эмоций не стартовал. Локальная копия
+// (same-origin) снимает зависимость от CDN, CSP-блок и supply-chain риск.
+// Переопределяется через NEXT_PUBLIC_FACE_MODELS_URL при необходимости.
 // ---------------------------------------------------------------------------
 
-const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+const MODEL_URL =
+  (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_FACE_MODELS_URL) || '/models';
 
 // ---------------------------------------------------------------------------
 // Service
@@ -442,12 +447,16 @@ export class EmotionRecognitionService extends EventEmitter {
       attention * 0.5 + emotionalIntensity * 0.5
     ));
 
+    // Взвешенная сумма негативных выражений (макс ≈3.6 при всех =1), нормируется
+    // делением на 3, затем кламп в [0,1]. ВАЖНО: деление ВНУТРИ Math.min — иначе
+    // Math.min(1, sum)/3 зажимал stress в [0, 0.333], и пороги stress>0.75/0.8/0.85
+    // (адаптация BLS + safety-алерты/триггеры) были недостижимы.
     const stress = Math.max(0, Math.min(1,
-      (expressions.fearful ?? 0) * 1.2 +
-      (expressions.angry ?? 0) +
-      (expressions.sad ?? 0) * 0.8 +
-      (expressions.disgusted ?? 0) * 0.6
-    ) / 3);
+      ((expressions.fearful ?? 0) * 1.2 +
+        (expressions.angry ?? 0) +
+        (expressions.sad ?? 0) * 0.8 +
+        (expressions.disgusted ?? 0) * 0.6) / 3
+    ));
 
     // --- Dominance ---
     const dominant = (expressions.angry ?? 0) * 0.8 + (expressions.disgusted ?? 0) * 0.5;

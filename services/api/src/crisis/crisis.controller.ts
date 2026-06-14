@@ -20,7 +20,9 @@ class RecordCrisisDto {
   @IsEnum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL'])
   severity!: CrisisSeverity;
 
-  @IsEnum(['SUICIDE_IDEATION', 'SELF_HARM', 'DISSOCIATION', 'PANIC', 'OTHER'])
+  // ABREACTION (#216) — оркестратор шлёт его при abreaction-событии; без него
+  // forbidNonWhitelisted давал 400 и crisis-событие не записывалось.
+  @IsEnum(['SUICIDE_IDEATION', 'SELF_HARM', 'DISSOCIATION', 'ABREACTION', 'PANIC', 'OTHER'])
   type!: CrisisType;
 
   @IsOptional() @IsUUID()
