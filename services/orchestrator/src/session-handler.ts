@@ -308,6 +308,9 @@ export class SessionHandler {
           'panic',
           'suicide_ideation',
           'self_harm',
+          // выход за окно толерантности при stress>stressCritical — критический
+          // эксцесс; раньше не эскалировался (нет в наборе + priority high)
+          'window_exceeded',
         ]);
         for (const ev of analysis.events) {
           if (!criticalTypes.has(String(ev.type ?? '').toLowerCase())) continue;
@@ -317,6 +320,8 @@ export class SessionHandler {
             if (t === 'self_harm') return 'SELF_HARM' as const;
             if (t === 'panic') return 'PANIC' as const;
             if (t === 'abreaction') return 'ABREACTION' as const;
+            // выход за окно толерантности — острая гиперактивация, ближе всего к PANIC
+            if (t === 'window_exceeded') return 'PANIC' as const;
             // dissociation и прочее → DISSOCIATION
             return 'DISSOCIATION' as const;
           })();
