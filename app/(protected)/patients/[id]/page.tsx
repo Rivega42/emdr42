@@ -98,7 +98,7 @@ export default function PatientDetailPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6 mb-8"
+        className="bg-surface/5 backdrop-blur-md rounded-2xl border border-white/10 p-6 mb-8"
       >
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -137,11 +137,11 @@ export default function PatientDetailPage() {
         <h2 className="text-xl font-semibold text-white mb-4">Session History</h2>
 
         {sessions.length === 0 ? (
-          <div className="bg-white/5 rounded-2xl p-12 text-center">
+          <div className="bg-surface/5 rounded-2xl p-12 text-center">
             <p className="text-white/60">No sessions recorded yet.</p>
           </div>
         ) : (
-          <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
+          <div className="bg-surface/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/10">
@@ -196,7 +196,7 @@ export default function PatientDetailPage() {
                     <td className="px-6 py-4 text-center hidden lg:table-cell">
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${
-                          statusColors[session.status] || 'bg-white/10 text-white/70'
+                          statusColors[session.status] || 'bg-surface/10 text-white/70'
                         }`}
                       >
                         {session.status}

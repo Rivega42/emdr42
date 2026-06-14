@@ -10,7 +10,9 @@
 @import '../design/tokens/spacing.css';
 @import '../design/tokens/effects.css';
 @import '../design/components/components.css';
+@import '../design/components/data-components.css';
 @import '../design/ui_kits/landing/landing.css';
+@import '../design/ui_kits/cabinet/cabinet.css';
 
 /* Шрифты загружаются через next/font (app/layout.tsx), а не Google @import
    из design/tokens/fonts.css — без блокировки рендера и внешних запросов. */

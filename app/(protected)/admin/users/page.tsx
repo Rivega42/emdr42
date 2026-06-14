@@ -55,14 +55,14 @@ export default function AdminUsersPage() {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-line border-t-gray-900 rounded-full animate-spin" /></div>;
   if (error) return <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-red-600">{error}</div>;
 
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Управление пользователями</h1>
-        <p className="text-gray-500">Всего: {filtered.length}</p>
+        <h1 className="text-4xl font-bold text-ink mb-2">Управление пользователями</h1>
+        <p className="text-ink-muted">Всего: {filtered.length}</p>
       </div>
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <input
@@ -71,13 +71,13 @@ export default function AdminUsersPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Поиск пользователей"
-          className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-900 transition-colors"
+          className="flex-1 px-4 py-3 bg-surface border border-line rounded-md text-ink placeholder-gray-400 focus:outline-none focus:border-gray-900 transition-colors"
         />
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value as UserRole | 'ALL')}
           aria-label="Фильтр по роли"
-          className="px-4 py-3 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:border-gray-900 transition-colors"
+          className="px-4 py-3 bg-surface border border-line rounded-md text-ink focus:outline-none focus:border-gray-900 transition-colors"
         >
           <option value="ALL">Все роли</option>
           {ROLES.map((r) => (
@@ -85,38 +85,38 @@ export default function AdminUsersPage() {
           ))}
         </select>
       </div>
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-surface border border-line rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-500">Имя</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-500">Email</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-500">Роль</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-500">Сессий</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-500">Был в сети</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-500">Статус</th>
+              <tr className="border-b border-line">
+                <th className="text-left px-6 py-4 text-sm font-semibold text-ink-muted">Имя</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-ink-muted">Email</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-ink-muted">Роль</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-ink-muted">Сессий</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-ink-muted">Был в сети</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-ink-muted">Статус</th>
               </tr>
             </thead>
             <tbody>
               {paged.map((user, i) => (
-                <tr key={user.id} className={`border-b border-gray-100 ${i % 2 === 1 ? 'bg-gray-50' : ''}`}>
-                  <td className="px-6 py-4 text-gray-900 font-medium">{user.name}</td>
-                  <td className="px-6 py-4 text-gray-500">{user.email}</td>
+                <tr key={user.id} className={`border-b border-line ${i % 2 === 1 ? 'bg-surface-2' : ''}`}>
+                  <td className="px-6 py-4 text-ink font-medium">{user.name}</td>
+                  <td className="px-6 py-4 text-ink-muted">{user.email}</td>
                   <td className="px-6 py-4">
                     <select
                       value={user.role}
                       onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
                       aria-label={`Роль пользователя ${user.name}`}
-                      className="px-2 py-1 bg-white border border-gray-300 rounded-md text-gray-900 text-sm focus:outline-none focus:border-gray-900"
+                      className="px-2 py-1 bg-surface border border-line rounded-md text-ink text-sm focus:outline-none focus:border-gray-900"
                     >
                       {ROLES.map((r) => (
                         <option key={r} value={r}>{r}</option>
                       ))}
                     </select>
                   </td>
-                  <td className="px-6 py-4 text-gray-500">{user.sessionsCount}</td>
-                  <td className="px-6 py-4 text-gray-400 text-sm">
+                  <td className="px-6 py-4 text-ink-muted">{user.sessionsCount}</td>
+                  <td className="px-6 py-4 text-ink-muted text-sm">
                     {user.lastActiveAt ? new Date(user.lastActiveAt).toLocaleDateString('ru-RU') : 'Никогда'}
                   </td>
                   <td className="px-6 py-4">
@@ -136,7 +136,7 @@ export default function AdminUsersPage() {
               ))}
               {paged.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
+                  <td colSpan={6} className="px-6 py-12 text-center text-ink-muted">
                     Пользователей не найдено
                   </td>
                 </tr>
@@ -145,20 +145,20 @@ export default function AdminUsersPage() {
           </table>
         </div>
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-            <span className="text-gray-400 text-sm">Страница {page} из {totalPages}</span>
+          <div className="flex items-center justify-between px-6 py-4 border-t border-line">
+            <span className="text-ink-muted text-sm">Страница {page} из {totalPages}</span>
             <div className="flex gap-2">
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
-                className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="px-3 py-1 bg-surface-2 text-ink rounded-md hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 Назад
               </button>
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="px-3 py-1 bg-surface-2 text-ink rounded-md hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 Вперёд
               </button>

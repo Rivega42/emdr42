@@ -45,7 +45,7 @@ export default function LeadsPage() {
   }, [status]);
 
   if (!hasRole('ADMIN') && !hasRole('THERAPIST')) {
-    return <p className="text-gray-500">Доступ только для администраторов и терапевтов.</p>;
+    return <p className="text-ink-muted">Доступ только для администраторов и терапевтов.</p>;
   }
 
   const updateStatus = async (id: string, newStatus: string) => {
@@ -56,21 +56,21 @@ export default function LeadsPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Заявки с сайта</h1>
-        <Link href="/admin" className="text-sm text-gray-500 hover:text-gray-900">
+        <h1 className="text-3xl font-bold text-ink">Заявки с сайта</h1>
+        <Link href="/admin" className="text-sm text-ink-muted hover:text-ink">
           ← Admin
         </Link>
       </div>
 
       <div className="mb-4 flex items-center gap-3">
-        <label htmlFor="status-filter" className="text-sm text-gray-500">
+        <label htmlFor="status-filter" className="text-sm text-ink-muted">
           Фильтр:
         </label>
         <select
           id="status-filter"
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-md text-sm bg-white"
+          className="px-3 py-2 border border-line rounded-md text-sm bg-surface"
         >
           {STATUS_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
@@ -78,7 +78,7 @@ export default function LeadsPage() {
         </select>
       </div>
 
-      {loading && <p className="text-gray-400" role="status">Загрузка…</p>}
+      {loading && <p className="text-ink-muted" role="status">Загрузка…</p>}
       {error && (
         <div role="alert" className="p-4 bg-red-50 border border-red-200 rounded-md text-red-700">
           {error}
@@ -86,13 +86,13 @@ export default function LeadsPage() {
       )}
 
       {!loading && !error && leads.length === 0 && (
-        <p className="text-gray-400">Лидов нет.</p>
+        <p className="text-ink-muted">Лидов нет.</p>
       )}
 
       {!loading && leads.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className="bg-surface border border-line rounded-lg overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500 text-left">
+            <thead className="bg-surface-2 text-ink-muted text-left">
               <tr>
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Имя</th>
@@ -103,18 +103,18 @@ export default function LeadsPage() {
             </thead>
             <tbody>
               {leads.map((lead) => (
-                <tr key={lead.id} className="border-t border-gray-100">
-                  <td className="px-4 py-3 text-gray-900 font-medium">{lead.email}</td>
-                  <td className="px-4 py-3 text-gray-600">{lead.name || '—'}</td>
-                  <td className="px-4 py-3 text-gray-500">{lead.source || '—'}</td>
-                  <td className="px-4 py-3 text-gray-400">
+                <tr key={lead.id} className="border-t border-line">
+                  <td className="px-4 py-3 text-ink font-medium">{lead.email}</td>
+                  <td className="px-4 py-3 text-ink-muted">{lead.name || '—'}</td>
+                  <td className="px-4 py-3 text-ink-muted">{lead.source || '—'}</td>
+                  <td className="px-4 py-3 text-ink-muted">
                     {new Date(lead.createdAt).toLocaleDateString('ru-RU')}
                   </td>
                   <td className="px-4 py-3">
                     <select
                       value={lead.status}
                       onChange={(e) => updateStatus(lead.id, e.target.value)}
-                      className="px-2 py-1 border border-gray-200 rounded text-xs"
+                      className="px-2 py-1 border border-line rounded text-xs"
                     >
                       {STATUS_OPTIONS.filter((o) => o.value).map((o) => (
                         <option key={o.value} value={o.value}>{o.label}</option>

@@ -81,8 +81,8 @@ export default function BillingPage() {
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto" role="status">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Подписка</h1>
-        <p className="text-gray-400">Загрузка…</p>
+        <h1 className="text-4xl font-bold text-ink mb-2">Подписка</h1>
+        <p className="text-ink-muted">Загрузка…</p>
       </div>
     );
   }
@@ -92,8 +92,8 @@ export default function BillingPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Подписка и оплата</h1>
-        <p className="text-gray-500">
+        <h1 className="text-4xl font-bold text-ink mb-2">Подписка и оплата</h1>
+        <p className="text-ink-muted">
           Текущий план: <strong>{currentPlanId}</strong> · Статус:{' '}
           <span
             className={
@@ -121,14 +121,14 @@ export default function BillingPage() {
             <div
               key={plan.id}
               className={`border rounded-lg p-6 ${
-                isCurrent ? 'border-gray-900 bg-gray-50' : 'border-gray-200 bg-white'
+                isCurrent ? 'border-gray-900 bg-surface-2' : 'border-line bg-surface'
               }`}
             >
-              <h2 className="text-lg font-bold text-gray-900">{plan.name}</h2>
-              <div className="text-3xl font-bold text-gray-900 mt-2 mb-4">
+              <h2 className="text-lg font-bold text-ink">{plan.name}</h2>
+              <div className="text-3xl font-bold text-ink mt-2 mb-4">
                 {formatPrice(plan.priceCentsMonthly)}
               </div>
-              <ul className="space-y-2 mb-6 text-sm text-gray-600">
+              <ul className="space-y-2 mb-6 text-sm text-ink-muted">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-2">
                     <span className="text-green-600 mt-0.5" aria-hidden="true">✓</span>
@@ -137,13 +137,13 @@ export default function BillingPage() {
                 ))}
               </ul>
               {isCurrent ? (
-                <span className="block text-center py-2 text-sm text-gray-500 font-semibold">
+                <span className="block text-center py-2 text-sm text-ink-muted font-semibold">
                   Текущий план
                 </span>
               ) : plan.id === 'FREE' ? (
                 <button
                   disabled
-                  className="w-full py-2.5 bg-gray-100 text-gray-400 rounded-md font-semibold cursor-not-allowed"
+                  className="w-full py-2.5 bg-surface-2 text-ink-muted rounded-md font-semibold cursor-not-allowed"
                 >
                   Бесплатно
                 </button>
@@ -163,10 +163,10 @@ export default function BillingPage() {
 
       {/* Manage subscription */}
       {subscription && subscription.plan !== 'FREE' && (
-        <section className="mb-8 bg-white border border-gray-200 rounded-lg p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Управление подпиской</h2>
+        <section className="mb-8 bg-surface border border-line rounded-lg p-6">
+          <h2 className="text-lg font-bold text-ink mb-4">Управление подпиской</h2>
           {subscription.currentPeriodEnd && (
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-ink-muted mb-4">
               Следующее списание:{' '}
               {new Date(subscription.currentPeriodEnd).toLocaleDateString('ru-RU')}
               {subscription.cancelAtPeriodEnd && ' (отменится)'}
@@ -175,7 +175,7 @@ export default function BillingPage() {
           <button
             onClick={handlePortal}
             disabled={busy}
-            className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md font-semibold transition-colors"
+            className="px-5 py-2.5 bg-surface-2 hover:bg-gray-200 text-ink rounded-md font-semibold transition-colors"
           >
             Открыть Stripe портал
           </button>
@@ -184,21 +184,21 @@ export default function BillingPage() {
 
       {/* Invoices */}
       {subscription?.invoices && subscription.invoices.length > 0 && (
-        <section className="bg-white border border-gray-200 rounded-lg p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">История платежей</h2>
+        <section className="bg-surface border border-line rounded-lg p-6">
+          <h2 className="text-lg font-bold text-ink mb-4">История платежей</h2>
           <div className="space-y-3 text-sm">
             {subscription.invoices.map((inv) => (
               <div
                 key={inv.id}
-                className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+                className="flex items-center justify-between py-2 border-b border-line last:border-0"
               >
                 <div>
-                  <div className="text-gray-900">
+                  <div className="text-ink">
                     {new Date(inv.createdAt).toLocaleDateString('ru-RU')}
                   </div>
-                  <div className="text-xs text-gray-400">{inv.status}</div>
+                  <div className="text-xs text-ink-muted">{inv.status}</div>
                 </div>
-                <div className="text-gray-900 font-semibold">
+                <div className="text-ink font-semibold">
                   ${(inv.amountCents / 100).toFixed(2)}
                 </div>
                 {inv.hostedInvoiceUrl && (
@@ -206,7 +206,7 @@ export default function BillingPage() {
                     href={inv.hostedInvoiceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-gray-600 hover:underline"
+                    className="text-sm text-ink-muted hover:underline"
                   >
                     Счёт
                   </a>
@@ -217,7 +217,7 @@ export default function BillingPage() {
         </section>
       )}
 
-      <div className="mt-8 text-sm text-gray-500 text-center">
+      <div className="mt-8 text-sm text-ink-muted text-center">
         <Link href="/settings" className="hover:underline">
           ← Все настройки
         </Link>
