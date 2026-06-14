@@ -112,6 +112,16 @@ describe('AiRouter', () => {
       expect(router.getLlmProvider('openai')).toBeDefined();
     });
 
+    it('hasLlm: true при наличии провайдеров, false при пустом конфиге', async () => {
+      expect(router.hasLlm()).toBe(true);
+      const empty = new AiRouter({
+        ...makeConfig(),
+        llm: { primary: 'anthropic', providers: {} },
+      });
+      await empty.initialize();
+      expect(empty.hasLlm()).toBe(false);
+    });
+
     it('should initialize all configured STT providers', () => {
       expect(router.getSttProvider('deepgram')).toBeDefined();
       expect(router.getSttProvider('openai-whisper')).toBeDefined();
