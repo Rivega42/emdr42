@@ -54,17 +54,28 @@
   оркестратор эмитит `session:ai_status{available:false}`, фронт показывает
   спокойный баннер вместо вечной техошибки.
 
+## Сделано дополнительно (P2, эта же ветка)
+
+- **Запись SUDS/VOC + контракт session-записей** (`session-handler.saveToBackend`,
+  phase-update): поля и регистр приведены к `UpdateSessionDto` (status `COMPLETED`,
+  `durationSeconds`, `phase`), добавлены `sudsBaseline/Final`, `vocBaseline/Final`.
+  Раньше эти записи 400-ли (не только из-за session-ID, но и из-за имён/регистра
+  полей) → аналитика и progress всегда пусты.
+- **Crisis-баннер в сессии**: телефон доверия добавлен в safety-alert модалку —
+  виден в острый момент (раньше только статично на dashboard).
+
 ## Осталось (следующие проходы)
 
-- **P0 деплой — ключ LLM**: прописать `ANTHROPIC_API_KEY` (или `OPENAI_API_KEY`)
+- **Деплой — ключ LLM**: прописать `ANTHROPIC_API_KEY` (или `OPENAI_API_KEY`)
   в серверном `.env` оркестратора. Код готов; без ключа ИИ-диалог недоступен
-  (теперь это явно сигналится баннером).
+  (явно сигналится баннером).
 - **P2 — голос STT/TTS**: поднять vosk/piper ИЛИ переписать `VoiceHandler` на
-  `DeepgramProvider.transcribeStream()` (нужен декод Opus→PCM). Сейчас
-  `VoiceHandler` ходит в Vosk/Piper напрямую, минуя облачные провайдеры роутера.
-- **P2 — запись SUDS/VOC baseline/final** при закрытии сессии (поля пишет никто).
-- **P2 — crisis-баннер в самой сессии**: активировать `CrisisBanner` по
-  safety-детекции (сейчас всплывает только статично на dashboard).
+  `DeepgramProvider.transcribeStream()` (нужен декод Opus→PCM, ключ Deepgram).
+  Сейчас `VoiceHandler` ходит в Vosk/Piper напрямую, минуя облачные провайдеры.
 - **P3 — гигиена**: убрать мёртвый код (`lib/edge-inference.ts`,
-  `app/session/_components/*`), синхронизировать timestamp ms/сек в
-  `getEmotionalPeaks`, подключить или удалить заглушку trpc sessions router.
+  `app/session/_components/*`), подключить или удалить заглушку trpc sessions router.
+- **P3 — timestamp в `getEmotionalPeaks`** (`*1000`): абсолютное значение
+  «кривое» (эмоции хранятся как epoch-мс, не сек-от-старта), НО emotion/timeline/
+  suds масштабируются одинаково → привязка пиков к фазам консистентна и не
+  ломается. Требует более глубокой проверки перед изменением — отложено, чтобы
+  не внести регрессию.
