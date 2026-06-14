@@ -41,8 +41,8 @@ export default function CompareSessionsPage() {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto" role="status">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Сравнение сессий</h1>
-        <p className="text-gray-400">Загрузка…</p>
+        <h1 className="text-3xl font-bold text-ink mb-4">Сравнение сессий</h1>
+        <p className="text-ink-muted">Загрузка…</p>
       </div>
     );
   }
@@ -50,11 +50,11 @@ export default function CompareSessionsPage() {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Сравнение сессий</h1>
+        <h1 className="text-3xl font-bold text-ink mb-4">Сравнение сессий</h1>
         <div role="alert" className="bg-red-50 border border-red-200 rounded-lg p-6 text-red-700">
           {error}
         </div>
-        <Link href="/progress" className="inline-block mt-4 text-gray-900 hover:underline">
+        <Link href="/progress" className="inline-block mt-4 text-ink hover:underline">
           ← Назад к прогрессу
         </Link>
       </div>
@@ -66,10 +66,10 @@ export default function CompareSessionsPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <Link href="/progress" className="text-sm text-gray-500 hover:text-gray-900">
+        <Link href="/progress" className="text-sm text-ink-muted hover:text-ink">
           ← Назад к прогрессу
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900 mt-2">
+        <h1 className="text-3xl font-bold text-ink mt-2">
           Сессия #{data.current.sessionNumber} vs #{data.previous.sessionNumber}
         </h1>
       </div>
@@ -79,8 +79,8 @@ export default function CompareSessionsPage() {
         <SessionCard label="Текущая" data={data.current} highlighted />
       </section>
 
-      <section className="bg-white border border-gray-200 rounded-lg p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Дельта</h2>
+      <section className="bg-surface border border-line rounded-lg p-6">
+        <h2 className="text-lg font-bold text-ink mb-4">Дельта</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <DeltaCard
             label="SUDS"
@@ -119,11 +119,11 @@ const SessionCard: React.FC<{
 }> = ({ label, data, highlighted = false }) => (
   <div
     className={`border rounded-lg p-6 ${
-      highlighted ? 'border-gray-900 bg-gray-50' : 'border-gray-200 bg-white'
+      highlighted ? 'border-gray-900 bg-surface-2' : 'border-line bg-surface'
     }`}
   >
-    <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">{label}</div>
-    <div className="text-2xl font-bold text-gray-900 mb-4">Сессия #{data.sessionNumber}</div>
+    <div className="text-xs text-ink-muted uppercase tracking-wide mb-1">{label}</div>
+    <div className="text-2xl font-bold text-ink mb-4">Сессия #{data.sessionNumber}</div>
     <div className="space-y-2 text-sm">
       <div>
         SUDS: <strong>{data.sudsFinal ?? '—'}</strong>/10
@@ -143,9 +143,9 @@ const DeltaCard: React.FC<{
 }> = ({ label, value, positiveIsGood, format }) => {
   if (value == null) {
     return (
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">{label}</div>
-        <div className="text-lg text-gray-400">—</div>
+      <div className="bg-surface-2 rounded-lg p-4">
+        <div className="text-xs text-ink-muted uppercase tracking-wide mb-1">{label}</div>
+        <div className="text-lg text-ink-muted">—</div>
       </div>
     );
   }
@@ -159,8 +159,8 @@ const DeltaCard: React.FC<{
         : 'text-red-600';
   const arrow = value === 0 ? '→' : isPositive ? '↑' : '↓';
   return (
-    <div className="bg-gray-50 rounded-lg p-4">
-      <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">{label}</div>
+    <div className="bg-surface-2 rounded-lg p-4">
+      <div className="text-xs text-ink-muted uppercase tracking-wide mb-1">{label}</div>
       <div className={`text-lg font-bold ${color}`}>
         {arrow} {format(Math.abs(value))}
       </div>

@@ -107,7 +107,7 @@ export default function SessionReviewPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6 mb-8"
+        className="bg-surface/5 backdrop-blur-md rounded-2xl border border-white/10 p-6 mb-8"
       >
         <h1 className="text-2xl font-bold text-white mb-4">Session Review</h1>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -162,7 +162,7 @@ export default function SessionReviewPage() {
           <h2 className="text-xl font-semibold text-white mb-4">Timeline</h2>
           <div className="space-y-0">
             {session.timeline.length === 0 ? (
-              <div className="bg-white/5 rounded-2xl p-8 text-center text-white/60">
+              <div className="bg-surface/5 rounded-2xl p-8 text-center text-white/60">
                 No timeline events recorded.
               </div>
             ) : (
@@ -181,7 +181,7 @@ export default function SessionReviewPage() {
           className="space-y-6"
         >
           {/* SUDS/VOC */}
-          <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
+          <div className="bg-surface/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">SUDS / VOC</h3>
             <div className="space-y-4">
               <div>
@@ -216,7 +216,7 @@ export default function SessionReviewPage() {
           </div>
 
           {/* Emotion track */}
-          <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
+          <div className="bg-surface/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Emotion Track</h3>
             {session.emotions.length === 0 ? (
               <p className="text-white/50 text-sm">No emotion data recorded.</p>
@@ -230,7 +230,7 @@ export default function SessionReviewPage() {
                         minute: '2-digit',
                       })}
                     </span>
-                    <div className="flex-1 h-3 bg-white/10 rounded-full overflow-hidden">
+                    <div className="flex-1 h-3 bg-surface/10 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${stressColor(em.stress)}`}
                         style={{ width: `${Math.min(em.stress * 100, 100)}%` }}
@@ -243,13 +243,13 @@ export default function SessionReviewPage() {
           </div>
 
           {/* Therapist notes */}
-          <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
+          <div className="bg-surface/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Therapist Notes</h3>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={5}
-              className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-teal-500/50 resize-none"
+              className="w-full bg-surface/10 border border-white/20 rounded-xl p-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-teal-500/50 resize-none"
               placeholder="Add your observations..."
               aria-label="Therapist notes"
             />
@@ -276,12 +276,12 @@ function TimelineItem({ event, isLast }: { event: TimelineEvent; isLast: boolean
       <div className="flex flex-col items-center">
         <div
           className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${
-            isSafety ? 'bg-red-500/30 ring-2 ring-red-500/50' : 'bg-white/10'
+            isSafety ? 'bg-red-500/30 ring-2 ring-red-500/50' : 'bg-surface/10'
           }`}
         >
           {eventIcons[event.type] || '\u2022'}
         </div>
-        {!isLast && <div className="w-px flex-1 bg-white/10 my-1" />}
+        {!isLast && <div className="w-px flex-1 bg-surface/10 my-1" />}
       </div>
 
       {/* Content */}

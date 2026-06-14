@@ -134,20 +134,20 @@ export default function EmotionTestPage() {
         <button
           onClick={start}
           disabled={status === 'running' || status === 'loading'}
-          className="px-5 py-2.5 bg-white text-gray-900 rounded-lg font-medium text-sm hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="px-5 py-2.5 bg-surface text-ink rounded-lg font-medium text-sm hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {status === 'loading' ? 'Loading models...' : 'Start'}
         </button>
         <button
           onClick={stop}
           disabled={status !== 'running'}
-          className="px-5 py-2.5 bg-white/10 text-white rounded-lg font-medium text-sm hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="px-5 py-2.5 bg-surface/10 text-white rounded-lg font-medium text-sm hover:bg-surface/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           Stop
         </button>
         <button
           onClick={reset}
-          className="px-5 py-2.5 bg-white/10 text-white rounded-lg font-medium text-sm hover:bg-white/20 transition-colors"
+          className="px-5 py-2.5 bg-surface/10 text-white rounded-lg font-medium text-sm hover:bg-surface/20 transition-colors"
         >
           Reset
         </button>
@@ -216,7 +216,7 @@ export default function EmotionTestPage() {
                 <span className="text-xs text-white/50 uppercase tracking-wider">Face Detection Confidence</span>
                 <span className="text-sm font-semibold text-white">{Math.round(confidence * 100)}%</span>
               </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-2 bg-surface/10 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-300"
                   style={{
@@ -242,9 +242,9 @@ export default function EmotionTestPage() {
                     <span className="text-white/70 capitalize">{name}</span>
                     <span className="text-white/50">{Math.round(value * 100)}%</span>
                   </div>
-                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-2 bg-surface/10 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-white rounded-full transition-all duration-300"
+                      className="h-full bg-surface rounded-full transition-all duration-300"
                       style={{ width: `${value * 100}%` }}
                     />
                   </div>
@@ -264,9 +264,9 @@ export default function EmotionTestPage() {
               {topAffects.map(([name, value]) => (
                 <div key={name} className="flex items-center gap-3">
                   <span className="text-xs text-white/70 w-24 truncate">{name}</span>
-                  <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div className="flex-1 h-2 bg-surface/10 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-white rounded-full transition-all duration-300"
+                      className="h-full bg-surface rounded-full transition-all duration-300"
                       style={{ width: `${value * 100}%` }}
                     />
                   </div>
