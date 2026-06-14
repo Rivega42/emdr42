@@ -40,6 +40,14 @@ const mockEngine = {
     blsSetsCompleted: 12,
     phases: ['history', 'preparation'],
     safetyEvents: [],
+    sudsHistory: [
+      { value: 8, context: 'phase:assessment' },
+      { value: 3, context: 'phase:installation' },
+    ],
+    vocHistory: [
+      { value: 2, context: 'phase:assessment' },
+      { value: 6, context: 'phase:installation' },
+    ],
   }),
   canTransitionTo: jest.fn().mockReturnValue(false),
   transitionToPhase: jest.fn(),
@@ -402,11 +410,17 @@ describe('SessionHandler', () => {
         'session_ended_by_client',
       );
       expect(mockEngine.exportSessionData).toHaveBeenCalled();
+      // Контракт UpdateSessionDto: UPPERCASE status, durationSeconds, и
+      // SUDS/VOC baseline/final из истории (раньше не писались → аналитика пуста)
       expect(mockBackendClient.updateSession).toHaveBeenCalledWith(
         'session-1',
         expect.objectContaining({
-          status: 'completed',
-          blsSetsCompleted: 12,
+          status: 'COMPLETED',
+          durationSeconds: 3600,
+          sudsBaseline: 8,
+          sudsFinal: 3,
+          vocBaseline: 2,
+          vocFinal: 6,
         }),
       );
     });

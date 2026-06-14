@@ -534,9 +534,11 @@ export class SessionHandler {
     this.recordTimeline('phase_start', { phase: nextPhase, reason });
 
     // Persist
+    // UpdateSessionDto.phase — enum в UPPERCASE; поле называется phase, не
+    // currentPhase. Иначе forbidNonWhitelisted/enum-валидация → 400.
     this.backendClient
       .updateSession(this.persistId, {
-        currentPhase: nextPhase,
+        phase: nextPhase.toUpperCase(),
       })
       .catch((err) => console.error(`[session:${this.sessionId}] Failed to update phase:`, err));
   }
@@ -841,11 +843,22 @@ export class SessionHandler {
 
   private async saveToBackend(data: FullSessionExport): Promise<void> {
     try {
+      // Поля и регистр должны совпадать с UpdateSessionDto, иначе
+      // forbidNonWhitelisted → 400 и сессия не закрывается в БД.
+      // SUDS/VOC baseline/final раньше не писались → аналитика и progress пусты.
+      const suds = data.sudsHistory ?? [];
+      const voc = data.vocHistory ?? [];
+      const first = (a: typeof suds) => (a.length ? Math.round(a[0].value) : undefined);
+      const last = (a: typeof suds) => (a.length ? Math.round(a[a.length - 1].value) : undefined);
       await this.backendClient.updateSession(this.persistId, {
-        status: 'completed',
+        status: 'COMPLETED',
         endedAt: new Date(data.endedAt).toISOString(),
-        elapsedSeconds: data.elapsedSeconds,
-        blsSetsCompleted: data.blsSetsCompleted,
+        durationSeconds: Math.round(data.elapsedSeconds),
+        sessionComplete: true,
+        ...(first(suds) != null ? { sudsBaseline: first(suds) } : {}),
+        ...(last(suds) != null ? { sudsFinal: last(suds) } : {}),
+        ...(first(voc) != null ? { vocBaseline: first(voc) } : {}),
+        ...(last(voc) != null ? { vocFinal: last(voc) } : {}),
       });
     } catch (err) {
       console.error(`[session:${this.sessionId}] Failed to save session to backend:`, err);
