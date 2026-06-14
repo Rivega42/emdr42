@@ -201,6 +201,22 @@ describe('SessionHandler', () => {
         expect.anything(),
       );
     });
+
+    it('без LLM-провайдера эмитит session:ai_status вместо приветствия ИИ', async () => {
+      const h = new SessionHandler(
+        mockSocket as any,
+        'session-1',
+        'user-1',
+        { hasLlm: () => false } as any,
+        mockBackendClient as any,
+      );
+      mockSocket.emit.mockClear();
+      await h.start();
+      expect(mockSocket.emit).toHaveBeenCalledWith(
+        'session:ai_status',
+        expect.objectContaining({ available: false }),
+      );
+    });
   });
 
   describe('handlePatientMessage', () => {

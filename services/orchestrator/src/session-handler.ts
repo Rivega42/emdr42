@@ -109,10 +109,19 @@ export class SessionHandler {
     // Start emotion batch flush
     this.emotionFlushTimer = setInterval(() => this.flushEmotions(), EMOTION_FLUSH_INTERVAL_MS);
 
-    // Send initial AI greeting (Phase 1: History)
-    await this.streamAiResponse(
-      'Begin the EMDR session. Greet the client warmly and start Phase 1 (History Taking).',
-    );
+    // Send initial AI greeting (Phase 1: History) — только если ИИ доступен.
+    // Без провайдера (прод без ключей) явно сигналим клиенту, а не отдаём
+    // вечную «техническую ошибку».
+    // hasLlm?.() ?? true: при отсутствии метода (старый роутер/мок в тестах)
+    // считаем ИИ доступным — поведение по умолчанию не меняется.
+    if (this.aiRouter.hasLlm?.() ?? true) {
+      await this.streamAiResponse(
+        'Begin the EMDR session. Greet the client warmly and start Phase 1 (History Taking).',
+      );
+    } else {
+      console.warn(`[session:${this.sessionId}] LLM-провайдер не сконфигурирован — ИИ-диалог недоступен`);
+      this.emitAiUnavailable();
+    }
 
     // Record timeline event
     this.recordTimeline('phase_start', { phase: 'history' });
@@ -537,6 +546,21 @@ export class SessionHandler {
   // --------------------------------------------------------------------------
 
   /**
+   * Явно сигналит клиенту, что ИИ-ассистент недоступен (нет LLM-провайдера).
+   * Фронт показывает спокойный баннер вместо вечной «технической ошибки».
+   * BLS, эмоции и адаптация при этом продолжают работать.
+   */
+  private emitAiUnavailable(): void {
+    this.socket.emit('session:ai_status', {
+      available: false,
+      reason: 'no_provider',
+      message:
+        'ИИ-ассистент сейчас недоступен. Билатеральная стимуляция и отслеживание ' +
+        'состояния продолжают работать; диалог с ассистентом временно отключён.',
+    });
+  }
+
+  /**
    * Send a system-level prompt to the AI and stream the response to the client.
    * Used for initial greeting and similar orchestrator-initiated messages.
    */
@@ -618,10 +642,16 @@ export class SessionHandler {
       });
     } catch (err) {
       console.error(`[session:${this.sessionId}] AI response error:`, err);
-      this.socket.emit('session:ai_response', {
-        type: 'error',
-        text: 'I apologize, I encountered a technical issue. Please give me a moment.',
-      });
+      // Отсутствие провайдера (прод без ключей) — не «временная техошибка»,
+      // а постоянная недоступность ИИ: сигналим явно, чтобы фронт показал баннер.
+      if (this.aiRouter.hasLlm?.() === false) {
+        this.emitAiUnavailable();
+      } else {
+        this.socket.emit('session:ai_response', {
+          type: 'error',
+          text: 'I apologize, I encountered a technical issue. Please give me a moment.',
+        });
+      }
     }
 
     return fullResponse;

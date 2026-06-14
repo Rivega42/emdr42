@@ -170,6 +170,15 @@ export class AiRouter {
 
   // ---- Provider access ----
 
+  /**
+   * Есть ли хотя бы один сконфигурированный LLM-провайдер. На проде без ключей
+   * (ANTHROPIC/OPENAI) и без ollama провайдеры не регистрируются → false.
+   * Позволяет явно сигналить «ИИ недоступен» вместо вечной техошибки.
+   */
+  hasLlm(): boolean {
+    return this.llmProviders.size > 0;
+  }
+
   getLlm(): LlmProvider {
     return this.getProviderOrThrow(
       this.llmProviders,
