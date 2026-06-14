@@ -1039,6 +1039,20 @@ export default function SessionPage() {
                   </p>
                 ))}
               </div>
+              {/* Телефон доверия в острый момент — раньше показывался только
+                  статично на dashboard, не в сессии (ревью механик). */}
+              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-900">
+                Если вам тяжело прямо сейчас — позвоните: RU <strong>8-800-2000-122</strong> ·
+                US <strong>988</strong> · UK <strong>116 123</strong> ·{' '}
+                <a
+                  href="https://www.befrienders.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  befrienders.org
+                </a>
+              </div>
               <button
                 onClick={() => setSafetyAlert(null)}
                 autoFocus
