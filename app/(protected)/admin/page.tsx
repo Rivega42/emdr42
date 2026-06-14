@@ -5,6 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { PlatformMetrics } from '@/lib/types';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { Badge } from '@/components/ui/Badge';
+import { Icon } from '@/components/ui/icons';
 
 export default function AdminDashboard() {
   const { hasRole } = useAuth();
@@ -33,24 +36,25 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20" role="status" aria-live="polite">
-        <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+      <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-20) 0' }} role="status" aria-live="polite">
+        <div className="spinner" />
+        <span className="sr-only">Загрузка…</span>
       </div>
     );
   }
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-red-600" role="alert">
+      <div className="p-6 bg-danger-soft border border-danger rounded-lg text-danger" role="alert">
         {error}
       </div>
     );
   }
 
   const statCards = [
-    { label: 'Всего пользователей', value: metrics?.totalUsers ?? '—', icon: '👥', bgColor: 'bg-amber-50' },
-    { label: 'Активных сессий', value: metrics?.activeSessionsNow ?? '—', icon: '🟢', bgColor: 'bg-green-50' },
-    { label: 'Сессий сегодня', value: metrics?.sessionsToday ?? '—', icon: '📊', bgColor: 'bg-blue-50' },
-    { label: 'Safety alerts', value: metrics?.safetyAlertsCount ?? '—', icon: '🚨', bgColor: 'bg-red-50' },
+    { label: 'Всего пользователей', value: metrics?.totalUsers ?? '—' },
+    { label: 'Активных сессий', value: metrics?.activeSessionsNow ?? '—' },
+    { label: 'Сессий сегодня', value: metrics?.sessionsToday ?? '—' },
+    { label: 'Safety alerts', value: metrics?.safetyAlertsCount ?? '—' },
   ];
 
   const systemChecks = [
@@ -61,85 +65,71 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Панель администратора</h1>
-        <p className="text-gray-500">Обзор платформы и управление</p>
+    <>
+      <div>
+        <h1 className="c-h1">Панель администратора</h1>
+        <p className="c-sub">Обзор платформы и управление</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="c-grid-4">
         {statCards.map((card) => (
-          <div key={card.label} className={`${card.bgColor} border border-gray-200 rounded-lg p-6`}>
-            <div className="text-3xl mb-2" aria-hidden="true">{card.icon}</div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{card.value}</div>
-            <div className="text-gray-500 text-sm">{card.label}</div>
-          </div>
+          <MetricCard key={card.label} label={card.label} value={card.value} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Среднее снижение SUDS</h2>
-          <div className="h-48 flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-5xl font-bold text-gray-900">
+      <div className="c-grid-2">
+        <div className="c-panel">
+          <h2 className="c-panel__title">Среднее снижение SUDS</h2>
+          <div style={{ minHeight: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-5xl)', fontWeight: 500, color: 'var(--accent)' }}>
                 {metrics?.avgSudsReduction != null ? metrics.avgSudsReduction.toFixed(1) : '—'}
               </div>
-              <div className="text-gray-400 mt-2">средняя редукция (пункты)</div>
+              <div className="c-sub" style={{ marginTop: 'var(--space-2)' }}>средняя редукция (пункты)</div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Состояние системы</h2>
-          <div className="space-y-3">
+        <div className="c-panel">
+          <h2 className="c-panel__title">Состояние системы</h2>
+          <div className="c-syschecks">
             {systemChecks.map((check) => (
-              <div key={check.label} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-900">{check.label}</span>
-                <span
-                  className={`text-xs px-2 py-1 rounded-full border ${
-                    check.status === 'operational'
-                      ? 'bg-green-50 text-green-700 border-green-200'
-                      : 'bg-amber-50 text-amber-700 border-amber-200'
-                  }`}
-                >
-                  {check.status === 'operational' ? 'работает' : 'планируется'}
-                </span>
+              <div key={check.label} className="c-syscheck">
+                <span>{check.label}</span>
+                {check.status === 'operational' ? (
+                  <Badge variant="success">работает</Badge>
+                ) : (
+                  <Badge variant="warm">планируется</Badge>
+                )}
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Недавние safety alerts</h2>
-        <div className="space-y-3">
-          {metrics?.recentSafetyAlerts && metrics.recentSafetyAlerts.length > 0 ? (
-            metrics.recentSafetyAlerts.slice(0, 10).map((alert) => (
-              <div
-                key={alert.id}
-                className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg"
-              >
-                <span className="text-red-500 mt-0.5" aria-hidden="true">
-                  {alert.type === 'stress_critical' && '🔴'}
-                  {alert.type === 'dissociation' && '🟡'}
-                  {alert.type === 'panic' && '🔴'}
-                  {alert.type === 'manual_stop' && '🟠'}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-gray-900 text-sm font-medium truncate">{alert.userName}</div>
-                  <div className="text-gray-500 text-xs">{alert.message}</div>
-                  <div className="text-gray-400 text-xs mt-1">
-                    {new Date(alert.createdAt).toLocaleString('ru-RU')}
+      <div className="c-panel">
+        <h2 className="c-panel__title">Недавние safety alerts</h2>
+        {metrics?.recentSafetyAlerts && metrics.recentSafetyAlerts.length > 0 ? (
+          <div className="c-tl">
+            {metrics.recentSafetyAlerts.slice(0, 10).map((alert, i, arr) => (
+              <div className="c-tl__item c-tl__item--alert" key={alert.id}>
+                <div className="c-tl__rail">
+                  <span className="c-tl__icon"><Icon name="alert" size={15} /></span>
+                  {i < arr.length - 1 && <span className="c-tl__line" />}
+                </div>
+                <div className="c-tl__body">
+                  <div className="c-tl__meta">
+                    {new Date(alert.createdAt).toLocaleString('ru-RU')} · {alert.userName}
                   </div>
+                  <p className="c-tl__text">{alert.message}</p>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="text-gray-400 text-sm text-center py-8">Нет недавних safety alerts</div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="c-sub" style={{ textAlign: 'center', padding: 'var(--space-8) 0' }}>Нет недавних safety alerts</p>
+        )}
       </div>
-    </div>
+    </>
   );
 }

@@ -62,23 +62,59 @@
 }
 .l-hero__moon {
   position: absolute;
-  top: 52px; left: 50%; transform: translateX(-50%);
-  width: 64px; height: 64px; border-radius: 50%;
-  background: radial-gradient(circle at 42% 38%, #d9f2e6, var(--accent) 76%);
-  box-shadow: 0 0 48px 14px color-mix(in oklab, var(--accent) 30%, transparent);
+  top: 56px; left: 50%; transform: translateX(-50%);
+  width: 60px; height: 60px; border-radius: 50%;
+  background: radial-gradient(circle at 42% 38%, #eafaf2, var(--accent) 78%);
+  box-shadow:
+    0 0 0 10px color-mix(in oklab, var(--accent) 9%, transparent),
+    0 0 60px 22px color-mix(in oklab, var(--accent) 22%, transparent);
+  z-index: 1;
 }
+@media (prefers-reduced-motion: no-preference) {
+  .l-hero__moon { animation: l-breathe 8s var(--ease-calm) infinite alternate; }
+  @keyframes l-breathe {
+    from { box-shadow: 0 0 0 10px color-mix(in oklab, var(--accent) 7%, transparent), 0 0 52px 18px color-mix(in oklab, var(--accent) 18%, transparent); }
+    to   { box-shadow: 0 0 0 14px color-mix(in oklab, var(--accent) 11%, transparent), 0 0 72px 26px color-mix(in oklab, var(--accent) 26%, transparent); }
+  }
+}
+/* «Лунная дорожка» — отражение луны на воде: мягкий расширяющийся книзу конус,
+   растворяется раньше заголовка, живёт позади контента — не режет его. */
 .l-hero__path {
   position: absolute;
-  top: 120px; bottom: -56px; left: 50%; transform: translateX(-50%);
-  width: 2px;
-  background: var(--moonpath-gradient);
-  opacity: 0.85;
+  top: 104px; left: 50%; transform: translateX(-50%);
+  width: 360px; height: 230px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--accent) 55%, transparent) 0%,
+    color-mix(in oklab, var(--accent) 28%, transparent) 42%,
+    transparent 100%
+  );
+  clip-path: polygon(47% 0, 53% 0, 100% 100%, 0 100%);
+  filter: blur(20px);
+  opacity: 0.5;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 24%, transparent 88%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 24%, transparent 88%);
+  z-index: 0;
+  pointer-events: none;
+}
+/* рябь на воде — едва заметные горизонтальные блики */
+.l-hero__path::after {
+  content: "";
+  position: absolute; inset: 36% 0 0 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 11px,
+    color-mix(in oklab, var(--accent) 42%, transparent) 11px 12px
+  );
+  -webkit-mask-image: radial-gradient(72% 100% at 50% 100%, #000, transparent 76%);
+  mask-image: radial-gradient(72% 100% at 50% 100%, #000, transparent 76%);
+  opacity: 0.55;
 }
 @media (prefers-reduced-motion: no-preference) {
   .l-hero__path { animation: l-shimmer 7s var(--ease-calm) infinite alternate; }
-  @keyframes l-shimmer { from { opacity: 0.6; } to { opacity: 1; } }
+  @keyframes l-shimmer { from { opacity: 0.4; } to { opacity: 0.6; } }
 }
-.l-hero__inner { position: relative; text-align: center; }
+.l-hero__inner { position: relative; z-index: 1; text-align: center; }
 .l-hero__title { font-size: clamp(40px, 6vw, var(--text-5xl)); margin-bottom: var(--space-6); }
 .l-hero__sub {
   font-size: clamp(var(--text-base), 2vw, var(--text-xl));
@@ -113,10 +149,20 @@
 .l-cta__path {
   position: absolute;
   top: 0; left: 50%; transform: translateX(-50%);
-  height: 96px;
-  width: 2px;
-  background: var(--moonpath-gradient);
-  opacity: 0.85;
+  height: 140px;
+  width: 200px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in oklab, var(--accent) 26%, transparent) 100%
+  );
+  clip-path: polygon(44% 0, 56% 0, 70% 100%, 30% 100%);
+  filter: blur(22px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .l-cta__path { animation: l-shimmer 7s var(--ease-calm) infinite alternate; }
 }
 .l-cta__title { font-size: var(--text-3xl); margin: var(--space-16) 0 var(--space-4); }
 .l-cta__sub { color: var(--text-muted); font-size: var(--text-lg); margin-bottom: var(--space-10); }
