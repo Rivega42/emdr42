@@ -118,10 +118,13 @@ export default function AdminDashboard() {
                   {i < arr.length - 1 && <span className="c-tl__line" />}
                 </div>
                 <div className="c-tl__body">
-                  <div className="c-tl__meta">
-                    {new Date(alert.createdAt).toLocaleString('ru-RU')} · {alert.userName}
+                  <div className="c-tl__user" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>
+                    {alert.userName}
                   </div>
                   <p className="c-tl__text">{alert.message}</p>
+                  <div className="c-tl__meta" style={{ marginTop: 2 }}>
+                    {new Date(alert.createdAt).toLocaleString('ru-RU')}
+                  </div>
                 </div>
               </div>
             ))}
